@@ -38,7 +38,7 @@ class ConfigTests(unittest.TestCase):
         for key,value in [("schema",2),("hostname","a;reboot"),("addresses",["host:99999"]),
                           ("addresses",["host:0"]),("addresses",[]),("protocol","auto"),
                           ("password",""),("password","x\ny"),("username","\u0000"),
-                          ("mtu",1279),("mtu",1350.5),("dns_upstreams",[]),
+                          ("mtu",1279),("mtu",1350.5),("dns_upstreams",None),
                           ("wan_if","br0;reboot"),("anti_dpi","false")]:
             with self.subTest(key=key,value=value):
                 data=copy.deepcopy(EP);data[key]=value
@@ -144,7 +144,7 @@ class PlanTests(unittest.TestCase):
     def test_dns_both_protocols_redirected(self):
         text="\n".join(x.get("stdin","") for x in self.plan("guard"))
         for protocol in ["tcp","udp"]:
-            self.assertIn(f"-p {protocol} --dport 53 -j DNAT --to-destination 1.1.1.1:53",text)
+            self.assertIn(f"-p {protocol} --dport 53 -j DNAT --to-destination 192.0.2.53:53",text)
     def test_only_selected_source_is_ipv4_guarded(self):
         plan=self.plan("guard")
         text=next(x["stdin"] for x in plan if "-F TTM4_FWD" in x.get("stdin",""))

@@ -16,7 +16,6 @@
   var MAX_LINK = 32768;
   var MAX_PAYLOAD = 24576;
   var MAX_CERT = 16384;
-  var DEFAULT_DNS = 'tls://1.1.1.1';
   var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   var KEYS = ['schema', 'hostname', 'addresses', 'username', 'password', 'protocol', 'certificate', 'dns_upstreams', 'anti_dpi', 'mtu', 'wan_if'];
   var TAGS = ['version', 'hostname', 'addresses', 'custom_sni', 'has_ipv6', 'username', 'password', 'skip_verification', 'certificate', 'upstream_protocol', 'anti_dpi', 'client_random_prefix', 'name', 'dns_upstreams'];
@@ -40,9 +39,9 @@
     } else if (!value.split('.').every(function (part) { return part.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(part); })) fail('Некорректное имя хоста: ' + label + '.');
     return value;
   }
-  function list(value, max, label) {
+  function list(value, max, label, allowEmpty) {
     if (typeof value === 'string') value = value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (!Array.isArray(value) || value.length < 1 || value.length > max) fail(label + ': требуется от 1 до ' + max + ' значений, по одному в строке.');
+    if (!Array.isArray(value) || (!allowEmpty && value.length < 1) || value.length > max) fail(label + ': требуется от ' + (allowEmpty ? 0 : 1) + ' до ' + max + ' значений, по одному в строке.');
     return value.map(function (s) { if (typeof s !== 'string') fail('Некорректное поле: ' + label + '.'); return s.trim(); });
   }
   function address(value) {
@@ -126,7 +125,7 @@
     if (typeof anti !== 'boolean') fail('Anti-DPI должен быть логическим значением.');
     var wan = own(fields, 'wan_if') ? fields.wan_if : '';
     if (typeof wan !== 'string' || wan.length > 15 || !/^([A-Za-z][A-Za-z0-9_.-]*)?$/.test(wan)) fail('Некорректное имя WAN-интерфейса.');
-    var dns = list(own(fields, 'dns_upstreams') ? fields.dns_upstreams : [DEFAULT_DNS], 4, 'DNS');
+    var dns = list(own(fields, 'dns_upstreams') ? fields.dns_upstreams : [], 4, 'DNS', true);
     dns.forEach(function (value) { clean(value, 512, 'DNS', false); if (/\s/.test(value)) fail('DNS-адрес не должен содержать пробелы.'); });
     return {
       schema: 1, hostname: hostname(fields.hostname.trim(), 'TLS hostname'),
@@ -208,8 +207,8 @@
     if (values[7] === true) fail('Ссылка отключает проверку TLS-сертификата (skip_verification); такое подключение не поддерживается.');
     if (!seen[1] || !addresses.length || !seen[5] || !seen[6]) fail('В ссылке отсутствуют обязательные параметры: hostname, адреса, имя пользователя или пароль.');
     if (!seen[4] || values[4]) warnings.push('Сервер поддерживает IPv6; этот аддон использует только IPv4 и блокирует IPv6 на выбранном мосту.');
-    var dns = values[13];
-    if (!dns || !dns.length) { dns = [DEFAULT_DNS]; warnings.push('В ссылке нет DNS: явно добавлен tls://1.1.1.1. Проверьте этот выбор перед сохранением.'); }
+    var dns = values[13] || [];
+    if (!dns.length) warnings.push('В ссылке не указан DNS. Аддон не добавляет DNS автоматически; для запуска нужна конфигурация с DNS.');
     return {
       endpoint: endpointFromFields({hostname: values[1], addresses: addresses, username: values[5], password: values[6], protocol: values[9] || 'http2', certificate: values[8] || '', dns_upstreams: dns, anti_dpi: values[10] || false}),
       name: seen[12] ? clean(values[12], 256, 'имя сервера', true) : '',

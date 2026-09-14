@@ -13,8 +13,8 @@ fixture = {
     "version": (root/"VERSION").read_text().strip(), "state": "disabled", "hostname": "vpn.example.com",
     "process_running": False, "interface_up": False, "enabled": False, "connection_verified": False,
     "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed",
-    "discovered_networks": [{"lan_if": f"br{i}", "sources": [f"192.168.{50+i}.0/24"]} for i in range(4)],
-    "policy": json.loads((root/"examples/policy.example.json").read_text()), "hardware_tested": False
+    "discovered_networks": [{"lan_if": f"br{i}", "sources": [f"192.168.{50+i}.0/24"], "ssids": [["Home"],["Guest 1"],["Guest 2"],["Guest 3"]][i]} for i in range(4)],
+    "policy": {"schema":3,"networks":[{"lan_if":"br1","sources":["192.168.51.0/24"]}],"block_ipv6_bridge":True,"table":871,"priority":17100}, "hardware_tested": False
 }
 css = (root/"addon/web/trusttunnel.css").read_text()
 js = (root/"addon/web/connection.js").read_text() + "\n" + (root/"addon/web/trusttunnel.js").read_text()

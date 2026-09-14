@@ -17,7 +17,7 @@ TT_ACTION=${1:-help}
 case "$TT_ACTION" in
     help|--help)
         cat <<'HELP'
-TrustTunnel Merlin 0.2.0-alpha.1
+TrustTunnel Merlin 0.2.1-alpha.1
 Offline (never changes networking):
   validate endpoint|policy FILE
   render ENDPOINT_JSON           # contains credentials; protect redirected output

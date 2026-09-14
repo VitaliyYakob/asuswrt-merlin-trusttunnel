@@ -27,15 +27,20 @@ class BackupTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 old = json.loads((ROOT / "examples" / f"{kind}.example.json").read_text())
                 new = copy.deepcopy(old)
-                new["password" if kind == "endpoint" else "dns_ipv4"] = "new-private-password" if kind == "endpoint" else "8.8.8.8"
+                if kind == "endpoint": new["password"] = "new-private-password"
+                else: new["sources"] = ["192.168.50.17/32"]
                 first, second = self.path / f"{kind}-old.json", self.path / f"{kind}-new.json"
                 first.write_text(json.dumps(old)); second.write_text(json.dumps(new))
                 result = self.execute('tt_import "$1" "$2" && tt_import "$1" "$3"', kind, first, second)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 dest = self.path / f"sandbox/jffs/addons/trusttunnel/config/{kind}.json"
                 backup = Path(str(dest) + ".previous")
-                self.assertEqual(json.loads(dest.read_text()), new)
-                self.assertEqual(json.loads(backup.read_text()), old)
+                def imported(value):
+                    if kind == "endpoint": return value
+                    return {"schema":3,"networks":[{"lan_if":value["lan_if"],"sources":value["sources"]}],
+                            "block_ipv6_bridge":value["block_ipv6_bridge"],"table":value["table"],"priority":value["priority"]}
+                self.assertEqual(json.loads(dest.read_text()), imported(new))
+                self.assertEqual(json.loads(backup.read_text()), imported(old))
                 self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
                 self.assertFalse((self.path / "sandbox/www").exists())
 

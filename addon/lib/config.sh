@@ -23,7 +23,11 @@ tt_import() {
     case "$1" in endpoint) TT_DEST=$TT_ENDPOINT;; policy) TT_DEST=$TT_POLICY;; *) return 1;; esac
     # Stage first: the input may itself be the .previous file being restored.
     TT_IMPORT_TMP=$(mktemp "$TT_CONFIG/.import-$1.XXXXXX") || return 1
-    if jq -S . "$2" >"$TT_IMPORT_TMP" 2>/dev/null && chmod 600 "$TT_IMPORT_TMP" &&
+    # Legacy routing DNS is obsolete. Normalize only during a disabled import;
+    # the private previous-file backup preserves the exact old configuration.
+    if jq -S --arg kind "$1" 'if $kind=="policy" then
+        (if .schema==1 then . + {networks:[{lan_if,sources}]} | del(.lan_if,.sources) else . end)
+        | .schema=3 | del(.dns_ipv4) else . end' "$2" >"$TT_IMPORT_TMP" 2>/dev/null && chmod 600 "$TT_IMPORT_TMP" &&
         tt_validate "$1" "$TT_IMPORT_TMP" && tt_backup_private "$TT_DEST" && mv -f "$TT_IMPORT_TMP" "$TT_DEST"; then
         return 0
     fi
@@ -34,8 +38,16 @@ tt_render() {
     tt_validate endpoint "$1" || return 1
     jq -r -f "$TT_BASE/share/render.jq" "$1"
 }
+tt_require_dns() {
+    # No substitute resolver: v1.1.5 without configured DNS forwards port 53 to
+    # the original destination, which is unsafe with this addon's transit DNAT.
+    jq -e '.dns_upstreams | type=="array" and length>0' "$TT_ENDPOINT" >/dev/null 2>&1 || {
+        tt_error 'connection configuration has no DNS upstreams; import a configuration with DNS before starting'; return 1;
+    }
+}
 tt_render_runtime() {
     tt_validate endpoint "$TT_ENDPOINT" || return 1
+    tt_require_dns || return 1
     TT_RENDER_TMP=$(mktemp "$TT_RUN/client.toml.XXXXXX") || return 1
     if tt_render "$TT_ENDPOINT" >"$TT_RENDER_TMP" && chmod 600 "$TT_RENDER_TMP" && mv -f "$TT_RENDER_TMP" "$TT_RUN/client.toml"; then
         return 0

@@ -23,7 +23,7 @@
 <td style="width:202px;vertical-align:top"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading"><div><span class="ttm-eyebrow">VPN / ASUSWRT-MERLIN</span><h2>TrustTunnel</h2><p class="ttm-muted">Подключение и маршрутизация домашних сетей</p></div><span class="ttm-badge" id="ttm-version">0.2.0-alpha.1</span></div>
+<div class="ttm-heading"><div><span class="ttm-eyebrow">VPN / ASUSWRT-MERLIN</span><h2>TrustTunnel</h2><p class="ttm-muted">Подключение и маршрутизация домашних сетей</p></div><span class="ttm-badge" id="ttm-version">0.2.1-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <section class="ttm-section" aria-labelledby="ttm-status-title">
 <div class="ttm-heading"><h3 id="ttm-status-title">Состояние клиента</h3><strong id="ttm-state">Загрузка…</strong></div>
@@ -67,7 +67,7 @@
 </div>
 <details><summary>Сертификат, DNS и дополнительные параметры</summary>
 <div class="ttm-fields">
-<div><label for="ttm-upstreams">DNS клиента TrustTunnel</label><textarea id="ttm-upstreams" spellcheck="false">tls://1.1.1.1</textarea><small>По одному адресу в строке.</small></div>
+<div><label for="ttm-upstreams">DNS клиента TrustTunnel</label><textarea id="ttm-upstreams" spellcheck="false" placeholder="DNS из конфигурации подключения"></textarea><small id="ttm-dns-hint">DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.</small></div>
 <div><label for="ttm-mtu">MTU</label><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"><label for="ttm-wan">WAN-интерфейс (необязательно)</label><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"></div>
 </div>
 <label for="ttm-certificate">Сертификат PEM (если выдан вашим сервером)</label><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
@@ -89,13 +89,13 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 </section>
 <section class="ttm-section" aria-labelledby="ttm-routing-title">
 <div class="ttm-heading"><h3 id="ttm-routing-title">2. Сети через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
-<p class="ttm-muted">Выберите основную и гостевые сети. В каждой строке укажите реальный bridge и IPv4-подсети либо отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
+<p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
-<div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button><button type="button" onclick="ttmAddNetwork()">Добавить сеть</button></div>
-<div id="ttm-networks"></div>
-<p class="ttm-muted">br0–br3 — примеры имён, их нужно проверить на роутере. Поддерживается до 16 сетей и 32 записей подсетей суммарно.</p>
-<label for="ttm-dns">Внешний DNS IPv4 для выбранных сетей</label><input type="text" id="ttm-dns" value="1.1.1.1" maxlength="15" spellcheck="false">
-<label class="ttm-check"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру на <strong>каждом выбранном bridge целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
+<div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
+<div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
+<p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
+
+<label class="ttm-check"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
 <p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>

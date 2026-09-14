@@ -26,7 +26,7 @@ function reject(parts, match) { assert.throws(() => api.parseLink(minimal(parts)
 
 test('minimal link, defaults and IPv4/DNS notices', () => {
   const result = api.parseLink(minimal());
-  assert.deepEqual(result.endpoint, {schema: 1, hostname: 'vpn.example.com', addresses: ['203.0.113.10:443'], username: 'test-user', password: 'test-password', protocol: 'http2', certificate: '', dns_upstreams: ['tls://1.1.1.1'], anti_dpi: false, mtu: 1350, wan_if: ''});
+  assert.deepEqual(result.endpoint, {schema: 1, hostname: 'vpn.example.com', addresses: ['203.0.113.10:443'], username: 'test-user', password: 'test-password', protocol: 'http2', certificate: '', dns_upstreams: [], anti_dpi: false, mtu: 1350, wan_if: ''});
   assert.equal(result.name, '');
   assert.equal(result.warnings.length, 2);
 });
@@ -154,7 +154,23 @@ test('manual credentials and unicode survive JSON encoding', () => {
 });
 test('manual bounds and hidden unsupported fields reject', () => {
   for (const mtu of [1279, 1501, 1350.5, '1350bad', '', NaN, null]) assert.throws(() => api.endpointFromFields(fields({mtu})), /MTU/);
-  for (const change of [{anti_dpi: 'false'}, {protocol: 'auto'}, {tls_profile: 'chrome'}, {skip_verification: true}, {custom_sni: 'example.com'}, {has_ipv6: true}, {schema: 2}, {wan_if: 'a;reboot'}, {dns_upstreams: []}]) assert.throws(() => api.endpointFromFields(fields(change)));
+  for (const change of [{anti_dpi: 'false'}, {protocol: 'auto'}, {tls_profile: 'chrome'}, {skip_verification: true}, {custom_sni: 'example.com'}, {has_ipv6: true}, {schema: 2}, {wan_if: 'a;reboot'}, {dns_upstreams: null}]) assert.throws(() => api.endpointFromFields(fields(change)));
+});
+test('missing and empty imported DNS stay empty without an invented resolver', () => {
+  for (const extra of [[], [tlv(13, [])]]) {
+    const result = api.parseLink(minimal(extra));
+    assert.deepEqual(result.endpoint.dns_upstreams, []);
+    assert.ok(result.warnings.some(value => value.includes('не указан DNS')));
+    assert.ok(!JSON.stringify(result).includes('1.1.1.1'));
+  }
+  for (const value of [{}, {dns_upstreams: []}, {dns_upstreams: ''}]) {
+    assert.deepEqual(api.endpointFromFields(fields(value)).dns_upstreams, []);
+  }
+});
+test('encrypted DNS transports and explicit ports from imported configuration are unchanged', () => {
+  const dns = ['https://dns.example.test/custom/path?profile=synthetic', 'tls://dns.example.test:8853', 'quic://dns.example.test:8853', '9.9.9.9:5353'];
+  const data = Buffer.concat(dns.map(value => Buffer.concat([vi(Buffer.byteLength(value)), Buffer.from(value)])));
+  assert.deepEqual(api.parseLink(minimal([tlv(13, data)])).endpoint.dns_upstreams, dns);
 });
 test('manual invalid host port and control input reject', () => {
   for (const hostname of ['bad..host', '-bad.example', 'bad-.example', '256.1.1.1', '01.2.3.4', 'x;reboot', 'x'.repeat(64) + '.com']) assert.throws(() => api.endpointFromFields(fields({hostname})));

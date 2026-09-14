@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "networks": [
     {
       "lan_if": "br0",
@@ -26,7 +26,6 @@
       ]
     }
   ],
-  "dns_ipv4": "1.1.1.1",
   "block_ipv6_bridge": true,
   "table": 871,
   "priority": 17100

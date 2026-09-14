@@ -37,7 +37,7 @@ def endpoint:
   require(.password|text(1024); "endpoint: invalid password") |
   require(.protocol=="http2" or .protocol=="http3"; "endpoint: supported protocols are http2 and http3") |
   require((.certificate|type)=="string" and (.certificate|length)<=16384 and (.certificate|contains("\u0000")|not); "endpoint: invalid certificate") |
-  require((.dns_upstreams|type)=="array" and (.dns_upstreams|length)>=1 and (.dns_upstreams|length)<=4 and all(.dns_upstreams[];text(512)); "endpoint: explicit DNS upstreams required") |
+  require((.dns_upstreams|type)=="array" and (.dns_upstreams|length)<=4 and all(.dns_upstreams[];text(512) and (test("\\s")|not)); "endpoint: DNS upstreams must be an array of up to four addresses") |
   require((.anti_dpi|type)=="boolean"; "endpoint: anti_dpi must be boolean") |
   require((.mtu|type)=="number" and (.mtu|floor)==.mtu and .mtu>=1280 and .mtu<=1500; "endpoint: MTU must be an integer from 1280 to 1500") |
   require(.wan_if|type=="string" and length<=15 and test("^([A-Za-z][A-Za-z0-9_.-]*)?$"); "endpoint: invalid WAN interface") |
@@ -51,14 +51,17 @@ def network:
 def networks: if .schema==1 then [{lan_if,sources}] else .networks end;
 def policy:
   require(type=="object"; "policy: expected an object") |
-  require(.schema==1 or .schema==2; "policy: unsupported schema") |
-  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] else ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
+  require(.schema==1 or .schema==2 or .schema==3; "policy: unsupported schema") |
+  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==2 then ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] else ["schema","networks","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
   require((networks|type)=="array" and (networks|length)>=1 and (networks|length)<=16; "policy: choose 1..16 bridges") |
   require(all(networks[]; network | true); "policy: invalid network") |
   require(([networks[].lan_if]|unique|length)==(networks|length); "policy: duplicate bridge") |
   require(([networks[].sources|length]|add)<=32; "policy: at most 32 source rules across all bridges") |
-  require(.dns_ipv4|ipv4; "policy: invalid DNS IPv4") |
-  require((.dns_ipv4|split(".")|map(tonumber)) as $o | $o[0]>0 and $o[0]<224 and $o[0]!=127 and $o[0]!=10 and ($o[0]!=172 or $o[1]<16 or $o[1]>31) and ($o[0]!=192 or $o[1]!=168) and ($o[0]!=100 or $o[1]<64 or $o[1]>127) and ($o[0]!=169 or $o[1]!=254); "policy: unusable DNS destination") |
+  (if .schema<3 then
+    # Validate legacy input before explicitly discarding its obsolete resolver.
+    require(.dns_ipv4|ipv4; "policy: invalid legacy DNS IPv4") |
+    require((.dns_ipv4|split(".")|map(tonumber)) as $o | $o[0]>0 and $o[0]<224 and $o[0]!=127 and $o[0]!=10 and ($o[0]!=172 or $o[1]<16 or $o[1]>31) and ($o[0]!=192 or $o[1]!=168) and ($o[0]!=100 or $o[1]<64 or $o[1]>127) and ($o[0]!=169 or $o[1]!=254); "policy: unusable legacy DNS destination")
+  else . end) |
   require(.block_ipv6_bridge==true; "policy: bridge-wide IPv6 block must be explicitly acknowledged") |
   require(.table==871 and .priority==17100; "policy: alpha reserves table 871 and priorities 17100..17131") |
   .;

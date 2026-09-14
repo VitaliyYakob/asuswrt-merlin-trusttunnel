@@ -1,4 +1,6 @@
 #!/bin/sh
+# shellcheck source=inventory.sh
+. "$TT_BASE/lib/inventory.sh"
 tt_check_interfaces() {
     TT_LANS=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if end' "$TT_POLICY") || return 1
     for TT_LAN in $TT_LANS; do
@@ -14,6 +16,16 @@ tt_check_interfaces() {
         }
     fi
 }
+tt_check_dns_transit() {
+    # This is an internal DNAT destination, never a configured DNS resolver.
+    [ -z "$TT_ROOT" ] || { tt_error 'live address checks are prohibited with TT_ROOT'; return 1; }
+    TT_DNS_LOCAL_ADDRS=$(ip -4 -o addr show 2>/dev/null) || {
+        tt_error 'cannot check internal DNS transit address'; return 1;
+    }
+    if printf '%s\n' "$TT_DNS_LOCAL_ADDRS" | awk '$3=="inet" && $4 ~ /^192[.]0[.]2[.]53\// {found=1} END {exit !found}'; then
+        tt_error 'internal DNS transit address conflicts with a local interface'; return 1
+    fi
+}
 tt_preflight() {
     tt_live || return 1
     for TT_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock sha256sum; do
@@ -23,7 +35,7 @@ tt_preflight() {
     [ -x "$TT_BIN" ] || { tt_error 'install a verified TrustTunnel client binary first'; return 1; }
     [ "$(cat /proc/sys/net/ipv4/ip_forward)" = 1 ] || { tt_error 'IPv4 forwarding is disabled'; return 1; }
     tt_validate endpoint "$TT_ENDPOINT" && tt_validate policy "$TT_POLICY" || return 1
-    tt_check_interfaces || return 1
+    tt_require_dns && tt_check_dns_transit && tt_check_interfaces || return 1
     # Lab-only: this acknowledgement does not prove acceleration is actually disabled.
     # ctf_disable is checked; HND runner/flow-cache verification is a hardware test gate.
     [ "$(nvram get ctf_disable)" = 1 ] || {
@@ -105,23 +117,6 @@ tt_limit_log() {
             cat "$TT_RUN/log.tail" >"$TT_RUN/client.log"
         rm -f "$TT_RUN/log.tail"
     fi
-}
-tt_discover_networks() {
-    # Offline sandboxes must never inspect the development host's networking.
-    if [ -n "$TT_ROOT" ]; then printf '[]\n'; return 0; fi
-    TT_DISCOVERY_RESULT=
-    for TT_BRIDGE_PATH in "$TT_SYS"/class/net/br*/bridge; do
-        [ -d "$TT_BRIDGE_PATH" ] || continue
-        TT_BRIDGE_PARENT=${TT_BRIDGE_PATH%/bridge}
-        TT_BRIDGE_NAME=${TT_BRIDGE_PARENT##*/}
-        printf '%s' "$TT_BRIDGE_NAME" | grep -Eq '^br[0-9]+(\.[0-9]+)?$' || continue
-        TT_DISCOVERY_ADDRESSES=$(ip -4 -o addr show dev "$TT_BRIDGE_NAME" 2>/dev/null) || return 1
-        TT_DISCOVERY_ITEM=$(printf '%s\n' "$TT_DISCOVERY_ADDRESSES" | awk '$3=="inet" {print $4}' |
-            jq -Rn --arg interface "$TT_BRIDGE_NAME" -f "$TT_BASE/share/inventory.jq") || return 1
-        TT_DISCOVERY_RESULT="$TT_DISCOVERY_RESULT
-$TT_DISCOVERY_ITEM"
-    done
-    printf '%s\n' "$TT_DISCOVERY_RESULT" | jq -s .
 }
 tt_status() {
     TT_PROCESS=false; TT_TUN=false; TT_STATE=disabled

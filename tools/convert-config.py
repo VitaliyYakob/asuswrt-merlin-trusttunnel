@@ -31,7 +31,9 @@ def convert(source: dict) -> dict:
         "username": endpoint["username"], "password": endpoint["password"],
         "protocol": endpoint.get("upstream_protocol", "http2"),
         "certificate": endpoint.get("certificate") or "",
-        "dns_upstreams": endpoint.get("dns_upstreams") or source.get("dns_upstreams") or ["tls://1.1.1.1"],
+        # v1.1.5 uses legacy DNS only when the endpoint field is absent;
+        # an explicitly empty endpoint list must not acquire another resolver.
+        "dns_upstreams": endpoint.get("dns_upstreams", source.get("dns_upstreams", [])),
         "anti_dpi": endpoint.get("anti_dpi", False), "mtu": tun.get("mtu_size", 1350),
         "wan_if": tun.get("bound_if", "") or "",
     }

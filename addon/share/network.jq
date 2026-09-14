@@ -4,6 +4,12 @@ def remove($a): {op:"remove",argv:$a};
 def jump($prog;$table;$parent;$chain): {op:"jump",program:$prog,table:$table,parent:$parent,chain:$chain};
 def detach($prog;$table;$parent;$chain): {op:"detach",program:$prog,table:$table,parent:$parent,chain:$chain};
 def restore($program;$lines): {op:"restore",program:$program,stdin:(($lines|join("\n"))+"\n")};
+# Addon-only transit destination, NOT a resolver or an upstream TUN DNS address.
+# v1.1.5 intercepts TCP/UDP port 53 in core/src/dns_handler.{h,cpp}; a nonempty
+# endpoint.dns_upstreams is required before start, and resolves through the VPN.
+# DNAT also moves queries addressed to the router out of the local routing table.
+# 192.0.2.53 must never be assigned locally (checked during preflight).
+"192.0.2.53" as $dns_transit |
 (if .schema==1 then . + {networks:[{lan_if,sources}]} | del(.lan_if,.sources) else . end) as $p |
 [$p.networks[] as $network | $network.sources[] | {source:.,interface:$network.lan_if}] as $rules |
 if $action=="guard" then [
@@ -19,8 +25,8 @@ if $action=="guard" then [
       "-A TTM4_FWD -i tt0 -o \(.interface) -d \(.source) -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"] + ["COMMIT"]),
   jump("iptables";"filter";"FORWARD";"TTM4_FWD"),
   restore("iptables-restore"; ["*nat",":TTM4_DNS - [0:0]",":TTM4_SNAT - [0:0]","-F TTM4_DNS","-F TTM4_SNAT"] +
-    [$rules[] | "-A TTM4_DNS -i \(.interface) -s \(.source) -p udp --dport 53 -j DNAT --to-destination \($p.dns_ipv4):53",
-      "-A TTM4_DNS -i \(.interface) -s \(.source) -p tcp --dport 53 -j DNAT --to-destination \($p.dns_ipv4):53"] +
+    [$rules[] | "-A TTM4_DNS -i \(.interface) -s \(.source) -p udp --dport 53 -j DNAT --to-destination \($dns_transit):53",
+      "-A TTM4_DNS -i \(.interface) -s \(.source) -p tcp --dport 53 -j DNAT --to-destination \($dns_transit):53"] +
     [$rules|map(.source)|unique[] | "-A TTM4_SNAT -s \(.) -o tt0 -j MASQUERADE"] + ["COMMIT"]),
   jump("iptables";"nat";"PREROUTING";"TTM4_DNS"), jump("iptables";"nat";"POSTROUTING";"TTM4_SNAT"),
   cmd(["ip","-4","route","replace","prohibit","default","table",($p.table|tostring),"metric","32760"])
