@@ -1,0 +1,99 @@
+python3 -m unittest discover -s tests -v
+test_custom_certificate_requires_openssl (test_certificates.CertificateTests.test_custom_certificate_requires_openssl) ... ok
+test_empty_certificate_does_not_require_openssl (test_certificates.CertificateTests.test_empty_certificate_does_not_require_openssl) ... ok
+test_framed_base64_that_is_not_x509_is_rejected (test_certificates.CertificateTests.test_framed_base64_that_is_not_x509_is_rejected) ... ok
+test_temporary_files_are_private_and_openssl_receives_only_paths (test_certificates.CertificateTests.test_temporary_files_are_private_and_openssl_receives_only_paths) ... ok
+test_text_outside_or_incomplete_blocks_is_rejected (test_certificates.CertificateTests.test_text_outside_or_incomplete_blocks_is_rejected) ... ok
+test_valid_certificate_and_crlf_bundle (test_certificates.CertificateTests.test_valid_certificate_and_crlf_bundle) ... ok
+test_valid_first_certificate_does_not_hide_corrupt_second (test_certificates.CertificateTests.test_valid_first_certificate_does_not_hide_corrupt_second) ... ok
+test_backup_failure_leaves_active_configuration_intact (test_config_backups.BackupTests.test_backup_failure_leaves_active_configuration_intact) ... ok
+test_installer_backup_captures_own_files_and_init_before_overwrite (test_config_backups.BackupTests.test_installer_backup_captures_own_files_and_init_before_overwrite) ... ok
+test_installer_backup_refuses_symlink_target (test_config_backups.BackupTests.test_installer_backup_refuses_symlink_target) ... ok
+test_invalid_import_preserves_config_and_previous_backup (test_config_backups.BackupTests.test_invalid_import_preserves_config_and_previous_backup) ... ok
+test_reimport_backs_up_previous_endpoint_and_policy_privately (test_config_backups.BackupTests.test_reimport_backs_up_previous_endpoint_and_policy_privately) ... ok
+test_restore_previous_does_not_overwrite_its_own_input (test_config_backups.BackupTests.test_restore_previous_does_not_overwrite_its_own_input) ... ok
+test_symlinked_configuration_is_not_overwritten (test_config_backups.BackupTests.test_symlinked_configuration_is_not_overwritten) ... ok
+test_failed_backup_does_not_modify_hook (test_hook_backup_failure.HookBackupFailure.test_failed_backup_does_not_modify_hook) ... ok
+test_multinetwork_guard_reconcile_and_cleanup (test_multinetwork.MultiNetworkExecutorTests.test_multinetwork_guard_reconcile_and_cleanup) ... ok
+test_preflight_checks_last_bridge_and_wan_conflict (test_multinetwork.MultiNetworkExecutorTests.test_preflight_checks_last_bridge_and_wan_conflict) ... ok
+test_rpf_updates_and_restores_every_selected_bridge (test_multinetwork.MultiNetworkExecutorTests.test_rpf_updates_and_restores_every_selected_bridge) ... ok
+test_all_32_priorities_are_usable (test_multinetwork.MultiNetworkTests.test_all_32_priorities_are_usable) ... ok
+test_legacy_schema_produces_same_network_plan (test_multinetwork.MultiNetworkTests.test_legacy_schema_produces_same_network_plan) ... ok
+test_main_and_three_guest_networks_have_unique_priorities (test_multinetwork.MultiNetworkTests.test_main_and_three_guest_networks_have_unique_priorities) ... ok
+test_multiple_sources_flatten_across_bridges_and_disarm_exactly (test_multinetwork.MultiNetworkTests.test_multiple_sources_flatten_across_bridges_and_disarm_exactly) ... ok
+test_rejects_invalid_networks_and_total_rule_overflow (test_multinetwork.MultiNetworkTests.test_rejects_invalid_networks_and_total_rule_overflow) ... ok
+test_selected_subset_does_not_guard_other_bridges (test_multinetwork.MultiNetworkTests.test_selected_subset_does_not_guard_other_bridges) ... ok
+test_disarm_cleans_only_owned_objects (test_network_executor.ExecutorTests.test_disarm_cleans_only_owned_objects) ... ok
+test_existing_resources_refused (test_network_executor.ExecutorTests.test_existing_resources_refused) ... ok
+test_existing_routing_table_refused (test_network_executor.ExecutorTests.test_existing_routing_table_refused) ... ok
+test_guard_failure_aborts_before_ip_rules (test_network_executor.ExecutorTests.test_guard_failure_aborts_before_ip_rules) ... ok
+test_guard_is_idempotent (test_network_executor.ExecutorTests.test_guard_is_idempotent) ... ok
+test_invalid_plan_not_silently_accepted (test_network_executor.ExecutorTests.test_invalid_plan_not_silently_accepted) ... ok
+test_live_process_reconciles_missing_tunnel_route (test_network_executor.ExecutorTests.test_live_process_reconciles_missing_tunnel_route) ... ok
+test_pause_plan_keeps_blackhole_and_guards (test_network_executor.ExecutorTests.test_pause_plan_keeps_blackhole_and_guards) ... ok
+test_refresh_repositions_guard_before_foreign_accept (test_network_executor.ExecutorTests.test_refresh_repositions_guard_before_foreign_accept) ... ok
+test_reserved_priority_conflict_not_deleted (test_network_executor.ExecutorTests.test_reserved_priority_conflict_not_deleted) ... ok
+test_discovers_only_real_bridge_directories_and_normalizes_prefixes (test_network_inventory.NetworkInventoryTests.test_discovers_only_real_bridge_directories_and_normalizes_prefixes) ... ok
+test_parser_ignores_malformed_addresses_and_deduplicates_networks (test_network_inventory.NetworkInventoryTests.test_parser_ignores_malformed_addresses_and_deduplicates_networks) ... ok
+test_sandbox_does_not_run_ip (test_network_inventory.NetworkInventoryTests.test_sandbox_does_not_run_ip) ... ok
+test_status_falls_back_to_empty_inventory_on_ip_failure (test_network_inventory.NetworkInventoryTests.test_status_falls_back_to_empty_inventory_on_ip_failure) ... ok
+test_changes_refused_while_enabled (test_project.ConfigTests.test_changes_refused_while_enabled) ... ok
+test_endpoint_valid (test_project.ConfigTests.test_endpoint_valid) ... ok
+test_import_permissions_and_no_web_secret (test_project.ConfigTests.test_import_permissions_and_no_web_secret) ... ok
+test_import_preserves_old_on_invalid (test_project.ConfigTests.test_import_preserves_old_on_invalid) ... ok
+test_invalid_endpoints (test_project.ConfigTests.test_invalid_endpoints) ... ok
+test_invalid_policies (test_project.ConfigTests.test_invalid_policies) ... ok
+test_large_input_rejected (test_project.ConfigTests.test_large_input_rejected) ... ok
+test_parser_error_does_not_echo_secret (test_project.ConfigTests.test_parser_error_does_not_echo_secret) ... ok
+test_policy_valid (test_project.ConfigTests.test_policy_valid) ... ok
+test_render_toml_roundtrip_secret (test_project.ConfigTests.test_render_toml_roundtrip_secret) ... ok
+test_sandbox_live_actions_refused (test_project.ConfigTests.test_sandbox_live_actions_refused) ... ok
+test_symlink_rejected (test_project.ConfigTests.test_symlink_rejected) ... ok
+test_unknown_endpoint_field (test_project.ConfigTests.test_unknown_endpoint_field) ... ok
+test_unknown_event_ignored (test_project.ConfigTests.test_unknown_event_ignored) ... ok
+test_valid_private_subnets (test_project.ConfigTests.test_valid_private_subnets) ... ok
+test_insecure_cert_refused (test_project.ConverterTests.test_insecure_cert_refused) ... ok
+test_internal_split_routing_refused (test_project.ConverterTests.test_internal_split_routing_refused) ... ok
+test_standard_config (test_project.ConverterTests.test_standard_config) ... ok
+test_unknown_protocol_fields_refused (test_project.ConverterTests.test_unknown_protocol_fields_refused) ... ok
+test_hook_empty_file (test_project.HookMenuTests.test_hook_empty_file) ... ok
+test_hook_idempotent (test_project.HookMenuTests.test_hook_idempotent) ... ok
+test_hook_invalid_marker_fails (test_project.HookMenuTests.test_hook_invalid_marker_fails) ... ok
+test_hook_precedes_exit (test_project.HookMenuTests.test_hook_precedes_exit) ... ok
+test_hook_remove_preserves_other_addon (test_project.HookMenuTests.test_hook_remove_preserves_other_addon) ... ok
+test_menu_preserves_other_addons (test_project.HookMenuTests.test_menu_preserves_other_addons) ... ok
+test_unknown_menu_rejected (test_project.HookMenuTests.test_unknown_menu_rejected) ... ok
+test_all_actions_are_valid_json (test_project.PlanTests.test_all_actions_are_valid_json) ... ok
+test_disarm_no_table_flush (test_project.PlanTests.test_disarm_no_table_flush) ... ok
+test_dns_both_protocols_redirected (test_project.PlanTests.test_dns_both_protocols_redirected) ... ok
+test_down_keeps_prohibit_and_guards (test_project.PlanTests.test_down_keeps_prohibit_and_guards) ... ok
+test_guard_has_no_live_default_route (test_project.PlanTests.test_guard_has_no_live_default_route) ... ok
+test_guard_precedes_routing (test_project.PlanTests.test_guard_precedes_routing) ... ok
+test_invalid_action_fails (test_project.PlanTests.test_invalid_action_fails) ... ok
+test_ipv6_entire_bridge_and_local_dns_guarded (test_project.PlanTests.test_ipv6_entire_bridge_and_local_dns_guarded) ... ok
+test_only_selected_source_is_ipv4_guarded (test_project.PlanTests.test_only_selected_source_is_ipv4_guarded) ... ok
+test_policy_is_iif_scoped_without_fwmark (test_project.PlanTests.test_policy_is_iif_scoped_without_fwmark) ... ok
+test_prohibit_precedes_policy_rules (test_project.PlanTests.test_prohibit_precedes_policy_rules) ... ok
+test_up_only_modifies_dedicated_table (test_project.PlanTests.test_up_only_modifies_dedicated_table) ... ok
+test_child_does_not_inherit_lock (test_project.SourceSafetyTests.test_child_does_not_inherit_lock) ... ok
+test_no_global_flush_or_eval (test_project.SourceSafetyTests.test_no_global_flush_or_eval) ... ok
+test_runtime_has_no_python_dependency (test_project.SourceSafetyTests.test_runtime_has_no_python_dependency) ... ok
+test_shell_syntax (test_project.SourceSafetyTests.test_shell_syntax) ... ok
+test_webui_credentials_are_not_named_post_fields (test_project.SourceSafetyTests.test_webui_credentials_are_not_named_post_fields) ... ok
+test_client_preflight_failure_does_not_prevent_firewall_restore (test_refresh_guards.RefreshGuardTests.test_client_preflight_failure_does_not_prevent_firewall_restore) ... ok
+test_guard_failure_keeps_enabled_intent_and_prevents_spawn (test_refresh_guards.RefreshGuardTests.test_guard_failure_keeps_enabled_intent_and_prevents_spawn) ... ok
+test_paused_refresh_restores_guards_without_client_preflight (test_refresh_guards.RefreshGuardTests.test_paused_refresh_restores_guards_without_client_preflight) ... ok
+test_errors_do_not_echo_values_from_malformed_multiple_json (test_validation_boundaries.ValidationBoundaries.test_errors_do_not_echo_values_from_malformed_multiple_json) ... ok
+test_invalid_hostnames_and_ipv4_are_rejected_from_ssh (test_validation_boundaries.ValidationBoundaries.test_invalid_hostnames_and_ipv4_are_rejected_from_ssh) ... ok
+test_rejects_concatenated_json_instead_of_accepting_last (test_validation_boundaries.ValidationBoundaries.test_rejects_concatenated_json_instead_of_accepting_last) ... ok
+
+----------------------------------------------------------------------
+Ran 87 tests in 36.587s
+
+OK
+node --check addon/web/trusttunnel.js
+node tests/test_web.js
+WebUI policy: 19 regression groups passed
+node --check addon/web/connection.js
+node tests/test_connection.js
+Connection import: 31 regression groups passed

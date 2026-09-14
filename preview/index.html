@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<!-- trusttunnel-merlin-page-v1 -->
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
+<title>TrustTunnel — OFFLINE PREVIEW</title>
+
+
+
+<script>window.ttmCustomSettings = {};</script>
+
+<style>/* Scoped styles: the router retains its own navigation and authentication. */
+.ttm-container{padding:24px;max-width:880px;line-height:1.5;color:#e7f0f4;font:14px/1.5 Arial,sans-serif;box-sizing:border-box}
+.ttm-container *{box-sizing:border-box}.ttm-container h2{font-size:28px;letter-spacing:-.6px;margin:4px 0}.ttm-container h3{font-size:18px;margin:0}.ttm-container p{margin:10px 0}
+.ttm-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.ttm-eyebrow{font-size:10px;letter-spacing:1.6px;color:#94bcc9;font-weight:bold}.ttm-badge,.ttm-step{font-size:11px;background:#203640;color:#a9d8df;border:1px solid #44616c;padding:5px 10px;border-radius:20px;white-space:nowrap}
+.ttm-banner{border-left:3px solid #ca9b4d;background:#38382f;padding:12px 15px;margin:18px 0;color:#ead9b4;font-size:12px}.ttm-section{border:1px solid #435660;border-radius:8px;padding:20px;background:#22343e;margin:16px 0}.ttm-note,.ttm-error{min-height:16px;margin:12px 0;font-size:13px;overflow-wrap:anywhere}.ttm-note{color:#9bd5cd}.ttm-error{color:#ffb5ab}
+.ttm-grid{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;margin:15px 0}.ttm-grid dt{color:#9fbbc7}.ttm-grid dd{margin:0;overflow-wrap:anywhere}.ttm-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.ttm-container button{border:1px solid #607985;border-radius:5px;padding:9px 12px;background:#324b58;color:#f3f7f9;cursor:pointer;font-size:12px}.ttm-container button:hover{background:#405f6c}.ttm-container .ttm-primary{background:#35796f;border-color:#509d8c}.ttm-container .ttm-release{background:#553c38;border-color:#89635a}.ttm-container button:disabled{opacity:.45;cursor:not-allowed}.ttm-container :focus-visible{outline:2px solid #99e0d3;outline-offset:3px}
+.ttm-container input[type=text],.ttm-container input[type=password],.ttm-container input[type=number],.ttm-container textarea,.ttm-container select{width:100%;background:#14252e;border:1px solid #58717e;padding:9px;color:#eef5f7;border-radius:4px;font:13px/1.5 Arial,sans-serif;min-width:0}.ttm-container input[type=checkbox]{accent-color:#61b5a1}.ttm-container textarea{height:76px;resize:vertical;font-family:monospace}.ttm-container label{display:block;margin:8px 0 5px;color:#d9e6ec;font-size:13px}.ttm-container small,.ttm-muted{display:block;color:#a8bec9;font-size:12px}.ttm-container fieldset{border:0;padding:0;margin:0}.ttm-fields{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}.ttm-container .ttm-check{display:flex;gap:8px;align-items:baseline;margin:12px 0;line-height:1.6}
+.ttm-tabs{display:flex;gap:6px;border-bottom:1px solid #4b616c;margin:18px 0 12px;padding-bottom:10px}.ttm-tabs [aria-selected=true]{background:#3e756e;border-color:#7fc4b8}.ttm-container [hidden]{display:none!important}.ttm-container details{margin-top:18px;padding-top:14px;border-top:1px solid #425b66}.ttm-container summary{cursor:pointer;color:#b7ddd8;font-size:13px}.ttm-container pre{overflow-x:auto;background:#14252e;padding:12px;font:12px/1.8 monospace;white-space:pre-wrap;word-break:break-word}.ttm-container code{font:12px monospace}.ttm-network{display:grid;grid-template-columns:140px 85px minmax(150px,1fr) 64px;gap:10px;align-items:center;border:1px solid #435c68;border-radius:5px;padding:10px;margin:9px 0}.ttm-network>label{font-weight:bold}.ttm-network textarea{height:62px}.ttm-container .ttm-remove{padding:6px 5px;background:transparent;font-size:11px}.ttm-network input[type=checkbox]{vertical-align:middle}.ttm-network div label{font-size:11px;margin:0 0 4px}.ttm-container #ttm-dns{max-width:280px}
+@media(max-width:760px){.ttm-container{padding:14px;width:100%}.ttm-section{padding:14px}.ttm-heading{align-items:flex-start;flex-wrap:wrap}.ttm-fields{grid-template-columns:1fr}.ttm-grid{grid-template-columns:125px 1fr;font-size:12px}.ttm-network{grid-template-columns:1fr 85px}.ttm-network>div:nth-child(3){grid-column:1/-1}.ttm-network>.ttm-remove{grid-column:2;justify-self:end}.ttm-network textarea{height:65px}}
+body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
+.content{width:100%;max-width:1160px}.FormTitle{background:#243640;border:1px solid #4a616d;border-radius:6px}
+@media(max-width:760px){body{margin:0!important}.content>tbody>tr>td:first-child{display:none}#tabMenu{padding:16px!important;font-size:11px!important}}
+#mainMenu{padding:24px 12px;font-size:15px;line-height:2.4}#tabMenu{padding:0 0 18px;font-size:15px}
+</style><script>window.TTM_PREVIEW={"version": "0.2.0-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "discovered_networks": [{"lan_if": "br0", "sources": ["192.168.50.0/24"]}, {"lan_if": "br1", "sources": ["192.168.51.0/24"]}, {"lan_if": "br2", "sources": ["192.168.52.0/24"]}, {"lan_if": "br3", "sources": ["192.168.53.0/24"]}], "policy": {"schema": 1, "lan_if": "br1", "sources": ["192.168.50.0/24"], "dns_ipv4": "1.1.1.1", "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
+ * Client v1.1.5 pins that implementation in trusttunnel/Cargo.lock.
+ * https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md
+ * parseLink(uri) -> {endpoint: schema-1 object, name: string, warnings: string[]}.
+ * endpointFromFields(fields) -> schema-1 object. Lists accept arrays or lines.
+ * This module is pure: no network, persistence, logging or connection side effects.
+ * Certificate validation checks DER/PEM framing; the client verifies X.509 trust.
+ */
+(function (root, factory) {
+  'use strict';
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.TTMConnection = api;
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  var MAX_LINK = 32768;
+  var MAX_PAYLOAD = 24576;
+  var MAX_CERT = 16384;
+  var DEFAULT_DNS = 'tls://1.1.1.1';
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  var KEYS = ['schema', 'hostname', 'addresses', 'username', 'password', 'protocol', 'certificate', 'dns_upstreams', 'anti_dpi', 'mtu', 'wan_if'];
+  var TAGS = ['version', 'hostname', 'addresses', 'custom_sni', 'has_ipv6', 'username', 'password', 'skip_verification', 'certificate', 'upstream_protocol', 'anti_dpi', 'client_random_prefix', 'name', 'dns_upstreams'];
+  function fail(message) { throw new Error(message); }
+  function own(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }
+  function codepoints(value) { return Array.from(value).length; }
+  function clean(value, limit, label, empty) {
+    if (typeof value !== 'string' || (!empty && !value.length) || codepoints(value) > limit || /[\x00-\x1f\x7f]/.test(value)) fail('Некорректное поле: ' + label + '.');
+    // Reject unpaired surrogates; JSON/TOML would otherwise change the credential.
+    try { encodeURIComponent(value); } catch (_) { fail('Некорректный Unicode: ' + label + '.'); }
+    return value;
+  }
+  function ipv4(value) {
+    var parts = value.split('.');
+    return parts.length === 4 && parts.every(function (part) { return /^(0|[1-9][0-9]{0,2})$/.test(part) && Number(part) <= 255; });
+  }
+  function hostname(value, label) {
+    clean(value, 253, label, false);
+    if (/^[0-9.]+$/.test(value)) {
+      if (!ipv4(value)) fail('Некорректный IPv4: ' + label + '.');
+    } else if (!value.split('.').every(function (part) { return part.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(part); })) fail('Некорректное имя хоста: ' + label + '.');
+    return value;
+  }
+  function list(value, max, label) {
+    if (typeof value === 'string') value = value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!Array.isArray(value) || value.length < 1 || value.length > max) fail(label + ': требуется от 1 до ' + max + ' значений, по одному в строке.');
+    return value.map(function (s) { if (typeof s !== 'string') fail('Некорректное поле: ' + label + '.'); return s.trim(); });
+  }
+  function address(value) {
+    if (value.indexOf('[') >= 0 || value.split(':').length > 2) fail('IPv6-адреса подключения пока не поддерживаются; нужен IPv4 или DNS-имя.');
+    var match = /^([^:]+):([0-9]{1,5})$/.exec(value);
+    if (!match || Number(match[2]) < 1 || Number(match[2]) > 65535) fail('Адрес сервера должен иметь вид host:port или IPv4:port; порт 1–65535.');
+    hostname(match[1], 'адрес сервера');
+    return match[1] + ':' + Number(match[2]);
+  }
+  function encode64(bytes) {
+    var out = '';
+    for (var i = 0; i < bytes.length; i += 3) {
+      var a = bytes[i], b = bytes[i + 1], c = bytes[i + 2];
+      out += B64[a >> 2] + B64[((a & 3) << 4) | ((b || 0) >> 4)] + (i + 1 < bytes.length ? B64[((b & 15) << 2) | ((c || 0) >> 6)] : '=') + (i + 2 < bytes.length ? B64[c & 63] : '=');
+    }
+    return out;
+  }
+  function decode64(value, url) {
+    if (url) {
+      if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) fail('Некорректный Base64url в ссылке tt://.');
+      value = value.replace(/-/g, '+').replace(/_/g, '/');
+    } else if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value) || !value.length) fail('Некорректный Base64 сертификата.');
+    var bare = value.replace(/=+$/, ''), out = [], accumulator = 0, bits = 0;
+    for (var i = 0; i < bare.length; i++) {
+      accumulator = (accumulator << 6) | B64.indexOf(bare[i]); bits += 6;
+      if (bits >= 8) { bits -= 8; out.push((accumulator >> bits) & 255); accumulator &= (1 << bits) - 1; }
+    }
+    if (accumulator !== 0) fail('Неканоническая кодировка Base64.');
+    return new Uint8Array(out);
+  }
+  function derBlocks(data) {
+    var result = [], offset = 0;
+    while (offset < data.length) {
+      if (result.length >= 16) fail('Слишком длинная цепочка сертификатов.');
+      var start = offset;
+      if (data[offset++] !== 0x30 || offset >= data.length) fail('Некорректная DER-структура сертификата.');
+      var length = data[offset++];
+      if (length & 128) {
+        var n = length & 127; length = 0;
+        if (!n || n > 4 || offset + n > data.length || data[offset] === 0) fail('Некорректная DER-длина сертификата.');
+        for (var i = 0; i < n; i++) length = length * 256 + data[offset++];
+        if (length < 128) fail('Неканоническая DER-длина сертификата.');
+      }
+      if (!length || length > data.length - offset) fail('Обрезанный DER-сертификат.');
+      offset += length;
+      result.push(data.slice(start, offset));
+    }
+    if (!result.length) fail('Пустое поле сертификата в ссылке.');
+    return result;
+  }
+  function derToPem(data) {
+    var pem = derBlocks(data).map(function (block) { return '-----BEGIN CERTIFICATE-----\n' + encode64(block).match(/.{1,64}/g).join('\n') + '\n-----END CERTIFICATE-----\n'; }).join('');
+    if (pem.length > MAX_CERT) fail('Сертификат превышает лимит 16 КиБ.');
+    return pem;
+  }
+  function certificate(value) {
+    if (typeof value !== 'string' || value.length > MAX_CERT || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)) fail('Некорректный PEM-сертификат или превышен лимит 16 КиБ.');
+    if (!value.trim()) return '';
+    var expression = /\s*-----BEGIN CERTIFICATE-----\s*([A-Za-z0-9+/=\r\n\t ]+)\s*-----END CERTIFICATE-----\s*/g;
+    var offset = 0, match, output = '', count = 0;
+    while ((match = expression.exec(value)) !== null) {
+      if (match.index !== offset || ++count > 16) fail('Разрешены только PEM-блоки CERTIFICATE.');
+      var der = decode64(match[1].replace(/\s/g, ''), false);
+      if (derBlocks(der).length !== 1) fail('Один PEM-блок должен содержать один сертификат.');
+      output += derToPem(der); offset = expression.lastIndex;
+    }
+    if (!count || offset !== value.length || output.length > MAX_CERT) fail('Некорректный PEM-сертификат.');
+    return output;
+  }
+  function endpointFromFields(fields) {
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) fail('Параметры подключения должны быть объектом.');
+    if (Object.keys(fields).some(function (key) { return KEYS.indexOf(key) < 0; })) fail('Неизвестное поле подключения; настройки не будут отброшены автоматически.');
+    if (own(fields, 'schema') && fields.schema !== 1) fail('Неподдерживаемая версия схемы подключения.');
+    if (typeof fields.hostname !== 'string') fail('Укажите TLS hostname.');
+    var mtu = own(fields, 'mtu') ? fields.mtu : 1350;
+    if (typeof mtu === 'string' && /^[0-9]+$/.test(mtu.trim())) mtu = Number(mtu.trim());
+    if (typeof mtu !== 'number' || !Number.isInteger(mtu) || mtu < 1280 || mtu > 1500) fail('MTU должен быть целым числом от 1280 до 1500.');
+    var protocol = own(fields, 'protocol') ? fields.protocol : 'http2';
+    if (protocol !== 'http2' && protocol !== 'http3') fail('Допустимы только протоколы http2 и http3.');
+    var anti = own(fields, 'anti_dpi') ? fields.anti_dpi : false;
+    if (typeof anti !== 'boolean') fail('Anti-DPI должен быть логическим значением.');
+    var wan = own(fields, 'wan_if') ? fields.wan_if : '';
+    if (typeof wan !== 'string' || wan.length > 15 || !/^([A-Za-z][A-Za-z0-9_.-]*)?$/.test(wan)) fail('Некорректное имя WAN-интерфейса.');
+    var dns = list(own(fields, 'dns_upstreams') ? fields.dns_upstreams : [DEFAULT_DNS], 4, 'DNS');
+    dns.forEach(function (value) { clean(value, 512, 'DNS', false); if (/\s/.test(value)) fail('DNS-адрес не должен содержать пробелы.'); });
+    return {
+      schema: 1, hostname: hostname(fields.hostname.trim(), 'TLS hostname'),
+      addresses: list(fields.addresses, 8, 'Адреса сервера').map(address),
+      username: clean(fields.username, 256, 'имя пользователя', false),
+      password: clean(fields.password, 1024, 'пароль', false),
+      protocol: protocol, certificate: certificate(own(fields, 'certificate') ? fields.certificate : ''),
+      dns_upstreams: dns, anti_dpi: anti, mtu: mtu, wan_if: wan
+    };
+  }
+  function varint(bytes, cursor) {
+    if (cursor.offset >= bytes.length) fail('Обрезанное число VarInt в ссылке.');
+    var first = bytes[cursor.offset++], count = 1 << (first >> 6), value = first & 63;
+    if (count - 1 > bytes.length - cursor.offset) fail('Обрезанное число VarInt в ссылке.');
+    for (var i = 1; i < count; i++) {
+      value = value * 256 + bytes[cursor.offset++];
+      if (value > Number.MAX_SAFE_INTEGER) fail('Число VarInt превышает безопасный лимит.');
+    }
+    return value;
+  }
+  function numberValue(bytes) {
+    var cursor = {offset: 0}, value = varint(bytes, cursor);
+    if (cursor.offset !== bytes.length) fail('Лишние байты после VarInt.');
+    return value;
+  }
+  function utf8(bytes) {
+    var encoded = '';
+    for (var i = 0; i < bytes.length; i++) encoded += '%' + ('0' + bytes[i].toString(16)).slice(-2);
+    try { return decodeURIComponent(encoded); } catch (_) { fail('Некорректный UTF-8 в ссылке.'); }
+  }
+  function booleanValue(bytes) {
+    if (bytes.length !== 1 || (bytes[0] !== 0 && bytes[0] !== 1)) fail('Некорректное логическое значение в ссылке.');
+    return bytes[0] === 1;
+  }
+  function strings(bytes) {
+    var cursor = {offset: 0}, out = [];
+    while (cursor.offset < bytes.length) {
+      var length = varint(bytes, cursor);
+      if (length > bytes.length - cursor.offset) fail('Обрезанный список DNS в ссылке.');
+      if (out.length >= 4) fail('Поддерживается не более четырёх DNS-серверов.');
+      out.push(utf8(bytes.slice(cursor.offset, cursor.offset + length))); cursor.offset += length;
+    }
+    return out;
+  }
+  function parseLink(link) {
+    if (typeof link !== 'string' || link.length > MAX_LINK) fail('Ссылка должна быть строкой не длиннее 32 КиБ.');
+    link = link.trim();
+    var legacy = link.indexOf('tt://?') !== 0;
+    if (link.indexOf('tt://') !== 0) fail('Ожидается ссылка tt://? из TrustTunnel.');
+    var bytes = decode64(link.slice(legacy ? 5 : 6), true);
+    if (bytes.length > MAX_PAYLOAD) fail('Данные ссылки превышают лимит 24 КиБ.');
+    var cursor = {offset: 0}, values = Object.create(null), seen = Object.create(null), addresses = [], warnings = [], count = 0;
+    if (legacy) warnings.push('Импортирован старый формат tt://; предпочтителен формат tt://?.');
+    while (cursor.offset < bytes.length) {
+      if (++count > 128) fail('Слишком много полей в ссылке.');
+      var tag = varint(bytes, cursor), length = varint(bytes, cursor);
+      if (length > bytes.length - cursor.offset) fail('Обрезанное TLV-поле в ссылке.');
+      var value = bytes.slice(cursor.offset, cursor.offset + length); cursor.offset += length;
+      if (tag >= TAGS.length) { warnings.push('Неизвестный тег ' + tag + ' пропущен по спецификации; проверьте совместимость конфигурации.'); continue; }
+      if (seen[tag] && tag !== 2) warnings.push('Поле ' + TAGS[tag] + ' повторяется: использовано последнее значение по спецификации.');
+      seen[tag] = true;
+      if (tag === 0) {
+        values[tag] = numberValue(value);
+        if (values[tag] > 1) fail('Версия tt:// новее поддерживаемой версии 1.');
+      } else if (tag === 2) {
+        if (addresses.length >= 8) fail('Поддерживается не более восьми адресов сервера.');
+        addresses.push(utf8(value));
+      } else if (tag === 4 || tag === 7 || tag === 10) values[tag] = booleanValue(value);
+      else if (tag === 8) values[tag] = derToPem(value);
+      else if (tag === 9) {
+        var protocol = numberValue(value);
+        if (protocol !== 1 && protocol !== 2) fail('Неизвестный протокол в ссылке tt://.');
+        values[tag] = protocol === 1 ? 'http2' : 'http3';
+      } else if (tag === 13) values[tag] = strings(value);
+      else values[tag] = utf8(value);
+    }
+    if (values[3]) fail('Ссылка содержит custom_sni: отдельный SNI пока не поддерживается. Настройка не будет потеряна автоматически.');
+    if (values[11]) fail('Ссылка содержит client_random: TLS random prefix пока не поддерживается. Настройка не будет потеряна автоматически.');
+    if (values[7] === true) fail('Ссылка отключает проверку TLS-сертификата (skip_verification); такое подключение не поддерживается.');
+    if (!seen[1] || !addresses.length || !seen[5] || !seen[6]) fail('В ссылке отсутствуют обязательные параметры: hostname, адреса, имя пользователя или пароль.');
+    if (!seen[4] || values[4]) warnings.push('Сервер поддерживает IPv6; этот аддон использует только IPv4 и блокирует IPv6 на выбранном мосту.');
+    var dns = values[13];
+    if (!dns || !dns.length) { dns = [DEFAULT_DNS]; warnings.push('В ссылке нет DNS: явно добавлен tls://1.1.1.1. Проверьте этот выбор перед сохранением.'); }
+    return {
+      endpoint: endpointFromFields({hostname: values[1], addresses: addresses, username: values[5], password: values[6], protocol: values[9] || 'http2', certificate: values[8] || '', dns_upstreams: dns, anti_dpi: values[10] || false}),
+      name: seen[12] ? clean(values[12], 256, 'имя сервера', true) : '',
+      warnings: warnings
+    };
+  }
+  return {parseLink: parseLink, endpointFromFields: endpointFromFields};
+}));
+
+/* Native Merlin control; connection credentials stay in memory until explicit local export. */
+(function (root) {
+    'use strict';
+    var api = {}, latest = null, initialized = false, lastSeen = 0, rowIndex = 0, pending = false;
+    function ipv4(s) {
+        if (typeof s !== 'string' || !/^(0|[1-9]\d{0,2})(\.(0|[1-9]\d{0,2})){3}$/.test(s)) return null;
+        var a = s.split('.').map(Number);
+        return a.every(function (x) { return x <= 255; }) ? a : null;
+    }
+    function validCidr(s) {
+        var parts = s.split('/'), a = ipv4(parts[0]);
+        if (!a || parts.length !== 2 || !/^(0|[1-9]\d?)$/.test(parts[1])) return false;
+        var n = Number(parts[1]), size = Math.pow(2, 32 - n);
+        return n <= 32 && ((a[0] === 10 && n >= 8) || (a[0] === 172 && a[1] >= 16 && a[1] <= 31 && n >= 12) ||
+            (a[0] === 192 && a[1] === 168 && n >= 16)) &&
+            (a[0] * 16777216 + a[1] * 65536 + a[2] * 256 + a[3]) % size === 0;
+    }
+    function validDns(s) {
+        var a = ipv4(s);
+        return !!a && a[0] > 0 && a[0] < 224 && [10,127].indexOf(a[0]) < 0 &&
+            !(a[0] === 172 && a[1] >= 16 && a[1] <= 31) && !(a[0] === 192 && a[1] === 168) &&
+            !(a[0] === 100 && a[1] >= 64 && a[1] <= 127) && !(a[0] === 169 && a[1] === 254);
+    }
+    function policyFromNetworks(rows, dns, acknowledge) {
+        var total = 0, seen = [], networks = rows.filter(function (row) { return row.selected !== false; }).map(function (row) {
+            var lan = row.lan_if.trim(), cidrs = Array.isArray(row.sources) ? row.sources : row.sources.trim().split(/[\s,;]+/).filter(Boolean);
+            if (!/^br[0-9]+(?:\.[0-9]+)?$/.test(lan) || lan.length > 15) throw new Error('Укажите bridge каждой выбранной сети, например br0.');
+            if (seen.indexOf(lan) >= 0) throw new Error('Один bridge указан несколько раз. Объедините его подсети в одной строке.');
+            seen.push(lan);
+            if (!cidrs.length || cidrs.some(function (s) { return !validCidr(s); })) throw new Error('Укажите корректные частные IPv4-подсети, например 192.168.50.0/24, или адреса /32.');
+            if (new Set(cidrs).size !== cidrs.length) throw new Error('В сети есть повторяющиеся подсети.');
+            total += cidrs.length;
+            return {lan_if: lan, sources: cidrs};
+        });
+        if (!networks.length || networks.length > 16 || total > 32) throw new Error('Выберите от 1 до 16 сетей, не более 32 записей подсетей суммарно.');
+        if (!validDns(dns)) throw new Error('Укажите внешний DNS в формате IPv4, например 1.1.1.1.');
+        if (!acknowledge) throw new Error('Подтвердите блокировку IPv6 на выбранных bridge.');
+        return {schema: 2, networks: networks, dns_ipv4: dns, block_ipv6_bridge: true, table: 871, priority: 17100};
+    }
+    function policyFromFields(lan, sources, dns, acknowledge) {
+        var p = policyFromNetworks([{lan_if:lan,sources:sources}],dns,acknowledge);
+        return {schema:1,lan_if:lan,sources:p.networks[0].sources,dns_ipv4:dns,block_ipv6_bridge:true,table:871,priority:17100};
+    }
+    function makeEnvelope(settings, policy) {
+        // Only construct an allowlisted non-secret policy; never serialize arbitrary input.
+        var checked = policy.schema === 1 ? policyFromFields(policy.lan_if, policy.sources.join('\n'), policy.dns_ipv4, policy.block_ipv6_bridge) :
+            policyFromNetworks(policy.networks, policy.dns_ipv4, policy.block_ipv6_bridge);
+        var clone = Object.assign({}, settings || {}), encoded = root.btoa(JSON.stringify(checked));
+        if (encoded.length > 2999) throw new Error('Политика превышает лимит Merlin. Скачайте её и импортируйте по SSH.');
+        clone.ttm_policy = encoded;
+        var serialized = JSON.stringify(clone);
+        if (new TextEncoder().encode(serialized).length > 7600) throw new Error('Недостаточно места в хранилище аддонов. Используйте импорт политики по SSH.');
+        return serialized;
+    }
+    api.policyFromFields = policyFromFields; api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope;
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    if (!root.document) return;
+    function el(id) { return document.getElementById(id); }
+    function text(id, value) { el(id).textContent = String(value); }
+    function message(value, error, target) { target = target || 'ttm-message'; text(target,value); el(target).className = error ? 'ttm-error' : 'ttm-note'; }
+    function controls(ok) {
+        document.querySelectorAll('[data-runtime]').forEach(function (button) { button.disabled = !ok || pending; });
+        el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.enabled);
+        el('ttm-save').disabled = el('ttm-export-policy').disabled = el('ttm-policy-fields').disabled;
+    }
+    function addNetwork(network, selected, label) {
+        var index = ++rowIndex, row = document.createElement('div'); row.className = 'ttm-network';
+        var choice = document.createElement('label'), checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.className = 'ttm-selected'; checkbox.checked = !!selected;
+        checkbox.addEventListener('change', updateCount); choice.appendChild(checkbox); choice.appendChild(document.createTextNode(' ' + (label || 'Сеть ' + index))); row.appendChild(choice);
+        function field(title, tag, cls, value, hint) {
+            var box = document.createElement('div'), name = document.createElement('label'), input = document.createElement(tag);
+            input.id = 'ttm-network-' + index + '-' + cls; input.className = cls; input.value = value; input.spellcheck = false;
+            name.htmlFor = input.id; name.textContent = title; input.placeholder = hint;
+            if (tag === 'input') { input.type = 'text'; input.maxLength = 15; }
+            box.appendChild(name); box.appendChild(input); row.appendChild(box);
+        }
+        field('Bridge', 'input', 'ttm-bridge', network.lan_if || '', 'br0');
+        field('Подсети / адреса IPv4', 'textarea', 'ttm-cidrs', (network.sources || []).join('\n'), '192.168.50.0/24');
+        var remove = document.createElement('button'); remove.type = 'button'; remove.className = 'ttm-remove'; remove.textContent = 'Убрать';
+        remove.setAttribute('aria-label','Убрать строку ' + index); remove.onclick = function () { row.remove(); updateCount(); };
+        row.appendChild(remove); el('ttm-networks').appendChild(row); updateCount();
+    }
+    function updateCount() { text('ttm-network-count', document.querySelectorAll('.ttm-selected:checked').length + ' сетей выбрано'); }
+    function rows() { return Array.from(document.querySelectorAll('.ttm-network')).map(function (row) {
+        return {selected:row.querySelector('.ttm-selected').checked,lan_if:row.querySelector('.ttm-bridge').value,sources:row.querySelector('.ttm-cidrs').value};
+    }); }
+    function policy() { return policyFromNetworks(rows(),el('ttm-dns').value.trim(),el('ttm-v6ack').checked); }
+    root.ttmAddNetwork = function () { if (rows().length >= 16) { message('Максимум 16 сетей.',true); return; } addNetwork({},false); };
+    root.ttmSelectNetworks = function (value) { document.querySelectorAll('.ttm-selected').forEach(function (checkbox) { checkbox.checked = value; }); updateCount(); };
+    function render(status) {
+        if (!status || typeof status.enabled !== 'boolean' || typeof status.timestamp !== 'number') throw new Error('Invalid status');
+        latest = status; lastSeen = Date.now();
+        var labels = {disabled:'Отключён',paused_protected:'Пауза; блокировка запрошена',blocked_or_start_failed:'Процесс остановлен / ошибка',tun_ready_unverified:'TUN создан; связь не проверена'};
+        text('ttm-state',labels[status.state] || 'Неизвестное состояние'); text('ttm-version',status.version);
+        text('ttm-host',status.hostname || 'Подключение ещё не импортировано');
+        text('ttm-process',status.process_running ? 'Запущен' : 'Не запущен'); text('ttm-tun',status.interface_up ? 'tt0' : 'Нет TUN');
+        text('ttm-counter',(status.rx_bytes/1048576).toFixed(2) + ' / ' + (status.tx_bytes/1048576).toFixed(2) + ' MiB');
+        text('ttm-age',new Date(status.timestamp*1000).toLocaleTimeString()); text('ttm-last',status.last_result || 'none');
+        var fresh = !!root.TTM_PREVIEW || Math.abs(Date.now()/1000-status.timestamp) < 150;
+        controls(fresh);
+        if (!fresh) message('Статус устарел. Управление заблокировано до обновления контроллера.',true);
+        if (!initialized) {
+            var selected = status.policy ? (status.policy.schema === 2 ? status.policy.networks : [{lan_if:status.policy.lan_if,sources:status.policy.sources}]) : [];
+            var inventory = Array.isArray(status.discovered_networks) ? status.discovered_networks : [];
+            el('ttm-networks').textContent = ''; rowIndex = 0;
+            selected.forEach(function (network) { addNetwork(network,true,'Сеть '+network.lan_if); });
+            inventory.forEach(function (network) {
+                if (rows().length < 16 && !selected.some(function (n) { return n.lan_if === network.lan_if; })) addNetwork(network,false,'Сеть '+network.lan_if);
+            });
+            if (!inventory.length) for (var i=0;i<4;i++) {
+                if (rows().length < 16 && !selected.some(function (n) { return n.lan_if === 'br'+i; })) addNetwork({lan_if:'br'+i},false,i===0?'Основная (пример)':'Гостевая '+i+' (пример)');
+            }
+            if (status.policy) { el('ttm-dns').value=status.policy.dns_ipv4; el('ttm-v6ack').checked=status.policy.block_ipv6_bridge; }
+            initialized = true;
+        }
+    }
+
+    function refresh() {
+        if (root.TTM_PREVIEW) { render(root.TTM_PREVIEW); return; }
+        var request = new XMLHttpRequest(); request.open('GET','/user/trusttunnel/status.json?t='+Date.now(),true); request.timeout=5000;
+        request.onload = function () { try { if (request.status !== 200) throw new Error('Unavailable'); render(JSON.parse(request.responseText)); }
+            catch (_) { controls(false); message('Не удалось прочитать статус. Проверьте контроллер по SSH.',true); } };
+        request.onerror = request.ontimeout = function () { controls(false); message('Нет актуального статуса роутера.',true); }; request.send();
+    }
+    function send(action,p) {
+        if (['start','pause','restart','disable','policy'].indexOf(action)<0) throw new Error('Unknown action');
+        if (root.TTM_PREVIEW) { message('Демонстрация: проверка пройдена, команда не отправлена на роутер.',false); return; }
+        if (!latest || Date.now()-lastSeen>15000 || Math.abs(Date.now()/1000-latest.timestamp)>150 || pending) throw new Error('Дождитесь актуального статуса и завершения предыдущей команды.');
+        var form = document.forms.ttm_form;
+        form.elements.amng_custom.disabled = !p;
+        form.elements.amng_custom.value = p ? makeEnvelope(root.ttmCustomSettings || {},p) : '';
+        form.elements.action_script.value = 'start_ttm_'+action;
+        form.elements.current_page.value = form.elements.next_page.value = location.pathname.substring(1);
+        pending = true; controls(false); form.submit();
+        message('Команда отправлена. Проверьте последнюю операцию и время обновления статуса.',false);
+        root.setTimeout(function () { pending=false; refresh(); },12000);
+    }
+    root.ttmAction = function (action) { try {
+        if (action==='disable' && !root.confirm('Вернуть выбранные сети к обычной маршрутизации Merlin?')) return;
+        if (action==='policy' && latest && latest.enabled) throw new Error('Сначала отключите аддон.');
+        send(action,action==='policy' ? policy() : null);
+    } catch(e) { message(e.message,true); } };
+    function download(value,name) {
+        var url = URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'})), a=document.createElement('a');
+        a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); root.setTimeout(function () { URL.revokeObjectURL(url); },1000);
+    }
+    root.ttmExportPolicy = function () { try { download(policy(),'trusttunnel-policy.json'); message('Политика скачана. Импорт по SSH: trusttunnel.sh import-policy /tmp/trusttunnel-policy.json',false); } catch(e) { message(e.message,true); } };
+    root.ttmConnectionMode = function (mode) {
+        el('ttm-manual').hidden=mode!=='manual'; el('ttm-link-panel').hidden=mode!=='link';
+        el('ttm-tab-manual').setAttribute('aria-selected',String(mode==='manual')); el('ttm-tab-link').setAttribute('aria-selected',String(mode==='link'));
+    };
+    var fields = {hostname:'hostname',addresses:'addresses',username:'username',password:'password',protocol:'protocol',certificate:'certificate',dns_upstreams:'upstreams',anti_dpi:'anti-dpi',mtu:'mtu',wan_if:'wan'};
+    function readEndpoint() {
+        var result={}; Object.keys(fields).forEach(function (key) { var field=el('ttm-'+fields[key]); result[key]=key==='anti_dpi'?field.checked:field.value; });
+        return root.TTMConnection.endpointFromFields(result);
+    }
+    function fillEndpoint(endpoint) { Object.keys(fields).forEach(function (key) { var field=el('ttm-'+fields[key]), value=endpoint[key];
+        if (key==='anti_dpi') field.checked=value; else field.value=Array.isArray(value)?value.join('\n'):value;
+    }); }
+    root.ttmParseLink = function () { try {
+        var result=root.TTMConnection.parseLink(el('ttm-link').value.trim()); fillEndpoint(result.endpoint); el('ttm-link').value='';
+        root.ttmConnectionMode('manual'); message('Ссылка разобрана.'+(result.name?' Профиль: '+result.name+'.':'')+' Проверьте параметры перед экспортом.'+(result.warnings.length?' '+result.warnings.join(' '):''),false,'ttm-connection-message');
+    } catch(e) { message(e.message,true,'ttm-connection-message'); } };
+    root.ttmExportEndpoint = function () { try { var endpoint=readEndpoint(); download(endpoint,'trusttunnel-endpoint.json');
+        message('Конфигурация проверена и скачана. Примените её по SSH по инструкции ниже. На роутере пока ничего не изменено.',false,'ttm-connection-message');
+    } catch(e) { message(e.message,true,'ttm-connection-message'); } };
+    root.ttmShowPassword = function (show) { el('ttm-password').type=show?'text':'password'; };
+    root.ttmClearConnection = function () { el('ttm-endpoint-form').reset(); el('ttm-link').value=''; root.ttmShowPassword(false); message('Данные подключения очищены из формы.',false,'ttm-connection-message'); };
+    root.done_validating = function () { refresh(); };
+    root.ttmInitial = function () {
+        if (typeof root.show_menu==='function') root.show_menu();
+        refresh(); if (!root.TTM_PREVIEW) root.setInterval(refresh,5000);
+    };
+    root.TTM=api;
+}(typeof window!=='undefined'?window:globalThis));
+</script></head><body class="bg" onload="ttmInitial()">
+<div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
+<iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
+<form name="ttm_form" method="post" action="/start_apply.htm" target="hidden_frame">
+<input type="hidden" name="current_page"><input type="hidden" name="next_page">
+<input type="hidden" name="group_id" value=""><input type="hidden" name="modified" value="0">
+<input type="hidden" name="action_mode" value="apply"><input type="hidden" name="action_wait" value="2">
+<input type="hidden" name="action_script"><input type="hidden" name="amng_custom">
+
+
+</form>
+<table class="content" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
+<td style="width:202px;vertical-align:top"><div id="mainMenu">ASUSWRT-Merlin<br>Общие настройки<br>Сеть<br>Беспроводная сеть<br><strong>VPN</strong><br>Администрирование</div><div id="subMenu"></div></td>
+<td style="vertical-align:top"><div id="tabMenu">VPN Client &nbsp; / &nbsp; VPN Director &nbsp; / &nbsp; <strong>TrustTunnel</strong> &nbsp; · &nbsp; OFFLINE PREVIEW</div>
+<div class="FormTitle ttm-container">
+<div class="ttm-heading"><div><span class="ttm-eyebrow">VPN / ASUSWRT-MERLIN</span><h2>TrustTunnel</h2><p class="ttm-muted">Подключение и маршрутизация домашних сетей</p></div><span class="ttm-badge" id="ttm-version">0.2.0-alpha.1</span></div>
+<div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
+<section class="ttm-section" aria-labelledby="ttm-status-title">
+<div class="ttm-heading"><h3 id="ttm-status-title">Состояние клиента</h3><strong id="ttm-state">Загрузка…</strong></div>
+<dl class="ttm-grid">
+<dt>Сервер</dt><dd id="ttm-host">—</dd>
+<dt>Процесс / интерфейс</dt><dd><span id="ttm-process">—</span> / <span id="ttm-tun">—</span></dd>
+<dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
+<dt>Обновлено</dt><dd id="ttm-age">—</dd>
+<dt>Последняя операция</dt><dd id="ttm-last">—</dd>
+</dl>
+<div class="ttm-actions">
+<button type="button" data-runtime onclick="ttmAction('start')" disabled>Запустить</button>
+<button type="button" data-runtime onclick="ttmAction('pause')" disabled>Пауза с блокировкой</button>
+<button type="button" data-runtime onclick="ttmAction('restart')" disabled>Перезапустить</button>
+<button type="button" class="ttm-release" data-runtime onclick="ttmAction('disable')" disabled>Отключить VPN</button>
+</div>
+<p class="ttm-muted">Пауза сохраняет блокировку. Отключение возвращает выбранные сети к обычной маршрутизации Merlin.</p>
+</section>
+<div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
+<section class="ttm-section" aria-labelledby="ttm-connection-title">
+<div class="ttm-heading"><h3 id="ttm-connection-title">1. Подключение к серверу</h3><span class="ttm-step">Локальная подготовка</span></div>
+<p class="ttm-muted">Введите параметры вручную или вставьте ссылку TrustTunnel. Пароль остаётся в памяти этой страницы до экспорта; автоматического сохранения нет.</p>
+<div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
+<button type="button" role="tab" id="ttm-tab-manual" aria-selected="true" aria-controls="ttm-manual" onclick="ttmConnectionMode('manual')">Вручную</button>
+<button type="button" role="tab" id="ttm-tab-link" aria-selected="false" aria-controls="ttm-link-panel" onclick="ttmConnectionMode('link')">Ссылка tt://</button>
+</div>
+<div id="ttm-link-panel" role="tabpanel" aria-labelledby="ttm-tab-link" hidden>
+<label for="ttm-link">Ссылка подключения</label><textarea id="ttm-link" autocomplete="off" spellcheck="false" placeholder="tt://?…" maxlength="65536"></textarea>
+<div class="ttm-actions"><button type="button" onclick="ttmParseLink()">Разобрать ссылку</button></div>
+<p class="ttm-muted">Поддерживается официальный формат TrustTunnel v1. Неподдерживаемые параметры будут показаны как ошибка. Ссылка содержит учётные данные.</p>
+</div>
+<div id="ttm-manual" role="tabpanel" aria-labelledby="ttm-tab-manual">
+<form id="ttm-endpoint-form" autocomplete="off" onsubmit="return false">
+<div class="ttm-fields">
+<div><label for="ttm-hostname">Имя сервера TLS</label><input type="text" id="ttm-hostname" placeholder="vpn.example.com" maxlength="253" spellcheck="false"><small>Должно совпадать с сертификатом сервера.</small></div>
+<div><label for="ttm-addresses">Адреса сервера с портом</label><textarea id="ttm-addresses" placeholder="203.0.113.10:443" spellcheck="false"></textarea><small>IPv4 или hostname:port, по одному в строке.</small></div>
+<div><label for="ttm-username">Имя пользователя</label><input type="text" id="ttm-username" maxlength="256" spellcheck="false" autocomplete="off"></div>
+<div><label for="ttm-password">Пароль</label><input type="password" id="ttm-password" maxlength="1024" autocomplete="new-password"><label class="ttm-check"><input type="checkbox" id="ttm-show-password" onchange="ttmShowPassword(this.checked)"> Показать пароль</label></div>
+<div><label for="ttm-protocol">Транспорт</label><select id="ttm-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div>
+<div><label class="ttm-check"><input type="checkbox" id="ttm-anti-dpi"> Anti-DPI</label><small>Включайте в соответствии с настройками подключения.</small></div>
+</div>
+<details><summary>Сертификат, DNS и дополнительные параметры</summary>
+<div class="ttm-fields">
+<div><label for="ttm-upstreams">DNS клиента TrustTunnel</label><textarea id="ttm-upstreams" spellcheck="false">tls://1.1.1.1</textarea><small>По одному адресу в строке.</small></div>
+<div><label for="ttm-mtu">MTU</label><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"><label for="ttm-wan">WAN-интерфейс (необязательно)</label><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"></div>
+</div>
+<label for="ttm-certificate">Сертификат PEM (если выдан вашим сервером)</label><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+<p class="ttm-muted">Проверка TLS всегда включена. Для доверенного публичного сертификата поле можно оставить пустым.</p>
+</details>
+</form>
+<div class="ttm-actions"><button type="button" class="ttm-primary" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
+</div>
+<div id="ttm-connection-message" role="status" aria-live="polite" class="ttm-note"></div>
+<details class="ttm-import-help"><summary>Как применить подключение на роутере</summary>
+<p>В этой alpha конфигурация переносится по SSH. Штатное общее хранилище Merlin не используется для пароля.</p>
+<ol><li>Скачайте <code>trusttunnel-endpoint.json</code>, ограничьте доступ к нему на компьютере и перенесите по SCP/SFTP в <code>/tmp/</code> роутера.</li><li>Отключите аддон перед изменением подключения. В SSH выполните:</li></ol>
+<pre>chmod 600 /tmp/trusttunnel-endpoint.json
+/jffs/addons/trusttunnel/trusttunnel.sh import-endpoint /tmp/trusttunnel-endpoint.json
+# После успешного импорта:
+rm /tmp/trusttunnel-endpoint.json</pre>
+<p class="ttm-muted">Скачанный файл содержит пароль. После импорта удалите свою временную копию из загрузок. Экспорт сам по себе не меняет настройки роутера.</p>
+</details>
+</section>
+<section class="ttm-section" aria-labelledby="ttm-routing-title">
+<div class="ttm-heading"><h3 id="ttm-routing-title">2. Сети через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
+<p class="ttm-muted">Выберите основную и гостевые сети. В каждой строке укажите реальный bridge и IPv4-подсети либо отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
+<fieldset id="ttm-policy-fields" disabled>
+<div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button><button type="button" onclick="ttmAddNetwork()">Добавить сеть</button></div>
+<div id="ttm-networks"></div>
+<p class="ttm-muted">br0–br3 — примеры имён, их нужно проверить на роутере. Поддерживается до 16 сетей и 32 записей подсетей суммарно.</p>
+<label for="ttm-dns">Внешний DNS IPv4 для выбранных сетей</label><input type="text" id="ttm-dns" value="1.1.1.1" maxlength="15" spellcheck="false">
+<label class="ttm-check"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру на <strong>каждом выбранном bridge целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
+</fieldset>
+<div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
+<p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>
+</section>
+</div></td></tr></table><div id="footer"></div></body></html>

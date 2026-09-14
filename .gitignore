@@ -8,3 +8,9 @@ client.toml
 *.pem
 *.key
 .DS_Store
+
+# Private exports and rollback data
+trusttunnel-endpoint.json
+trusttunnel-policy.json
+*.previous
+install-backups/

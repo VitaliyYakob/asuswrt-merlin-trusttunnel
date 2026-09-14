@@ -1,0 +1,6 @@
+python3 tools/make-preview.py
+/Users/vyakob/Documents/Codex/MyProjects/VPN/ASUS-Trusttunnel-WEB/preview/index.html
+node tools/test-preview.js
+Browser: Chromium 151.0.7922.34; Playwright 1.62.1
+PASS: 1280px; manual/tt:// downloads, 4 backend validations, 4-network/subset selection, IPv6 acknowledgement, invalid-input errors, enabled-state controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
+PASS: 390px; manual/tt:// downloads, 4 backend validations, 4-network/subset selection, IPv6 acknowledgement, invalid-input errors, enabled-state controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
