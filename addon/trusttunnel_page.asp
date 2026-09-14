@@ -19,15 +19,16 @@
 <input type="hidden" name="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
 </form>
-<table class="content" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
-<td style="width:202px;vertical-align:top"><div id="mainMenu"></div><div id="subMenu"></div></td>
+<table class="content ttm-layout" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
+<td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading"><div><span class="ttm-eyebrow">VPN / ASUSWRT-MERLIN</span><h2>TrustTunnel</h2><p class="ttm-muted">Подключение и маршрутизация домашних сетей</p></div><span class="ttm-badge" id="ttm-version">0.2.1-alpha.1</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.2.2-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <section class="ttm-section" aria-labelledby="ttm-status-title">
-<div class="ttm-heading"><h3 id="ttm-status-title">Состояние клиента</h3><strong id="ttm-state">Загрузка…</strong></div>
+<div class="ttm-heading"><h3 id="ttm-status-title">Управление клиентом</h3></div>
 <dl class="ttm-grid">
+<dt>Состояние</dt><dd id="ttm-state">Загрузка…</dd>
 <dt>Сервер</dt><dd id="ttm-host">—</dd>
 <dt>Процесс / интерфейс</dt><dd><span id="ttm-process">—</span> / <span id="ttm-tun">—</span></dd>
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
@@ -44,34 +45,34 @@
 </section>
 <div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
 <section class="ttm-section" aria-labelledby="ttm-connection-title">
-<div class="ttm-heading"><h3 id="ttm-connection-title">1. Подключение к серверу</h3><span class="ttm-step">Локальная подготовка</span></div>
+<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">Локальная подготовка</span></div>
 <p class="ttm-muted">Введите параметры вручную или вставьте ссылку TrustTunnel. Пароль остаётся в памяти этой страницы до экспорта; автоматического сохранения нет.</p>
-<div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
+<div class="ttm-row"><div class="ttm-label">Способ настройки</div><div class="ttm-value"><div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
 <button type="button" role="tab" id="ttm-tab-manual" aria-selected="true" aria-controls="ttm-manual" onclick="ttmConnectionMode('manual')">Вручную</button>
 <button type="button" role="tab" id="ttm-tab-link" aria-selected="false" aria-controls="ttm-link-panel" onclick="ttmConnectionMode('link')">Ссылка tt://</button>
-</div>
+</div></div></div>
 <div id="ttm-link-panel" role="tabpanel" aria-labelledby="ttm-tab-link" hidden>
-<label for="ttm-link">Ссылка подключения</label><textarea id="ttm-link" autocomplete="off" spellcheck="false" placeholder="tt://?…" maxlength="65536"></textarea>
+<div class="ttm-row"><label class="ttm-label" for="ttm-link">Ссылка подключения</label><div class="ttm-value"><textarea id="ttm-link" autocomplete="off" spellcheck="false" placeholder="tt://?…" maxlength="65536"></textarea><small>Ссылка содержит учётные данные.</small></div></div>
 <div class="ttm-actions"><button type="button" onclick="ttmParseLink()">Разобрать ссылку</button></div>
-<p class="ttm-muted">Поддерживается официальный формат TrustTunnel v1. Неподдерживаемые параметры будут показаны как ошибка. Ссылка содержит учётные данные.</p>
+<p class="ttm-muted">Поддерживается официальный формат TrustTunnel v1. Неподдерживаемые параметры будут показаны как ошибка.</p>
 </div>
 <div id="ttm-manual" role="tabpanel" aria-labelledby="ttm-tab-manual">
 <form id="ttm-endpoint-form" autocomplete="off" onsubmit="return false">
-<div class="ttm-fields">
-<div><label for="ttm-hostname">Имя сервера TLS</label><input type="text" id="ttm-hostname" placeholder="vpn.example.com" maxlength="253" spellcheck="false"><small>Должно совпадать с сертификатом сервера.</small></div>
-<div><label for="ttm-addresses">Адреса сервера с портом</label><textarea id="ttm-addresses" placeholder="203.0.113.10:443" spellcheck="false"></textarea><small>IPv4 или hostname:port, по одному в строке.</small></div>
-<div><label for="ttm-username">Имя пользователя</label><input type="text" id="ttm-username" maxlength="256" spellcheck="false" autocomplete="off"></div>
-<div><label for="ttm-password">Пароль</label><input type="password" id="ttm-password" maxlength="1024" autocomplete="new-password"><label class="ttm-check"><input type="checkbox" id="ttm-show-password" onchange="ttmShowPassword(this.checked)"> Показать пароль</label></div>
-<div><label for="ttm-protocol">Транспорт</label><select id="ttm-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div>
-<div><label class="ttm-check"><input type="checkbox" id="ttm-anti-dpi"> Anti-DPI</label><small>Включайте в соответствии с настройками подключения.</small></div>
+<div class="ttm-settings">
+<div class="ttm-row"><label class="ttm-label" for="ttm-hostname">Имя сервера TLS</label><div class="ttm-value"><input type="text" id="ttm-hostname" placeholder="vpn.example.com" maxlength="253" spellcheck="false"><small>Должно совпадать с сертификатом сервера.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-addresses">Адреса сервера с портом</label><div class="ttm-value"><textarea id="ttm-addresses" placeholder="203.0.113.10:443" spellcheck="false"></textarea><small>IPv4 или hostname:port, по одному в строке.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-username">Имя пользователя</label><div class="ttm-value"><input type="text" id="ttm-username" maxlength="256" spellcheck="false" autocomplete="off"></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-password">Пароль</label><div class="ttm-value"><input type="password" id="ttm-password" maxlength="1024" autocomplete="new-password"><label class="ttm-check"><input type="checkbox" id="ttm-show-password" onchange="ttmShowPassword(this.checked)"> Показать пароль</label></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-protocol">Транспорт</label><div class="ttm-value"><select id="ttm-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div></div>
+<div class="ttm-row"><div class="ttm-label">Anti-DPI</div><div class="ttm-value"><label class="ttm-check"><input type="checkbox" id="ttm-anti-dpi"> Включить Anti-DPI</label><small>В соответствии с настройками подключения.</small></div></div>
 </div>
 <details><summary>Сертификат, DNS и дополнительные параметры</summary>
-<div class="ttm-fields">
-<div><label for="ttm-upstreams">DNS клиента TrustTunnel</label><textarea id="ttm-upstreams" spellcheck="false" placeholder="DNS из конфигурации подключения"></textarea><small id="ttm-dns-hint">DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.</small></div>
-<div><label for="ttm-mtu">MTU</label><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"><label for="ttm-wan">WAN-интерфейс (необязательно)</label><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"></div>
+<div class="ttm-settings">
+<div class="ttm-row"><label class="ttm-label" for="ttm-upstreams">DNS клиента TrustTunnel</label><div class="ttm-value"><textarea id="ttm-upstreams" spellcheck="false" placeholder="DNS из конфигурации подключения"></textarea><small id="ttm-dns-hint">DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-mtu">MTU</label><div class="ttm-value"><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-wan">WAN-интерфейс</label><div class="ttm-value"><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"><small>Необязательно. Оставьте пустым для автоматического выбора.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-certificate">Сертификат PEM</label><div class="ttm-value"><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea><small>Если выдан вашим сервером. Для доверенного публичного сертификата оставьте пустым. Проверка TLS всегда включена.</small></div></div>
 </div>
-<label for="ttm-certificate">Сертификат PEM (если выдан вашим сервером)</label><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-<p class="ttm-muted">Проверка TLS всегда включена. Для доверенного публичного сертификата поле можно оставить пустым.</p>
 </details>
 </form>
 <div class="ttm-actions"><button type="button" class="ttm-primary" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
@@ -88,14 +89,14 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 </details>
 </section>
 <section class="ttm-section" aria-labelledby="ttm-routing-title">
-<div class="ttm-heading"><h3 id="ttm-routing-title">2. Сети через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
+<div class="ttm-heading"><h3 id="ttm-routing-title">Маршрутизация сетей через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
 <p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
 
-<label class="ttm-check"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
+<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
 <p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>

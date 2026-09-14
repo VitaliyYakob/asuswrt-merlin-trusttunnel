@@ -5,3 +5,7 @@ Browser: Chromium 151.0.7922.34; Playwright 1.62.1
 PASS: 1280px; manual/tt:// DNS-preserving downloads, 6 backend validations, SSID-labelled 4-network/subset selection, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, enabled-state controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
 PASS: 390px; manual/tt:// DNS-preserving downloads, 6 backend validations, SSID-labelled 4-network/subset selection, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, enabled-state controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
 PASS: empty inventory has no guessed networks; multiple SSIDs share one immutable bridge choice; SSID HTML is text and executes no script; unavailable network can be removed individually without resetting other selections and cannot be reselected
+PASS: supplemental 820px; manual and tt:// forms with details expanded; no horizontal overflow, page/console errors or HTTP requests
+PASS: supplemental 768px; manual and tt:// forms with details expanded; no horizontal overflow, page/console errors or HTTP requests
+PASS: supplemental 760px; manual and tt:// forms with details expanded; no horizontal overflow, page/console errors or HTTP requests
+PASS: supplemental 320px; manual and tt:// forms with details expanded; no horizontal overflow, page/console errors or HTTP requests

@@ -110,7 +110,7 @@ test_invalid_hostnames_and_ipv4_are_rejected_from_ssh (test_validation_boundarie
 test_rejects_concatenated_json_instead_of_accepting_last (test_validation_boundaries.ValidationBoundaries.test_rejects_concatenated_json_instead_of_accepting_last) ... ok
 
 ----------------------------------------------------------------------
-Ran 109 tests in 37.937s
+Ran 109 tests in 40.721s
 
 OK
 node --check addon/web/trusttunnel.js

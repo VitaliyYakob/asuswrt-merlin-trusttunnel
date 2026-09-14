@@ -8,24 +8,162 @@
 
 <script>window.ttmCustomSettings = {};</script>
 
-<style>/* Scoped styles: the router retains its own navigation and authentication. */
-.ttm-container{padding:24px;max-width:880px;line-height:1.5;color:#e7f0f4;font:14px/1.5 Arial,sans-serif;box-sizing:border-box}
-.ttm-container *{box-sizing:border-box}.ttm-container h2{font-size:28px;letter-spacing:-.6px;margin:4px 0}.ttm-container h3{font-size:18px;margin:0}.ttm-container p{margin:10px 0}
-.ttm-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.ttm-eyebrow{font-size:10px;letter-spacing:1.6px;color:#94bcc9;font-weight:bold}.ttm-badge,.ttm-step{font-size:11px;background:#203640;color:#a9d8df;border:1px solid #44616c;padding:5px 10px;border-radius:20px;white-space:nowrap}
-.ttm-banner{border-left:3px solid #ca9b4d;background:#38382f;padding:12px 15px;margin:18px 0;color:#ead9b4;font-size:12px}.ttm-section{border:1px solid #435660;border-radius:8px;padding:20px;background:#22343e;margin:16px 0}.ttm-note,.ttm-error{min-height:16px;margin:12px 0;font-size:13px;overflow-wrap:anywhere}.ttm-note{color:#9bd5cd}.ttm-error{color:#ffb5ab}
-.ttm-grid{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;margin:15px 0}.ttm-grid dt{color:#9fbbc7}.ttm-grid dd{margin:0;overflow-wrap:anywhere}.ttm-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
-.ttm-container button{border:1px solid #607985;border-radius:5px;padding:9px 12px;background:#324b58;color:#f3f7f9;cursor:pointer;font-size:12px}.ttm-container button:hover{background:#405f6c}.ttm-container .ttm-primary{background:#35796f;border-color:#509d8c}.ttm-container .ttm-release{background:#553c38;border-color:#89635a}.ttm-container button:disabled{opacity:.45;cursor:not-allowed}.ttm-container :focus-visible{outline:2px solid #99e0d3;outline-offset:3px}
-.ttm-container input[type=text],.ttm-container input[type=password],.ttm-container input[type=number],.ttm-container textarea,.ttm-container select{width:100%;background:#14252e;border:1px solid #58717e;padding:9px;color:#eef5f7;border-radius:4px;font:13px/1.5 Arial,sans-serif;min-width:0}.ttm-container input[type=checkbox]{accent-color:#61b5a1}.ttm-container textarea{height:76px;resize:vertical;font-family:monospace}.ttm-container label{display:block;margin:8px 0 5px;color:#d9e6ec;font-size:13px}.ttm-container small,.ttm-muted{display:block;color:#a8bec9;font-size:12px}.ttm-container fieldset{border:0;padding:0;margin:0}.ttm-fields{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}.ttm-container .ttm-check{display:flex;gap:8px;align-items:baseline;margin:12px 0;line-height:1.6}
-.ttm-tabs{display:flex;gap:6px;border-bottom:1px solid #4b616c;margin:18px 0 12px;padding-bottom:10px}.ttm-tabs [aria-selected=true]{background:#3e756e;border-color:#7fc4b8}.ttm-container [hidden]{display:none!important}.ttm-container details{margin-top:18px;padding-top:14px;border-top:1px solid #425b66}.ttm-container summary{cursor:pointer;color:#b7ddd8;font-size:13px}.ttm-container pre{overflow-x:auto;background:#14252e;padding:12px;font:12px/1.8 monospace;white-space:pre-wrap;word-break:break-word}.ttm-container code{font:12px monospace}.ttm-network{display:grid;grid-template-columns:minmax(190px,1fr) minmax(180px,1.25fr);gap:10px;align-items:center;border:1px solid #435c68;border-radius:5px;padding:10px;margin:9px 0}.ttm-network>label{font-weight:bold}.ttm-network textarea{height:62px}.ttm-container .ttm-remove{padding:6px 5px;background:transparent;font-size:11px}.ttm-network input[type=checkbox]{vertical-align:middle}.ttm-network div label{font-size:11px;margin:0 0 4px}.ttm-container #ttm-dns{max-width:280px}
-@media(max-width:760px){.ttm-container{padding:14px;width:100%}.ttm-section{padding:14px}.ttm-heading{align-items:flex-start;flex-wrap:wrap}.ttm-fields{grid-template-columns:1fr}.ttm-grid{grid-template-columns:125px 1fr;font-size:12px}.ttm-network{grid-template-columns:1fr 85px}.ttm-network>div:nth-child(3){grid-column:1/-1}.ttm-network>.ttm-remove{grid-column:2;justify-self:end}.ttm-network textarea{height:65px}}
+<style>/* Match Merlin's classic forms. Rules are scoped; the firmware owns navigation. */
+.ttm-layout > tbody > tr > td { vertical-align: top; }
+.ttm-layout .ttm-sidebar { width: 202px; }
+.ttm-container.FormTitle {
+  box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: 12px 7px 18px;
+  border: 1px solid #222c30; border-radius: 0; background: #4d595d;
+  color: #fff; font: 13px/1.5 Arial, Helvetica, sans-serif;
+}
+.ttm-container * { box-sizing: border-box; }
+.ttm-container h2 { margin: 0; font-size: 18px; color: #fff; text-shadow: 1px 1px #253033; }
+.ttm-container h3 { margin: 0; font-size: 13px; color: #fff; }
+.ttm-container p { margin: 10px 0; }
+.ttm-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ttm-titlebar { margin: 0 4px 10px; padding: 8px 0 12px; border-bottom: 1px solid #879397; }
+.ttm-badge, .ttm-step { font-size: 11px; font-weight: normal; white-space: nowrap; }
+.ttm-badge { color: #eee; }
+.ttm-step { color: #fff; }
+.ttm-banner { margin: 12px 4px 16px; color: #ffdb66; font-size: 12px; }
+.ttm-section { margin: 14px 0; padding: 0; border: 1px solid #20292d; background: #475b61; }
+.ttm-section > .ttm-heading {
+  min-height: 30px; padding: 5px 10px; border-bottom: 1px solid #242e32;
+  background: linear-gradient(#92a3aa, #65757d); text-shadow: 0 1px #56656d;
+}
+.ttm-section > p, .ttm-section > .ttm-note, .ttm-section > .ttm-error,
+.ttm-container fieldset > p, .ttm-container #ttm-link-panel > p { margin: 10px; }
+.ttm-container small, .ttm-muted { display: block; color: #e0e7e9; font-size: 12px; line-height: 1.5; }
+.ttm-note, .ttm-error { margin: 10px 4px; overflow-wrap: anywhere; font-size: 12px; }
+.ttm-note { color: #c7eeef; }
+.ttm-error { color: #ffdb66; }
+.ttm-note:empty, .ttm-error:empty { display: none; }
+.ttm-grid { display: grid; grid-template-columns: 35% minmax(0, 1fr); margin: 0; }
+.ttm-grid dt, .ttm-grid dd { padding: 9px 10px; margin: 0; border-bottom: 1px solid #263337; overflow-wrap: anywhere; }
+.ttm-grid dt { background: #2f3b3f; border-right: 1px solid #263337; }
+.ttm-grid dd { background: #475b61; }
+.ttm-container #ttm-state { color: #ffda44; font-weight: bold; }
+.ttm-settings { margin: 0; }
+.ttm-row { display: grid; grid-template-columns: 35% minmax(0, 1fr); border-bottom: 1px solid #263337; }
+.ttm-row > .ttm-label { margin: 0; padding: 12px 10px; background: #2f3b3f; border-right: 1px solid #263337; }
+.ttm-value { min-width: 0; padding: 7px 10px; background: #475b61; }
+.ttm-value small { margin-top: 5px; }
+.ttm-container label { display: block; color: #fff; font-size: 13px; }
+.ttm-container fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.ttm-container form { margin: 0; }
+.ttm-container input[type=text], .ttm-container input[type=password],
+.ttm-container input[type=number], .ttm-container textarea, .ttm-container select {
+  width: 100%; max-width: 390px; min-width: 0; min-height: 29px; margin: 0;
+  padding: 4px 6px; border: 1px solid #91a4ab; border-radius: 0;
+  background: #596e75; color: #fff; font: 13px/1.5 Arial, Helvetica, sans-serif;
+  box-shadow: inset 0 1px 2px #34484e;
+}
+.ttm-container input::placeholder, .ttm-container textarea::placeholder { color: #d1dcdf; opacity: 1; }
+.ttm-container input[type=number] { max-width: 90px; }
+.ttm-container select { width: auto; max-width: 100%; min-width: 150px; border-radius: 5px; }
+.ttm-container textarea { display: block; height: 58px; resize: vertical; font-family: monospace; }
+.ttm-container #ttm-link, .ttm-container #ttm-certificate { max-width: none; height: 82px; }
+.ttm-container textarea[readonly] { background: #43565c; color: #e0e8ea; box-shadow: none; }
+.ttm-container input[type=checkbox] { flex: 0 0 auto; width: 14px; height: 14px; margin: 3px 0 0; accent-color: #168cf0; }
+.ttm-container .ttm-check { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0; line-height: 1.5; }
+.ttm-container .ttm-acknowledgement { margin: 12px 10px; }
+.ttm-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 10px; }
+.ttm-container button {
+  min-height: 32px; padding: 6px 15px; border: 1px solid #17272d; border-radius: 7px;
+  background: linear-gradient(#33474d, #0b1417); box-shadow: inset 0 1px 0 #66777d;
+  color: #fff; font: bold 12px/1.5 Arial, Helvetica, sans-serif; text-shadow: 0 1px #111;
+  cursor: pointer;
+}
+.ttm-container button:hover { background: linear-gradient(#4c646d, #172b34); }
+.ttm-container .ttm-primary { border-color: #142933; }
+.ttm-container .ttm-release { color: #ffdbb4; }
+.ttm-container button:disabled { opacity: .45; cursor: not-allowed; }
+.ttm-container :focus-visible { outline: 2px solid #90dcff; outline-offset: 2px; }
+.ttm-tabs { display: flex; flex-wrap: wrap; gap: 0; }
+.ttm-tabs button { min-width: 105px; border-radius: 0; background: linear-gradient(#74858b, #46565c); box-shadow: inset 0 1px 0 #91a0a5; }
+.ttm-tabs button:first-child { border-radius: 7px 0 0 7px; }
+.ttm-tabs button:last-child { border-radius: 0 7px 7px 0; border-left: 0; }
+.ttm-tabs [aria-selected=true] { background: #29373d; box-shadow: inset 0 1px 3px #1a272c; }
+.ttm-container [hidden] { display: none !important; }
+.ttm-container details { margin: 0; border-top: 1px solid #263337; }
+.ttm-container summary { padding: 8px 10px; background: #52676e; color: #fff; font-size: 13px; cursor: pointer; }
+.ttm-container details[open] > summary { border-bottom: 1px solid #263337; }
+.ttm-container details > p, .ttm-container details > ol { margin: 10px; }
+.ttm-container details > ol { padding-left: 22px; }
+.ttm-container details > pre { margin: 10px; }
+.ttm-container pre { padding: 10px; background: #2f3b3f; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 monospace; }
+.ttm-container code { font: 12px monospace; overflow-wrap: anywhere; }
+.ttm-network { display: grid; grid-template-columns: 35% minmax(0, 1fr); border-top: 1px solid #263337; }
+.ttm-network:last-child { border-bottom: 1px solid #263337; }
+.ttm-network > div { min-width: 0; padding: 9px 10px; }
+.ttm-network > div:first-child { background: #2f3b3f; border-right: 1px solid #263337; }
+.ttm-network > div:first-child label { display: flex; align-items: flex-start; gap: 8px; font-weight: bold; }
+.ttm-caption { min-width: 0; overflow-wrap: anywhere; }
+.ttm-container .ttm-network-hint { margin-top: 6px; font-size: 11px; color: #c6d4d9; }
+.ttm-network > div:last-child label { margin-bottom: 4px; font-size: 11px; }
+.ttm-network textarea { height: 48px; }
+@media (max-width: 760px) {
+  .ttm-container.FormTitle { padding: 8px 5px 12px; }
+  .ttm-heading { flex-wrap: wrap; gap: 4px 10px; }
+  .ttm-titlebar { align-items: baseline; }
+  .ttm-grid { grid-template-columns: 42% minmax(0, 1fr); font-size: 12px; }
+  .ttm-grid dt, .ttm-grid dd { padding: 8px; }
+  .ttm-row, .ttm-network { grid-template-columns: minmax(0, 1fr); }
+  .ttm-row > .ttm-label, .ttm-network > div:first-child { padding: 7px 10px; border-right: 0; }
+  .ttm-value { padding: 8px 10px; }
+  .ttm-container input[type=text], .ttm-container input[type=password], .ttm-container textarea { max-width: none; }
+  .ttm-container button { min-height: 36px; }
+  .ttm-network > div:first-child label { min-height: 24px; align-items: center; }
+  .ttm-network > div:first-child input { margin-top: 0; }
+}
 
-.ttm-network>div:first-child label{display:flex;gap:9px;align-items:baseline;font-size:14px;font-weight:bold;margin:0 0 8px}.ttm-caption{overflow-wrap:anywhere;min-width:0}.ttm-network-hint{font-size:11px}.ttm-container textarea[readonly]{border-color:#45626d;color:#bdd3db;background:#1d3039}
-@media(max-width:760px){.ttm-network{grid-template-columns:1fr}.ttm-network>div{min-width:0}}
-body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
-.content{width:100%;max-width:1160px}.FormTitle{background:#243640;border:1px solid #4a616d;border-radius:6px}
-@media(max-width:760px){body{margin:0!important}.content>tbody>tr>td:first-child{display:none}#tabMenu{padding:16px!important;font-size:11px!important}}
-#mainMenu{padding:24px 12px;font-size:15px;line-height:2.4}#tabMenu{padding:0 0 18px;font-size:15px}
-</style><script>window.TTM_PREVIEW={"version": "0.2.1-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "discovered_networks": [{"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
+body{background:#20313b;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:13px;margin:0;padding:12px 18px 26px}
+#TopBanner,.content,#footer{box-sizing:border-box;width:100%;max-width:1180px;margin:0 auto}
+#TopBanner{border:1px solid #50646b;border-radius:7px 7px 0 0;overflow:hidden;box-shadow:0 0 9px #101d23;background:#080d10}
+.preview-top{display:flex;align-items:center;gap:18px;min-height:48px;padding:0 12px;background:linear-gradient(115deg,#6595a3 0,#3b5e69 31%,#505656 32%,#202b2e 69%,#505859)}
+.preview-brand{display:flex;align-items:center;gap:18px;white-space:nowrap}
+.preview-asus{font-size:29px;letter-spacing:-2px;font-weight:900;font-style:italic;line-height:1;color:#fff;text-shadow:0 1px 1px #33535d}
+.preview-model{font-size:20px;font-weight:bold;text-shadow:0 2px 1px #15252c}
+.preview-merlin{font-size:12px;line-height:1.25;color:#dbe4e6;margin-right:auto;padding-left:10px;border-left:1px solid #78919a}
+.preview-merlin strong{display:block;font-size:13px}
+.preview-system{display:flex;gap:10px;align-items:center}
+.preview-system button{background:linear-gradient(#26383e,#050a0c);color:#eee;border:1px solid #374b53;border-radius:10px;min-width:132px;padding:10px 14px;font:bold 13px Arial;opacity:.7;cursor:not-allowed}
+.preview-system button:last-child{min-width:105px;margin-left:18px}
+.preview-notice{margin:0;padding:7px 12px;color:#c5d9df;border-top:1px solid #2b464f;font-size:11px;line-height:1.4}
+.preview-notice strong{color:#ffdc55;font-weight:bold;margin-right:8px}
+.content{table-layout:fixed;border-spacing:0;background:#080d10;box-shadow:0 3px 9px #101d23}
+.content>tbody>tr>td:first-child{width:220px!important;padding:12px 0 12px 8px;vertical-align:top}
+.content>tbody>tr>td:last-child{padding:0 12px 12px 16px;vertical-align:top;min-width:0}
+#mainMenu{font-size:14px;line-height:1.15}
+.preview-quick{display:flex;align-items:center;gap:12px;padding:12px 10px;margin-bottom:10px;background:linear-gradient(#7c878a,#282d2f);border:1px solid #717b7f;border-radius:6px;font-weight:bold;min-height:32px}
+.preview-menu-group{margin:0 0 10px;border:1px solid #697478;background:#363d40}
+.preview-menu-heading{background:#4c5558;font-size:15px;font-weight:bold;text-align:center;padding:9px 6px;border-bottom:1px solid #778085}
+.preview-menu-item{display:flex;align-items:center;gap:10px;min-height:45px;padding:0 9px;border-bottom:1px solid #646d71;font-weight:bold;color:#f2f4f5;text-shadow:0 1px 1px #111}
+.preview-menu-item:last-child{border-bottom:0}
+.preview-menu-item.is-active{background:linear-gradient(#93b0c0,#4d86ae);color:white}
+.preview-icon{display:block;flex:0 0 30px;width:30px;height:30px;stroke:#97e2fa;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 1px #9de8ff)}
+.preview-status{display:flex;flex-wrap:wrap;gap:7px 19px;color:#d9e1e4;padding:15px 2px 18px;font-size:12px;line-height:1.4}
+.preview-status b{font-weight:bold;color:#fff}
+.preview-status .preview-offline{margin-left:auto;color:#a7bdc6}
+.preview-tabs{display:flex;gap:4px;align-items:stretch;margin:0;min-width:0}
+.preview-tab{display:flex;align-items:center;justify-content:center;min-height:40px;padding:0 10px;background:#2f3d43;border-radius:5px 5px 0 0;border:1px solid #29393f;border-bottom:0;color:#e1e7e9;font-size:13px;white-space:nowrap}
+.preview-tab[aria-current=page]{background:#4c595e;color:#fff;border-color:#4c595e;font-weight:bold}
+#tabMenu{padding:0;margin:0;width:100%;height:auto}
+.FormTitle{background:#4c595e;border:0;border-radius:0;margin:0;width:auto!important}
+#footer{background:#080d10;padding:8px 16px 14px;color:#9dafb6;text-align:right;font-size:11px;line-height:1.4}
+@media(max-width:1000px){.preview-top{gap:10px}.preview-system button{min-width:95px}.preview-system button:last-child{margin-left:0;min-width:80px}.content>tbody>tr>td:first-child{width:190px!important}.content>tbody>tr>td:last-child{padding-left:12px}.preview-menu-item{font-size:12px;gap:7px}.preview-tab{padding:0 7px;font-size:11px}.preview-status .preview-offline{margin-left:0}}
+@media(max-width:760px){
+body{padding:0;background:#4c595e}
+#TopBanner{border-radius:0;border-width:0 0 1px;box-shadow:none}
+.preview-top{min-height:49px;padding:0 12px;gap:10px}.preview-asus{font-size:25px}.preview-model{font-size:16px}.preview-brand{gap:12px}.preview-merlin{margin-left:auto;margin-right:0;font-size:10px;padding-left:9px}.preview-merlin strong{font-size:11px}.preview-system{display:none}.preview-notice{padding:7px 12px}
+.content,.content>tbody,.content>tbody>tr,.content>tbody>tr>td:last-child{display:block;width:100%;max-width:none;box-sizing:border-box;box-shadow:none}
+.content>tbody>tr>td:first-child{display:none}
+.content>tbody>tr>td:last-child{padding:0}
+.preview-status{padding:10px 12px;gap:5px 12px;font-size:11px}.preview-status .preview-offline{display:none}
+.preview-tabs{padding:0 8px;gap:4px}.preview-tab{display:none;min-height:35px;padding:0 12px;font-size:12px}.preview-tab.preview-client,.preview-tab[aria-current=page]{display:flex}
+#footer{padding:12px;font-size:10px;text-align:left}
+}
+</style><script>window.TTM_PREVIEW={"version": "0.2.2-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "discovered_networks": [{"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
  * Client v1.1.5 pins that implementation in trusttunnel/Cargo.lock.
  * https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md
  * parseLink(uri) -> {endpoint: schema-1 object, name: string, warnings: string[]}.
@@ -446,7 +584,11 @@ body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
     root.TTM=api;
 }(typeof window!=='undefined'?window:globalThis));
 </script></head><body class="bg" onload="ttmInitial()">
-<div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
+<div id="TopBanner">
+<div class="preview-top"><div class="preview-brand"><span class="preview-asus">ASUS</span><span class="preview-model">RT-AX86U</span></div>
+<div class="preview-merlin">Powered by<strong>Asuswrt-Merlin</strong></div>
+<div class="preview-system" aria-label="Элементы оболочки, недоступные в предпросмотре"><button type="button" disabled>Выход</button><button type="button" disabled>Перезагрузка</button><button type="button" disabled>Русский ▾</button></div></div>
+<p class="preview-notice"><strong>ЛОКАЛЬНЫЙ ПРЕДПРОСМОТР</strong> Роутер не подключён. Названия сетей и состояние — демонстрационные данные; меню оболочки неактивно.</p></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
 <form name="ttm_form" method="post" action="/start_apply.htm" target="hidden_frame">
 <input type="hidden" name="current_page"><input type="hidden" name="next_page">
@@ -456,15 +598,16 @@ body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
 
 
 </form>
-<table class="content" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
-<td style="width:202px;vertical-align:top"><div id="mainMenu">ASUSWRT-Merlin<br>Общие настройки<br>Сеть<br>Беспроводная сеть<br><strong>VPN</strong><br>Администрирование</div><div id="subMenu"></div></td>
-<td style="vertical-align:top"><div id="tabMenu">VPN Client &nbsp; / &nbsp; VPN Director &nbsp; / &nbsp; <strong>TrustTunnel</strong> &nbsp; · &nbsp; OFFLINE PREVIEW</div>
+<table class="content ttm-layout" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
+<td class="ttm-sidebar"><div id="mainMenu" aria-label="Образец меню прошивки"><div class="preview-quick"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Быстрая настройка<br>Интернет</span></div><div class="preview-menu-group"><div class="preview-menu-heading">Общие настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Карта сети</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>AiMesh</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Гостевая сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>AiProtection</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Родительский контроль</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Адаптивный QoS</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Анализатор трафика</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Игры</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Open NAT</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V5m-4 4 4-5 4 5M16 22H9a3 3 0 0 1-3-3v-4M16 17h7a3 3 0 0 0 3-3v-2"/><circle cx="6" cy="12" r="3"/><rect x="23" y="5" width="6" height="6"/><circle cx="16" cy="28" r="2"/></svg><span>USB-приложение</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Информация о системе</span></div></div><div class="preview-menu-group"><div class="preview-menu-heading">Дополнительные настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>Беспроводная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Локальная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Интернет</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>IPv6</span></div><div class="preview-menu-item is-active"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>VPN</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>Брандмауэр</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Администрирование</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3h19v26H7zM3 7h4M3 13h4M3 19h4M3 25h4M12 9h9M12 14h9M12 19h9M12 24h6"/></svg><span>Системный журнал</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Сетевые утилиты</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Дополнения</span></div></div></div><div id="subMenu"></div></td>
+<td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"><div class="preview-status"><span>Режим: <b>Беспроводной роутер</b></span><span>Модель: <b>RT-AX86U</b></span><span class="preview-offline">Нет подключения к прошивке</span></div><div class="preview-tabs" aria-label="Образец вкладок VPN"><span class="preview-tab">VPN Status</span><span class="preview-tab">VPN Director</span><span class="preview-tab">VPN Server</span><span class="preview-tab preview-client">VPN Client</span><span class="preview-tab">Instant Guard</span><span class="preview-tab" aria-current="page">TrustTunnel</span></div></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading"><div><span class="ttm-eyebrow">VPN / ASUSWRT-MERLIN</span><h2>TrustTunnel</h2><p class="ttm-muted">Подключение и маршрутизация домашних сетей</p></div><span class="ttm-badge" id="ttm-version">0.2.1-alpha.1</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.2.2-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <section class="ttm-section" aria-labelledby="ttm-status-title">
-<div class="ttm-heading"><h3 id="ttm-status-title">Состояние клиента</h3><strong id="ttm-state">Загрузка…</strong></div>
+<div class="ttm-heading"><h3 id="ttm-status-title">Управление клиентом</h3></div>
 <dl class="ttm-grid">
+<dt>Состояние</dt><dd id="ttm-state">Загрузка…</dd>
 <dt>Сервер</dt><dd id="ttm-host">—</dd>
 <dt>Процесс / интерфейс</dt><dd><span id="ttm-process">—</span> / <span id="ttm-tun">—</span></dd>
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
@@ -481,34 +624,34 @@ body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
 </section>
 <div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
 <section class="ttm-section" aria-labelledby="ttm-connection-title">
-<div class="ttm-heading"><h3 id="ttm-connection-title">1. Подключение к серверу</h3><span class="ttm-step">Локальная подготовка</span></div>
+<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">Локальная подготовка</span></div>
 <p class="ttm-muted">Введите параметры вручную или вставьте ссылку TrustTunnel. Пароль остаётся в памяти этой страницы до экспорта; автоматического сохранения нет.</p>
-<div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
+<div class="ttm-row"><div class="ttm-label">Способ настройки</div><div class="ttm-value"><div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
 <button type="button" role="tab" id="ttm-tab-manual" aria-selected="true" aria-controls="ttm-manual" onclick="ttmConnectionMode('manual')">Вручную</button>
 <button type="button" role="tab" id="ttm-tab-link" aria-selected="false" aria-controls="ttm-link-panel" onclick="ttmConnectionMode('link')">Ссылка tt://</button>
-</div>
+</div></div></div>
 <div id="ttm-link-panel" role="tabpanel" aria-labelledby="ttm-tab-link" hidden>
-<label for="ttm-link">Ссылка подключения</label><textarea id="ttm-link" autocomplete="off" spellcheck="false" placeholder="tt://?…" maxlength="65536"></textarea>
+<div class="ttm-row"><label class="ttm-label" for="ttm-link">Ссылка подключения</label><div class="ttm-value"><textarea id="ttm-link" autocomplete="off" spellcheck="false" placeholder="tt://?…" maxlength="65536"></textarea><small>Ссылка содержит учётные данные.</small></div></div>
 <div class="ttm-actions"><button type="button" onclick="ttmParseLink()">Разобрать ссылку</button></div>
-<p class="ttm-muted">Поддерживается официальный формат TrustTunnel v1. Неподдерживаемые параметры будут показаны как ошибка. Ссылка содержит учётные данные.</p>
+<p class="ttm-muted">Поддерживается официальный формат TrustTunnel v1. Неподдерживаемые параметры будут показаны как ошибка.</p>
 </div>
 <div id="ttm-manual" role="tabpanel" aria-labelledby="ttm-tab-manual">
 <form id="ttm-endpoint-form" autocomplete="off" onsubmit="return false">
-<div class="ttm-fields">
-<div><label for="ttm-hostname">Имя сервера TLS</label><input type="text" id="ttm-hostname" placeholder="vpn.example.com" maxlength="253" spellcheck="false"><small>Должно совпадать с сертификатом сервера.</small></div>
-<div><label for="ttm-addresses">Адреса сервера с портом</label><textarea id="ttm-addresses" placeholder="203.0.113.10:443" spellcheck="false"></textarea><small>IPv4 или hostname:port, по одному в строке.</small></div>
-<div><label for="ttm-username">Имя пользователя</label><input type="text" id="ttm-username" maxlength="256" spellcheck="false" autocomplete="off"></div>
-<div><label for="ttm-password">Пароль</label><input type="password" id="ttm-password" maxlength="1024" autocomplete="new-password"><label class="ttm-check"><input type="checkbox" id="ttm-show-password" onchange="ttmShowPassword(this.checked)"> Показать пароль</label></div>
-<div><label for="ttm-protocol">Транспорт</label><select id="ttm-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div>
-<div><label class="ttm-check"><input type="checkbox" id="ttm-anti-dpi"> Anti-DPI</label><small>Включайте в соответствии с настройками подключения.</small></div>
+<div class="ttm-settings">
+<div class="ttm-row"><label class="ttm-label" for="ttm-hostname">Имя сервера TLS</label><div class="ttm-value"><input type="text" id="ttm-hostname" placeholder="vpn.example.com" maxlength="253" spellcheck="false"><small>Должно совпадать с сертификатом сервера.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-addresses">Адреса сервера с портом</label><div class="ttm-value"><textarea id="ttm-addresses" placeholder="203.0.113.10:443" spellcheck="false"></textarea><small>IPv4 или hostname:port, по одному в строке.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-username">Имя пользователя</label><div class="ttm-value"><input type="text" id="ttm-username" maxlength="256" spellcheck="false" autocomplete="off"></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-password">Пароль</label><div class="ttm-value"><input type="password" id="ttm-password" maxlength="1024" autocomplete="new-password"><label class="ttm-check"><input type="checkbox" id="ttm-show-password" onchange="ttmShowPassword(this.checked)"> Показать пароль</label></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-protocol">Транспорт</label><div class="ttm-value"><select id="ttm-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div></div>
+<div class="ttm-row"><div class="ttm-label">Anti-DPI</div><div class="ttm-value"><label class="ttm-check"><input type="checkbox" id="ttm-anti-dpi"> Включить Anti-DPI</label><small>В соответствии с настройками подключения.</small></div></div>
 </div>
 <details><summary>Сертификат, DNS и дополнительные параметры</summary>
-<div class="ttm-fields">
-<div><label for="ttm-upstreams">DNS клиента TrustTunnel</label><textarea id="ttm-upstreams" spellcheck="false" placeholder="DNS из конфигурации подключения"></textarea><small id="ttm-dns-hint">DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.</small></div>
-<div><label for="ttm-mtu">MTU</label><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"><label for="ttm-wan">WAN-интерфейс (необязательно)</label><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"></div>
+<div class="ttm-settings">
+<div class="ttm-row"><label class="ttm-label" for="ttm-upstreams">DNS клиента TrustTunnel</label><div class="ttm-value"><textarea id="ttm-upstreams" spellcheck="false" placeholder="DNS из конфигурации подключения"></textarea><small id="ttm-dns-hint">DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-mtu">MTU</label><div class="ttm-value"><input type="number" id="ttm-mtu" min="1280" max="1500" value="1350"></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-wan">WAN-интерфейс</label><div class="ttm-value"><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"><small>Необязательно. Оставьте пустым для автоматического выбора.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-certificate">Сертификат PEM</label><div class="ttm-value"><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea><small>Если выдан вашим сервером. Для доверенного публичного сертификата оставьте пустым. Проверка TLS всегда включена.</small></div></div>
 </div>
-<label for="ttm-certificate">Сертификат PEM (если выдан вашим сервером)</label><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-<p class="ttm-muted">Проверка TLS всегда включена. Для доверенного публичного сертификата поле можно оставить пустым.</p>
 </details>
 </form>
 <div class="ttm-actions"><button type="button" class="ttm-primary" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
@@ -525,16 +668,16 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 </details>
 </section>
 <section class="ttm-section" aria-labelledby="ttm-routing-title">
-<div class="ttm-heading"><h3 id="ttm-routing-title">2. Сети через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
+<div class="ttm-heading"><h3 id="ttm-routing-title">Маршрутизация сетей через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
 <p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
 
-<label class="ttm-check"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
+<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
 <p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>
 </section>
-</div></td></tr></table><div id="footer"></div></body></html>
+</div></td></tr></table><div id="footer">TrustTunnel · автономный предпросмотр интерфейса ASUSWRT-Merlin · без запросов к роутеру</div></body></html>
