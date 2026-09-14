@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!-- trusttunnel-merlin-page-v1 -->
+<html lang="ru"><head>
+<meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-store">
+<title>TrustTunnel — OFFLINE PREVIEW</title>
+
+
+
+<script>window.ttmCustomSettings = {};</script>
+
+<style>/* Local styles only; Merlin provides its own navigation, fonts and background. */
+.ttm-container {padding:18px 20px;max-width:800px;line-height:1.5}
+.ttm-container h2 {font-size:22px;margin:0 0 8px}
+.ttm-container h3 {font-size:16px;margin-top:24px}
+.ttm-banner {border:1px solid #b69049;background:#3d392e;padding:12px;margin:14px 0;color:#f0dfba}
+.ttm-note {color:#bac9cf;min-height:24px;margin:12px 0}
+.ttm-error {color:#ffb8b8;min-height:24px;margin:12px 0}
+.ttm-grid {display:grid;grid-template-columns:210px 1fr;gap:7px 14px;margin:15px 0}
+.ttm-grid dt {color:#b9c6cd}.ttm-grid dd {margin:0;overflow-wrap:anywhere}
+.ttm-actions {display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+.ttm-actions button,.ttm-save {border:1px solid #738791;border-radius:4px;padding:8px 13px;background:#394b56;color:#fff;cursor:pointer}
+.ttm-actions .ttm-release {background:#55413d}
+.ttm-container input[type=text],.ttm-container textarea {box-sizing:border-box;width:100%;max-width:410px;background:#17252e;border:1px solid #71808a;padding:8px;color:#fff;border-radius:3px}
+.ttm-container textarea {height:100px;resize:vertical;font:13px monospace}
+.ttm-container fieldset {border:1px solid #596b75;padding:15px}
+.ttm-container label {display:block;margin:10px 0 5px}
+.ttm-container code {font-family:monospace;font-size:13px}
+.ttm-container button:disabled {opacity:.5;cursor:not-allowed}
+.ttm-muted {color:#bac9cf;font-size:12px}
+body{background:#17252e;color:#e4edf2;font-family:Arial,sans-serif;margin:24px}
+.content{width:1120px}.FormTitle{background:#243640;border:1px solid #4a616d;border-radius:6px}
+#mainMenu{padding:24px 12px;font-size:15px;line-height:2.4}#tabMenu{padding:0 0 18px;font-size:15px}
+</style><script>window.TTM_PREVIEW={"version": "0.1.0-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789214400, "last_result": "preview:not_executed", "policy": {"schema": 1, "lan_if": "br1", "sources": ["192.168.50.0/24"], "dns_ipv4": "1.1.1.1", "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* No external libraries, eval, dynamic HTML or credentials in custom_settings. */
+(function (root) {
+    'use strict';
+    var api = {}, latest = null, initialized = false;
+    function policyFromFields(lan, sources, dns, acknowledge) {
+        var cidrs = sources.split(/[\s,;]+/).filter(Boolean);
+        if (!/^br[0-9]+(?:\.[0-9]+)?$/.test(lan) || lan.length > 15) throw new Error('Укажите LAN bridge, например br1.');
+        if (!cidrs.length || cidrs.length > 32) throw new Error('Требуется от 1 до 32 IPv4-подсетей или адресов /32.');
+        if (new Set(cidrs).size !== cidrs.length) throw new Error('В списке есть повторяющиеся записи.');
+        if (cidrs.some(function (s) { return !/^[0-9.]+\/[0-9]{1,2}$/.test(s); })) throw new Error('Используйте формат 192.168.50.0/24 или 192.168.50.10/32.');
+        if (!acknowledge) throw new Error('Подтвердите блокировку IPv6 на всём выбранном bridge.');
+        return {schema: 1, lan_if: lan, sources: cidrs, dns_ipv4: dns, block_ipv6_bridge: true, table: 871, priority: 17100};
+    }
+    function makeEnvelope(settings, policy) {
+        var clone = Object.assign({}, settings || {});
+        // This object contains only ASCII policy data, never endpoint credentials.
+        var encoded = root.btoa(JSON.stringify(policy));
+        if (encoded.length > 2999) throw new Error('Политика превышает лимит Addons API.');
+        clone.ttm_policy = encoded;
+        var serialized = JSON.stringify(clone);
+        if (serialized.length > 7600) throw new Error('Недостаточно места в общем хранилище аддонов. Используйте импорт политики через SSH.');
+        return serialized;
+    }
+    api.policyFromFields = policyFromFields;
+    api.makeEnvelope = makeEnvelope;
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    if (!root.document) return;
+    function el(id) { return document.getElementById(id); }
+    function text(id, value) { el(id).textContent = String(value); }
+    function message(value, error) { text('ttm-message', value); el('ttm-message').className = error ? 'ttm-error' : 'ttm-note'; }
+    function render(status) {
+        latest = status;
+        var labels = {disabled: 'Отключён', paused_protected: 'Пауза; блокировка запрошена',
+            blocked_or_start_failed: 'Нет рабочего процесса / ошибка запуска', tun_ready_unverified: 'TUN создан; соединение не проверено'};
+        text('ttm-state', labels[status.state] || status.state);
+        text('ttm-version', status.version);
+        text('ttm-host', status.hostname || 'Учётные данные не импортированы');
+        text('ttm-process', status.process_running ? 'Запущен' : 'Не запущен');
+        text('ttm-tun', status.interface_up ? 'tt0' : 'Нет');
+        text('ttm-counter', (status.rx_bytes / 1048576).toFixed(2) + ' / ' + (status.tx_bytes / 1048576).toFixed(2) + ' MiB');
+        text('ttm-age', new Date(status.timestamp * 1000).toLocaleTimeString());
+        text('ttm-last', status.last_result || 'none');
+        el('ttm-save').disabled = !!status.enabled;
+        el('ttm-policy-fields').disabled = !!status.enabled;
+        if (!initialized && status.policy) {
+            el('ttm-lan').value = status.policy.lan_if;
+            el('ttm-sources').value = status.policy.sources.join('\n');
+            el('ttm-dns').value = status.policy.dns_ipv4;
+            el('ttm-v6ack').checked = status.policy.block_ipv6_bridge;
+            initialized = true;
+        }
+    }
+    function refresh() {
+        if (root.TTM_PREVIEW) { render(root.TTM_PREVIEW); return; }
+        var request = new XMLHttpRequest();
+        request.open('GET', '/user/trusttunnel/status.json?t=' + Date.now(), true);
+        request.timeout = 5000;
+        request.onload = function () {
+            try {
+                if (request.status !== 200) throw new Error('Статус пока недоступен.');
+                render(JSON.parse(request.responseText));
+            } catch (e) { message('Не удалось прочитать статус; проверьте SSH-журнал аддона.', true); }
+        };
+        request.onerror = request.ontimeout = function () { message('Не удалось обновить статус.', true); };
+        request.send();
+    }
+    function send(action, policy) {
+        var allowed = ['start', 'pause', 'restart', 'disable', 'policy'];
+        if (allowed.indexOf(action) < 0) throw new Error('Unknown action');
+        if (root.TTM_PREVIEW) { message('Демонстрация интерфейса: команда не отправлена.', false); return; }
+        var form = document.forms.ttm_form;
+        var settings = root.ttmCustomSettings || {};
+        form.elements.amng_custom.disabled = !policy;
+        form.elements.amng_custom.value = policy ? makeEnvelope(settings, policy) : '';
+        form.elements.action_script.value = 'start_ttm_' + action;
+        form.elements.current_page.value = location.pathname.substring(1);
+        form.elements.next_page.value = location.pathname.substring(1);
+        form.submit();
+        message('Команда отправлена. Проверяйте результат операции и время обновления статуса.', false);
+    }
+    root.ttmAction = function (action) {
+        try {
+            if (action === 'disable' && !root.confirm('Отключить защитные правила? Выбранные устройства вернутся к обычной маршрутизации Merlin.')) return;
+            if (action === 'policy') {
+                if (latest && latest.enabled) throw new Error('Перед изменением политики отключите аддон.');
+                send(action, policyFromFields(el('ttm-lan').value.trim(), el('ttm-sources').value,
+                    el('ttm-dns').value.trim(), el('ttm-v6ack').checked));
+            } else send(action);
+        } catch (e) { message(e.message, true); }
+    };
+    root.done_validating = function () { refresh(); };
+    root.ttmInitial = function () {
+        if (typeof root.show_menu === 'function') root.show_menu();
+        refresh();
+        if (!root.TTM_PREVIEW) root.setInterval(refresh, 5000);
+    };
+    root.TTM = api;
+}(typeof window !== 'undefined' ? window : globalThis));
+</script></head><body class="bg" onload="ttmInitial()">
+<div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
+<iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
+<form name="ttm_form" method="post" action="/start_apply.htm" target="hidden_frame">
+<input type="hidden" name="current_page"><input type="hidden" name="next_page">
+<input type="hidden" name="group_id" value=""><input type="hidden" name="modified" value="0">
+<input type="hidden" name="action_mode" value="apply"><input type="hidden" name="action_wait" value="2">
+<input type="hidden" name="action_script"><input type="hidden" name="amng_custom">
+
+
+</form>
+<table class="content" style="margin:auto" cellpadding="0" cellspacing="0"><tr>
+<td style="width:202px;vertical-align:top"><div id="mainMenu">ASUSWRT-Merlin<br>Общие настройки<br>Сеть<br>Беспроводная сеть<br><strong>VPN</strong><br>Администрирование</div><div id="subMenu"></div></td>
+<td style="vertical-align:top"><div id="tabMenu">VPN Client &nbsp; / &nbsp; VPN Director &nbsp; / &nbsp; <strong>TrustTunnel</strong> &nbsp; · &nbsp; OFFLINE PREVIEW</div>
+<div class="FormTitle ttm-container">
+<h2>TrustTunnel Client</h2><div class="ttm-muted">ASUSWRT-Merlin addon · <span id="ttm-version">0.1.0-alpha.1</span></div>
+<div class="ttm-banner"><strong>Лабораторная версия — на роутере не проверена.</strong><br>
+Создание процесса и TUN не подтверждает VPN-соединение. Не используйте эту сборку как проверенную защиту от утечек.</div>
+<dl class="ttm-grid">
+<dt>Состояние</dt><dd id="ttm-state">Загрузка…</dd>
+<dt>TLS hostname</dt><dd id="ttm-host">—</dd>
+<dt>Процесс клиента</dt><dd id="ttm-process">—</dd>
+<dt>Интерфейс</dt><dd id="ttm-tun">—</dd>
+<dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
+<dt>Статус сформирован</dt><dd id="ttm-age">—</dd>
+<dt>Последняя операция</dt><dd id="ttm-last">—</dd>
+</dl>
+<div class="ttm-actions">
+<button type="button" onclick="ttmAction('start')">Запустить</button>
+<button type="button" onclick="ttmAction('pause')">Остановить с блокировкой</button>
+<button type="button" onclick="ttmAction('restart')">Перезапустить</button>
+<button type="button" class="ttm-release" onclick="ttmAction('disable')">Отключить и вернуть обычный маршрут</button>
+</div>
+<div id="ttm-message" class="ttm-note" role="status"></div>
+<h3>Маршрутизация</h3>
+<p class="ttm-muted">IPv4 выбранных адресов направляется в TrustTunnel. Укажите реальный bridge своей LAN или гостевой сети; имя нельзя определить без проверки роутера.</p>
+<fieldset id="ttm-policy-fields">
+<label for="ttm-lan">LAN / Guest bridge</label><input type="text" id="ttm-lan" value="br1" maxlength="15" spellcheck="false">
+<label for="ttm-sources">IPv4-адреса / подсети (CIDR, по одной записи в строке)</label>
+<textarea id="ttm-sources" spellcheck="false">192.168.50.0/24</textarea>
+<label for="ttm-dns">Внешний DNS IPv4 для перенаправления TCP/UDP 53 в туннель</label>
+<input type="text" id="ttm-dns" value="1.1.1.1" maxlength="15" spellcheck="false">
+<label><input type="checkbox" id="ttm-v6ack"> Подтверждаю: IPv6-транзит и IPv6 DNS к роутеру будут блокироваться для <strong>всего выбранного bridge</strong>, не только для IPv4-адресов выше.</label>
+</fieldset>
+<div class="ttm-actions"><button type="button" id="ttm-save" onclick="ttmAction('policy')">Сохранить политику</button></div>
+<p class="ttm-muted">Изменение политики доступно только после явного отключения аддона. Доменные списки, GeoIP и полноценная IPv6-маршрутизация ещё не реализованы.</p>
+<h3>Подключение к серверу</h3>
+<p>В этой версии учётные данные импортируются по SSH из приватного JSON-файла. Пароль не передаётся через <code>custom_settings</code> и не публикуется в статусе.</p>
+<p><code>trusttunnel.sh import-endpoint /tmp/endpoint.json</code></p>
+<p class="ttm-muted">Формат: examples/endpoint.example.json. Журнал клиента доступен только локально: /tmp/trusttunnel/client.log.</p>
+</div></td></tr></table><div id="footer"></div></body></html>

@@ -1,0 +1,51 @@
+# Validation is shared by the router and host-side regression tests.
+def require($condition; $message): if $condition then . else error($message) end;
+def text($max): type == "string" and length > 0 and length <= $max and (test("[\\x00-\\x1f\\x7f]")|not);
+def ipv4:
+  if type != "string" then false else
+    split(".") as $p | ($p|length)==4 and
+    all($p[]; test("^(0|[1-9][0-9]{0,2})$") and (tonumber <= 255))
+  end;
+def private_cidr:
+  if type != "string" or (test("^[0-9.]+/[0-9]{1,2}$")|not) then false else
+    split("/") as $p | ($p[0]|ipv4) and
+    ($p[1]|tonumber) as $n | $n >= 8 and $n <= 32 and
+    ($p[0]|split(".")|map(tonumber)) as $o |
+    (($o[0]==10 and $n>=8) or ($o[0]==172 and $o[1]>=16 and $o[1]<=31 and $n>=12) or
+     ($o[0]==192 and $o[1]==168 and $n>=16)) and
+    (((($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]) / pow(2;32-$n))|floor)*pow(2;32-$n)
+      == ($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]))
+  end;
+def host: text(253) and test("^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$");
+def endpoint_address:
+  if type != "string" or (test("^[A-Za-z0-9.-]+:[0-9]{1,5}$")|not) then false else
+    split(":") as $a | ($a[0]|host) and ($a[1]|tonumber) > 0 and ($a[1]|tonumber) <= 65535
+  end;
+def endpoint:
+  require(type=="object"; "endpoint: expected an object") |
+  require((keys - ["schema","hostname","addresses","username","password","protocol","certificate","dns_upstreams","anti_dpi","mtu","wan_if"] | length)==0; "endpoint: unknown field") |
+  require(.schema==1; "endpoint: unsupported schema") |
+  require(.hostname|host; "endpoint: invalid TLS hostname") |
+  require((.addresses|type)=="array" and (.addresses|length)>=1 and (.addresses|length)<=8 and all(.addresses[];endpoint_address); "endpoint: use host:port or IPv4:port") |
+  require(.username|text(256); "endpoint: invalid username") |
+  require(.password|text(1024); "endpoint: invalid password") |
+  require(.protocol=="http2" or .protocol=="http3"; "endpoint: supported protocols are http2 and http3") |
+  require((.certificate|type)=="string" and (.certificate|length)<=16384 and (.certificate|contains("\u0000")|not); "endpoint: invalid certificate") |
+  require((.dns_upstreams|type)=="array" and (.dns_upstreams|length)>=1 and (.dns_upstreams|length)<=4 and all(.dns_upstreams[];text(512)); "endpoint: explicit DNS upstreams required") |
+  require((.anti_dpi|type)=="boolean"; "endpoint: anti_dpi must be boolean") |
+  require((.mtu|type)=="number" and (.mtu|floor)==.mtu and .mtu>=1280 and .mtu<=1500; "endpoint: MTU must be an integer from 1280 to 1500") |
+  require(.wan_if|type=="string" and length<=15 and test("^([A-Za-z][A-Za-z0-9_.-]*)?$"); "endpoint: invalid WAN interface") |
+  .;
+def policy:
+  require(type=="object"; "policy: expected an object") |
+  require((keys - ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"]|length)==0; "policy: unknown field") |
+  require(.schema==1; "policy: unsupported schema") |
+  require(.lan_if|type=="string" and length<=15 and test("^br[0-9]+(\\.[0-9]+)?$"); "policy: expected a LAN bridge, for example br1") |
+  require((.sources|type)=="array" and (.sources|length)>=1 and (.sources|length)<=32 and all(.sources[];private_cidr); "policy: sources must be canonical private IPv4 CIDRs (1..32)") |
+  require((.sources|unique|length)==(.sources|length); "policy: duplicate sources") |
+  require(.dns_ipv4|ipv4; "policy: invalid DNS IPv4") |
+  require((.dns_ipv4|split(".")|map(tonumber)) as $o | $o[0]>0 and $o[0]<224 and $o[0]!=127 and $o[0]!=10 and ($o[0]!=172 or $o[1]<16 or $o[1]>31) and ($o[0]!=192 or $o[1]!=168) and ($o[0]!=100 or $o[1]<64 or $o[1]>127) and ($o[0]!=169 or $o[1]!=254); "policy: unusable DNS destination") |
+  require(.block_ipv6_bridge==true; "policy: bridge-wide IPv6 block must be explicitly acknowledged") |
+  require(.table==871 and .priority==17100; "policy: alpha reserves table 871 and priorities 17100..17131") |
+  .;
+if $kind=="endpoint" then endpoint elif $kind=="policy" then policy else error("unknown validation kind") end
