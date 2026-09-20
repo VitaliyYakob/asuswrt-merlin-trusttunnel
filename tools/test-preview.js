@@ -254,13 +254,17 @@ async function exerciseInventory(browser) {
         await page.setContent(previewWithStatus(status => {
             status.policy = null;
             status.discovered_networks = [
-                {lan_if: 'br0', sources: ['192.168.10.0/24'], ssids: ['Home 2.4', 'Home 5']},
+                {lan_if: 'br0', sources: ['192.168.10.0/24'], display_name:'Home 2.4', ssids: ['Home 2.4', 'Home 5', '0123456789ABCDEF0123456789ABCDEF']},
                 {lan_if: 'br1', sources: ['192.168.50.0/24'], ssids: [untrustedSsid]}
             ];
         }), {waitUntil: 'load'});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
         assert.equal(await page.locator('.ttm-network').count(), 2, 'several SSIDs on one bridge must remain one routing choice');
-        await page.getByRole('checkbox', {name: 'Home 2.4 / Home 5', exact: true}).check();
+        await page.getByRole('checkbox', {name: 'Home 2.4', exact: true}).check();
+        const ssidDetails=page.locator('.ttm-network-ssids').first();
+        assert.equal(await ssidDetails.locator('li').first().isVisible(),false);
+        await ssidDetails.locator('summary').click();
+        assert.deepEqual(await ssidDetails.locator('li').allTextContents(), ['Home 2.4','Home 5','0123456789ABCDEF0123456789ABCDEF']);
         assert.equal(await page.getByRole('checkbox', {name: untrustedSsid, exact: true}).count(), 1, 'SSID markup must be preserved as visible text');
         assert.equal(await page.locator('.ttm-network script, .ttm-network img').count(), 0);
         assert.equal(await page.evaluate(() => window.ssidExecuted), undefined);

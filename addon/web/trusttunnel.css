@@ -112,3 +112,6 @@
   .ttm-network > div:first-child label { min-height: 24px; align-items: center; }
   .ttm-network > div:first-child input { margin-top: 0; }
 }
+.ttm-network-ssids { margin-top: 10px; font-size: 12px; }
+.ttm-network-ssids ul { padding-left: 18px; margin: 8px 0; }
+.ttm-network-ssids li { overflow-wrap: anywhere; margin: 5px 0; }

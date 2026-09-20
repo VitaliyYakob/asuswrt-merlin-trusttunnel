@@ -49,15 +49,17 @@ tt_bridge_ssids() (
             TT_MEMBER_NVIFS=$TT_MEMBER
         fi
         # jq reads raw SSID bytes through stdin; quotes, Unicode and newlines
+        [ "$(nvram get "${TT_MEMBER_NVIFS}_bss_enabled" 2>/dev/null)" != 0 ] || continue
         # remain data. Remove only the newline added by nvram get.
         # The sentinel preserves trailing newlines across shell substitution.
         TT_MEMBER_SSID_RAW=$(nvram get "${TT_MEMBER_NVIFS}_ssid" 2>/dev/null && printf '.') || continue
         TT_MEMBER_SSID=$(printf '%s' "${TT_MEMBER_SSID_RAW%.}" |
-            jq -Rs 'sub("\n$";"")|select(length>0)') || return 1
+            jq -Rs --arg nvif "$TT_MEMBER_NVIFS" '{ssid:sub("\n$";""),primary:($nvif|test("^wl[0-3]$"))}|select(.ssid|length>0)') || return 1
         TT_BRIDGE_SSIDS="$TT_BRIDGE_SSIDS
 $TT_MEMBER_SSID"
     done
-    printf '%s\n' "$TT_BRIDGE_SSIDS" | jq -s 'unique'
+    # Prefer the main radio name over virtual/service SSIDs; deduplicate stably.
+    printf '%s\n' "$TT_BRIDGE_SSIDS" | jq -s 'sort_by(.primary|not)|map(.ssid)|reduce .[] as $s ([]; if index($s)==null then .+[$s] else . end)'
 )
 tt_discover_networks() {
     # Offline sandboxes must never inspect the development host's networking.
@@ -74,7 +76,7 @@ tt_discover_networks() {
         TT_DISCOVERY_ITEM=$(printf '%s\n' "$TT_DISCOVERY_ADDRESSES" | awk '$3=="inet" {print $4}' |
             jq -Rn --arg interface "$TT_BRIDGE_NAME" -f "$TT_BASE/share/inventory.jq" |
             jq --argjson ssids "$TT_DISCOVERY_SSIDS" '. + {ssids:$ssids,
-                display_name:(if ($ssids|length)>0 then ($ssids|join(" / ")) else "Локальная сеть (SSID не определён)" end)}') || return 1
+                display_name:(if ($ssids|length)>0 then $ssids[0] else "Локальная сеть (SSID не определён)" end)}') || return 1
         # SSID renaming does not change identity; bridge members/subnets do.
         TT_ID_MEMBERS=$(for TT_ID_PATH in "$TT_BRIDGE_PARENT"/brif/*; do
             [ ! -e "$TT_ID_PATH" ] || printf '%s\n' "${TT_ID_PATH##*/}"

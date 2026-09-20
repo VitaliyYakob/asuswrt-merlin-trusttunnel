@@ -45,7 +45,9 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
                 else { assert.equal(request.revision,'0'); saved=request.data; state.revision='abcdef0123456789'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
                 transfer={state:'idle'};
             } else if(!command.startsWith('start_ttm_abort_')) throw new Error('Unexpected event');
-            await route.fulfill({contentType:'text/html',body:'<html><body>queued</body></html>'}); return;
+            // Real Merlin redirects the parent from this response. The addon
+            // must consume HTML as inert fetch data, not execute an iframe.
+            await route.fulfill({contentType:'text/html',body:'<html><body><script>parent.location.href="/unexpected-native-redirect";</script>queued</body></html>'}); return;
         }
         await route.abort();
     });

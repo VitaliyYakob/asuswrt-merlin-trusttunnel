@@ -90,11 +90,21 @@ tt_discover_networks''')
             "wl0.2_ssid": "Отключённая сеть", "wl0.3_ssid": "IoT",
         }))
         self.assertEqual([row["ssids"] for row in rows], [["Дом 2.4 GHz", "Дом 5 GHz"], ["IoT"], ["Гости"]])
-        self.assertEqual(rows[0]["display_name"], "Дом 2.4 GHz / Дом 5 GHz")
+        self.assertEqual(rows[0]["display_name"], "Дом 2.4 GHz")
         self.assertEqual(rows[2]["display_name"], "Гости")
         keys = (self.path / "nvram-keys").read_text().splitlines()
         self.assertNotIn("wl0.2_ssid", keys)
-        self.assertTrue(all(key.endswith(("_ssid", "_ifname", "_vifnames")) for key in keys))
+        self.assertTrue(all(key.endswith(("_ssid", "_ifname", "_vifnames", "_bss_enabled")) for key in keys))
+
+    def test_primary_ssid_precedes_virtual_and_disabled_members_are_omitted(self):
+        self.bridge('br0', ['eth6', 'wl0.2', 'wl0.3', 'wl0.4'])
+        row = self.parsed(self.discover({
+            'wl0_ifname':'eth6', 'wl0_ssid':'Home',
+            'wl0.2_ssid':'Old device', 'wl0.3_ssid':'Disabled', 'wl0.3_bss_enabled':'0',
+            'wl0.4_ssid':'0123456789ABCDEF0123456789ABCDEF', 'wl0.4_bss_enabled':'1'
+        }))[0]
+        self.assertEqual(row['display_name'], 'Home')
+        self.assertEqual(row['ssids'], ['Home', 'Old device', '0123456789ABCDEF0123456789ABCDEF'])
 
     def test_identity_survives_ssid_rename_but_changes_with_bridge_members(self):
         self.bridge('br1', ['wl0.1'])

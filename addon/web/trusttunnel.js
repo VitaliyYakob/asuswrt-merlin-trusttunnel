@@ -78,6 +78,7 @@
         el('ttm-save-endpoint').disabled = !ok || pending || !!(latest && latest.transaction);
     }
     function networkTitle(network) {
+        if (typeof network.display_name==='string' && network.display_name) return network.display_name;
         return Array.isArray(network.ssids) && network.ssids.length ? network.ssids.join(' / ') : 'Локальная сеть — SSID не определён';
     }
     function addNetwork(network, selected, available) {
@@ -90,7 +91,10 @@
         }); caption.className = 'ttm-caption';
         caption.textContent = available ? networkTitle(network) : 'Сохранённая сеть недоступна';
         choice.appendChild(checkbox); choice.appendChild(caption); info.appendChild(choice);
-        var hint = document.createElement('small'); hint.className = 'ttm-network-hint'; info.appendChild(hint); row.appendChild(info);
+        var hint = document.createElement('small'); hint.className = 'ttm-network-hint'; info.appendChild(hint);
+        var ssids=document.createElement('details'); ssids.className='ttm-network-ssids';
+        ssids.appendChild(document.createElement('summary')); ssids.appendChild(document.createElement('ul'));
+        info.appendChild(ssids); row.appendChild(info);
         var box = document.createElement('div'), name = document.createElement('label'), sources = document.createElement('textarea');
         sources.id = 'ttm-network-' + index + '-sources'; sources.className = 'ttm-cidrs'; sources.spellcheck = false;
         sources.value = (network.sources || []).join('\n'); sources.placeholder = '192.168.50.0/24';
@@ -166,6 +170,11 @@
             row.querySelector('.ttm-selected').disabled=!model.available && !row.querySelector('.ttm-selected').checked;
             row.querySelector('.ttm-cidrs').disabled=!model.available;
             row.querySelector('.ttm-caption').textContent=model.available?networkTitle(network):'Сохранённая сеть недоступна';
+            var names=model.available && Array.isArray(network.ssids)?network.ssids:[], details=row.querySelector('.ttm-network-ssids');
+            details.hidden=names.length<2;
+            details.querySelector('summary').textContent='Wi-Fi в этой подсети ('+names.length+')';
+            var list=details.querySelector('ul'); list.textContent='';
+            names.forEach(function (ssid) { var item=document.createElement('li'); item.textContent=ssid; list.appendChild(item); });
             row.querySelector('.ttm-network-hint').textContent=!model.available?'Сеть исчезла или её состав изменился. Обновите данные перед сохранением.':
                 (Array.isArray(network.ssids)&&network.ssids.length>1?'Эти SSID используют одну сеть и выбираются вместе.':
                 (network.ssids&&network.ssids.length?'Сетевое подключение определено роутером.':'Имя Wi-Fi получить не удалось. Сеть можно определить по её подсети.'));
@@ -205,13 +214,21 @@
             catch (_) { controls(false); message('Не удалось прочитать статус. Проверьте контроллер по SSH.',true); } };
         request.onerror = request.ontimeout = function () { controls(false); message('Нет актуального статуса роутера.',true); }; request.send();
     }
-    function wire(command) {
+    async function wire(command) {
         if (!/^start_ttm_[a-z0-9_]+$/.test(command)||command.length>127) throw new Error('Некорректная команда.');
         var form = document.forms.ttm_form;
         form.elements.amng_custom.disabled=true; form.elements.amng_custom.value='';
         form.elements.action_script.value=command;
         form.elements.current_page.value = form.elements.next_page.value = location.pathname.substring(1);
-        form.submit();
+        // start_apply.htm contains parent-navigation scripts. Consume its HTML
+        // as inert data, never load it in an iframe during a multipart transfer.
+        var controller=new AbortController(), timer=root.setTimeout(function () { controller.abort(); },15000);
+        try {
+            var response=await root.fetch(form.getAttribute('action'),{method:'POST',
+                credentials:'same-origin',body:new URLSearchParams(new FormData(form)),signal:controller.signal});
+            if (!response.ok) throw new Error('Merlin отклонил запрос. Проверьте сессию WebUI.');
+            await response.text();
+        } finally { root.clearTimeout(timer); }
     }
     function delay(ms) { return new Promise(function (resolve) { root.setTimeout(resolve,ms); }); }
     async function poll(file,check,timeout) {
@@ -243,18 +260,18 @@
         await busy(async function () {
             var id=root.TTMTransfer.id(root.crypto), envelope={version:1,revision:editRevision,kind:kind,data:data};
             try {
-            var count=root.TTMTransfer.count(envelope); wire('start_ttm_begin_'+id+'_'+count);
+            var count=root.TTMTransfer.count(envelope); await wire('start_ttm_begin_'+id+'_'+count);
             var state=await poll('transfer',function (s) { return s.id===id&&s.state==='receiving'; },30000);
             var parts=await root.TTMTransfer.encrypt(envelope,id,state.public_key,root.crypto);
             for (var i=0;i<parts.length;i++) {
                 message('Передача конфигурации: '+Math.round(i/parts.length*100)+'%.',false);
-                wire(root.TTMTransfer.event(id,i,parts[i]));
+                await wire(root.TTMTransfer.event(id,i,parts[i]));
                 await poll('transfer',function (s) { return s.id===id && s.next===i+1; },20000);
             }
-            wire('start_ttm_commit_'+id); await waitOperation(id);
+            await wire('start_ttm_commit_'+id); await waitOperation(id);
             delete dirty[kind]; editRevision=(latest.operations.find(function (op) { return op.id===id; })||{}).revision||latest.revision; updateDirty();
             if (kind==='endpoint') root.ttmClearConnection();
-            } catch(e) { wire('start_ttm_abort_'+id); throw e; }
+            } catch(e) { try { await wire('start_ttm_abort_'+id); } catch (_) { /* Preserve the original error. */ } throw e; }
         });
     }
     root.ttmSaveEndpoint=async function () { try { await save('endpoint',readEndpoint()); } catch(e) { message(e.message,true); } };
@@ -263,12 +280,12 @@
         if (action==='policy') { await save('policy',policy()); return; }
         if (['start','pause','restart','disable','diagnostics'].indexOf(action)<0) throw new Error('Неизвестное действие');
         if (root.TTM_PREVIEW) { message('Демонстрация: команда не отправлена на роутер.',false); return; }
-        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); wire('start_ttm_do_'+id+'_'+action); await waitOperation(id); });
+        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); await wire('start_ttm_do_'+id+'_'+action); await waitOperation(id); });
     } catch(e) { message(e.message,true); } };
     root.ttmTransaction=async function (action) { try {
         if (['confirm','rollback'].indexOf(action)<0||!latest.transaction) return;
         if (root.TTM_PREVIEW) { message('Демонстрация: подтверждение не отправлено.',false); return; }
-        await busy(async function () { wire('start_ttm_'+action+'_'+latest.transaction.id);
+        await busy(async function () { await wire('start_ttm_'+action+'_'+latest.transaction.id);
             await poll('status',function (s) { return !s.transaction; },90000); message('Транзакция завершена.',false);
         });
     } catch(e) { message(e.message,true); } };

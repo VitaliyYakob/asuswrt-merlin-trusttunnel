@@ -58,6 +58,7 @@ test_explicit_virtual_interface_alias_is_resolved (test_network_inventory.Networ
 test_failed_nvram_read_is_not_published_as_an_ssid (test_network_inventory.NetworkInventoryTests.test_failed_nvram_read_is_not_published_as_an_ssid) ... ok
 test_identity_survives_ssid_rename_but_changes_with_bridge_members (test_network_inventory.NetworkInventoryTests.test_identity_survives_ssid_rename_but_changes_with_bridge_members) ... ok
 test_parser_ignores_malformed_addresses_and_deduplicates_networks (test_network_inventory.NetworkInventoryTests.test_parser_ignores_malformed_addresses_and_deduplicates_networks) ... ok
+test_primary_ssid_precedes_virtual_and_disabled_members_are_omitted (test_network_inventory.NetworkInventoryTests.test_primary_ssid_precedes_virtual_and_disabled_members_are_omitted) ... ok
 test_sandbox_does_not_run_ip_or_nvram (test_network_inventory.NetworkInventoryTests.test_sandbox_does_not_run_ip_or_nvram) ... ok
 test_ssid_json_preserves_quotes_unicode_and_newlines (test_network_inventory.NetworkInventoryTests.test_ssid_json_preserves_quotes_unicode_and_newlines) ... ok
 test_ssids_match_actual_bridge_members_instead_of_bridge_number (test_network_inventory.NetworkInventoryTests.test_ssids_match_actual_bridge_members_instead_of_bridge_number) ... ok
@@ -144,7 +145,7 @@ test_invalid_hostnames_and_ipv4_are_rejected_from_ssh (test_validation_boundarie
 test_rejects_concatenated_json_instead_of_accepting_last (test_validation_boundaries.ValidationBoundaries.test_rejects_concatenated_json_instead_of_accepting_last) ... ok
 
 ----------------------------------------------------------------------
-Ran 143 tests in 110.303s
+Ran 144 tests in 110.926s
 
 OK
 node --check addon/web/trusttunnel.js
