@@ -8,9 +8,9 @@ def ipv4:
   end;
 def private_cidr:
   if type != "string" or (test("^[0-9.]+/[0-9]{1,2}$")|not) then false else
-    split("/") as $p | ($p[0]|ipv4) and
-    ($p[1]|tonumber) as $n | $n >= 8 and $n <= 32 and
+    split("/") as $p | ($p[1]|tonumber) as $n |
     ($p[0]|split(".")|map(tonumber)) as $o |
+    ($p[0]|ipv4) and $n >= 8 and $n <= 32 and
     (($o[0]==10 and $n>=8) or ($o[0]==172 and $o[1]>=16 and $o[1]<=31 and $n>=12) or
      ($o[0]==192 and $o[1]==168 and $n>=16)) and
     (((($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]) / pow(2;32-$n))|floor)*pow(2;32-$n)
@@ -31,9 +31,9 @@ def port:
   type=="string" and test("^[0-9]{1,5}$") and (tonumber)>=1 and (tonumber)<=65535;
 def public_cidr:
   if type != "string" or (test("^[0-9.]+/(0|[1-9]|[12][0-9]|3[0-2])$")|not) then false else
-    split("/") as $p | ($p[0]|ipv4) and
-    ($p[1]|tonumber) as $n | $n >= 0 and $n <= 32 and
+    split("/") as $p | ($p[1]|tonumber) as $n |
     ($p[0]|split(".")|map(tonumber)) as $o |
+    ($p[0]|ipv4) and $n >= 0 and $n <= 32 and
     (((($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]) / pow(2;32-$n))|floor)*pow(2;32-$n)
       == ($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]))
   end;

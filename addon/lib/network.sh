@@ -71,6 +71,21 @@ tt_execute_plan() {
             remove)
                 # Missing objects are expected on repeated cleanup. Final disarm is audited below.
                 tt_run_argv "$TT_OP" >/dev/null 2>&1 || :;;
+            flush-flows)
+                TT_FLUSH_BRIDGES=$(printf '%s' "$TT_OP" | jq -er '.interfaces[]') || { TT_PLAN_OK=0; break; }
+                for TT_FLUSH_BRIDGE in $TT_FLUSH_BRIDGES; do
+                    printf '%s' "$TT_FLUSH_BRIDGE" | grep -Eq '^br[0-9]+(\.[0-9]+)?$' || { TT_PLAN_OK=0; break; }
+                    # Flush only selected bridges and their physical members. No
+                    # global fc/conntrack flush and no acceleration mode changes.
+                    for TT_FLUSH_PATH in "$TT_SYS/class/net/$TT_FLUSH_BRIDGE" "$TT_SYS/class/net/$TT_FLUSH_BRIDGE"/brif/*; do
+                        [ -e "$TT_FLUSH_PATH" ] || [ "$TT_FLUSH_PATH" = "$TT_SYS/class/net/$TT_FLUSH_BRIDGE" ] || continue
+                        TT_FLUSH_IF=${TT_FLUSH_PATH##*/}
+                        printf '%s' "$TT_FLUSH_IF" | grep -Eq '^[a-zA-Z0-9_.:-]{1,15}$' || { TT_PLAN_OK=0; break; }
+                        env fc flush --if "$TT_FLUSH_IF" >/dev/null 2>&1 || { TT_PLAN_OK=0; break; }
+                    done
+                    [ "$TT_PLAN_OK" = 1 ] || break
+                done
+                if [ "$TT_PLAN_OK" != 1 ]; then TT_FAILURE_CODE=offload_flush_failed; break; fi;;
             rule) tt_rule "$TT_OP" || { TT_PLAN_OK=0; break; };;
             restore)
                 TT_PROGRAM=$(printf '%s' "$TT_OP" | jq -r .program)

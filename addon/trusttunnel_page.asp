@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/user/trusttunnel/trusttunnel.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.4"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.4"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.4"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.5"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.5"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.5"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,8 +23,8 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.4</span></div>
-<div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Передача трафика через VPN ещё не проверена. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.5</span></div>
+<div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
 <button role="tab" type="button" data-view-button="connection" onclick="ttmView('connection')">Подключение</button>
@@ -46,6 +46,7 @@
 <dt>Блокировка обхода VPN</dt><dd id="ttm-guard">—</dd>
 <dt>Ревизия настроек</dt><dd id="ttm-revision">—</dd>
 </dl>
+<p id="ttm-startup" class="ttm-note" role="status" hidden></p>
 <div class="ttm-actions">
 <button type="button" data-runtime onclick="ttmAction('start')" disabled>Запустить</button>
 <button type="button" data-runtime onclick="ttmAction('pause')" disabled>Пауза с блокировкой</button>

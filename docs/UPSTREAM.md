@@ -11,3 +11,8 @@
 Upstream custom_sni поддерживается стабильным кодом; его отклонение в нашем parser — ограничение аддона. tls_profile исследовался как Unreleased, в эту стабильную схему не добавлен. Сторонние исходники и исполняемые файлы в поставку не включены.
 
 - [Merlin 3004.388.12_2 state.js](https://github.com/RMerl/asuswrt-merlin.ng/blob/3004.388.12_2/release/src/router/www/state.js): gn_array каждого радио ограничивается первыми тремя гостевыми слотами, кроме BRT-AC828. Проверено также в /www/state.js настоящего RT-AX86U. Это основание фильтра BSS, а не эвристика по длине SSID. Подсети по-прежнему определяются по активным адресам bridge, не по номеру Wi-Fi слота.
+
+- [CLI reference TrustTunnelClient v1.1.5](https://github.com/TrustTunnel/TrustTunnelClient/blob/v1.1.5/trusttunnel/README.md): отдельный listener.socks.address использован только для ограниченной loopback-пробы связи без системных маршрутов.
+
+- [Merlin 3004.388.12_2 xt_SKIPLOG.c](https://github.com/RMerl/asuswrt-merlin.ng/blob/3004.388.12_2/release/src-rt-5.02L.07p2axhnd/kernel/linux-4.1/net/netfilter/xt_SKIPLOG.c): target вызывает blog_skip для совпавшего пакета, возвращает XT_CONTINUE, family NFPROTO_UNSPEC. На AX86U target есть в IPv4 и IPv6; встроенная справка fc подтверждает flush --if. Это основание выборочной изоляции, но не замена аппаратной проверке утечек/действующих потоков.
+- [Merlin amvpn_routing.c](https://github.com/RMerl/asuswrt-merlin.ng/blob/3004.388.12_2/release/src/router/libovpn/amvpn_routing.c): штатная source-policy маршрутизация VPN; универсальное требование отключить ускорение всего роутера отсюда не следует. Marks сторонних VPN не копируются и не занимаются аддоном.

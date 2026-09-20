@@ -14,7 +14,7 @@ class ExecutorTests(unittest.TestCase):
         self.path=Path(self.tmp.name);(self.path/'fakebin').mkdir();(self.path/'net').mkdir()
         # Copy, don't chmod symlink target in the user's checkout.
         content=(ROOT/'tests/mock_net.py').read_bytes()
-        for name in ['ip','iptables','ip6tables','iptables-restore','ip6tables-restore']:
+        for name in ['fc','ip','iptables','ip6tables','iptables-restore','ip6tables-restore']:
             file=self.path/'fakebin'/name;file.write_bytes(content);file.chmod(0o755)
         self.env=os.environ|{'TT_ROOT':str(self.path/'sandbox'),'TT_MOCK_NET':str(self.path/'net')}
     def execute(self,body,fail=''):
@@ -81,6 +81,35 @@ ip() { if [ "$1" = link ]; then return 0; else command ip "$@"; fi; }
 tt_spawn''')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('871:10',self.state()['routes'])
+    def test_flow_flush_is_scoped_to_selected_bridge_and_members(self):
+        members=self.path/'sandbox/sys/class/net/br1/brif'
+        members.mkdir(parents=True)
+        for name in ('wl0.1','eth1.501'): (members/name).mkdir()
+        (self.path/'sandbox/sys/class/net/br0/bridge').mkdir(parents=True)
+        result=self.execute('tt_claim_resources && tt_run_plan guard "$TT_POLICY"')
+        self.assertEqual(result.returncode,0,result.stderr)
+        calls=[json.loads(line) for line in (self.path/'net/calls.jsonl').read_text().splitlines()]
+        fc=[c['argv'] for c in calls if c['program']=='fc']
+        self.assertEqual(fc,[['flush','--if','br1'],['flush','--if','eth1.501'],['flush','--if','wl0.1']])
+        rules=self.state()['chains']['iptables:filter:TTM4_FWD']
+        self.assertEqual(rules[:2],[['-i','br1','-s','192.168.50.0/24','-j','SKIPLOG'],
+                                   ['-o','br1','-d','192.168.50.0/24','-j','SKIPLOG']])
+        self.assertTrue(all('br0' not in rule for rule in rules))
+        last_restore=max(i for i,c in enumerate(calls) if c['program'].endswith('-restore'))
+        first_fc=next(i for i,c in enumerate(calls) if c['program']=='fc')
+        self.assertGreater(first_fc,last_restore)
+
+    def test_failed_flow_flush_retains_guards_and_reports_fixed_error(self):
+        result=self.execute('''tt_claim_resources && tt_run_plan guard "$TT_POLICY"
+result=$?; printf '%s' "$TT_FAILURE_CODE"; exit "$result"''',fail='fc flush')
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(result.stdout,'offload_flush_failed')
+        state=self.state()
+        self.assertIn('iptables:filter:TTM4_FWD',state['chains'])
+        self.assertEqual(set(state['routes']),{'871:32760'})
+        self.assertEqual(len(state['rules']),1)
+        self.assertTrue((self.path/'sandbox/tmp/trusttunnel/resources-owned').exists())
+
     def test_invalid_plan_not_silently_accepted(self):
         result=self.execute('tt_run_plan INVALID "$TT_POLICY"')
         self.assertNotEqual(result.returncode,0)

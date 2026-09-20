@@ -47,6 +47,8 @@ def filter_command(program,table,items):
     return 2
 
 if os.environ.get('TT_MOCK_FAIL') and os.environ['TT_MOCK_FAIL'] in name+' '+' '.join(args):done(9)
+if name=='fc':
+    done(0 if len(args)==3 and args[:2]==['flush','--if'] else 2)
 if name.endswith('-restore'):
     program=name.removesuffix('-restore');table='filter'
     for line in stdin.splitlines():

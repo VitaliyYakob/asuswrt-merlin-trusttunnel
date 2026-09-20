@@ -1,6 +1,8 @@
 #!/bin/sh
 # shellcheck source=inventory.sh
 . "$TT_BASE/lib/inventory.sh"
+# shellcheck source=compatibility.sh
+. "$TT_BASE/lib/compatibility.sh"
 tt_check_interfaces() {
     if [ "$(jq -r .schema "$TT_POLICY")" -eq 4 ]; then
         TT_CURRENT_NETWORKS=$(tt_discover_networks) || return 1
@@ -37,20 +39,22 @@ tt_check_dns_transit() {
     fi
 }
 tt_preflight() {
+    TT_FAILURE_CODE=
     tt_live || return 1
     for TT_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock sha256sum; do
-        type "$TT_TOOL" >/dev/null 2>&1 || { tt_error "required tool missing: $TT_TOOL"; return 1; }
+        type "$TT_TOOL" >/dev/null 2>&1 || { tt_start_failure missing_dependency 'required runtime tool missing'; return 1; }
     done
-    [ -c /dev/net/tun ] || { tt_error 'TUN device is unavailable'; return 1; }
-    [ -x "$TT_BIN" ] || { tt_error 'install a verified TrustTunnel client binary first'; return 1; }
-    [ "$(cat /proc/sys/net/ipv4/ip_forward)" = 1 ] || { tt_error 'IPv4 forwarding is disabled'; return 1; }
-    tt_validate endpoint "$TT_ENDPOINT" && tt_validate policy "$TT_POLICY" || return 1
-    tt_require_dns && tt_check_dns_transit && tt_check_interfaces || return 1
-    # Lab-only: this acknowledgement does not prove acceleration is actually disabled.
-    # ctf_disable is checked; HND runner/flow-cache verification is a hardware test gate.
-    [ "$(nvram get ctf_disable)" = 1 ] || {
-        tt_error 'disable NAT acceleration for alpha testing (ctf_disable must be 1)'; return 1;
+    tt_validate endpoint "$TT_ENDPOINT" || { tt_start_failure endpoint_missing 'save a valid connection first'; return 1; }
+    tt_validate policy "$TT_POLICY" || { tt_start_failure policy_missing 'select and save routing networks first'; return 1; }
+    [ -x "$TT_BIN" ] || { tt_start_failure client_missing 'install a verified TrustTunnel client binary first'; return 1; }
+    [ "$(cat /proc/sys/net/ipv4/ip_forward)" = 1 ] || { tt_start_failure forwarding_disabled 'IPv4 forwarding is disabled'; return 1; }
+    tt_require_dns || { tt_start_failure dns_missing 'connection has no DNS upstreams'; return 1; }
+    tt_check_dns_transit || { tt_start_failure dns_conflict 'DNS transit address cannot be used'; return 1; }
+    tt_check_interfaces || { tt_start_failure network_changed 'saved network topology is no longer available'; return 1; }
+    tt_selective_offload_supported || {
+        tt_start_failure offload_unavailable 'firmware needs IPv4/IPv6 SKIPLOG and per-interface flow cache control'; return 1;
     }
+    tt_ensure_tun
 }
 tt_stop_process() {
     if tt_pid_matches; then

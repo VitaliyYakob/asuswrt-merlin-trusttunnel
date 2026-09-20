@@ -47,6 +47,8 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
                     else saved=request.data;
                     state.endpoint={configured:true,exclusions:saved.exclusions||[]}; state.revision=state.revision==='0'?'abcdef0123456789':'fedcba9876543210'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
                 transfer={state:'idle'};
+            } else if((match=command.match(/^start_ttm_do_([a-f0-9]{16})_start$/))) {
+                state.operations=[{id:match[1],state:'failed',code:'policy_missing',action:'start',revision:state.revision}];
             } else if(!command.startsWith('start_ttm_abort_')) throw new Error('Unexpected event');
             // Real Merlin redirects the parent from this response. The addon
             // must consume HTML as inert fetch data, not execute an iframe.
@@ -88,8 +90,12 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         await page.waitForFunction(()=>document.getElementById('ttm-message').textContent.includes('другой вкладке'),{},{timeout:60000});
         assert.equal(await page.locator('#ttm-password').inputValue(),endpoint.password);
         assert.equal(await page.locator('#ttm-message').getAttribute('class'),'ttm-error');
+        await page.getByRole('tab',{name:'Обзор',exact:true}).click();
+        await page.getByRole('button',{name:'Запустить',exact:true}).click();
+        await page.waitForFunction(()=>document.getElementById('ttm-message').textContent.includes('Выберите сети'),{},{timeout:30000});
+        assert.equal(await page.locator('#ttm-message').getAttribute('class'),'ttm-error');
         assert.deepEqual(errors,[]);
         assert.ok(!(JSON.stringify(state)+JSON.stringify(commands)).includes(endpoint.password));
-        console.log('PASS: HTTPS browser file import → encrypted native events → acknowledged save; no plaintext credentials in form/status; successful save clears secrets; exclusions-only save and reload preserve credentials/DNS; stale revision preserves input and shows failure. Merlin HTTP/authentication NOT TESTED.');
+        console.log('PASS: HTTPS browser file import → encrypted native events → acknowledged save; no plaintext credentials in form/status; successful save clears secrets; exclusions-only save and reload preserve credentials/DNS; stale revision preserves input and shows failure. startup policy error is actionable. Merlin HTTP/authentication NOT TESTED.');
     } finally { await context.close(); await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

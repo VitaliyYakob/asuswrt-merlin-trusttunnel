@@ -62,11 +62,12 @@
         initialized=false; dirty={}; editRevision=null; root.ttmClearConnection(); updateDirty(); refresh();
     };
     function text(id, value) { el(id).textContent = String(value); }
+    var startErrors={endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
     function operationLabel(op) {
         var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
         var codes={confirmation_required:'нужно подтверждение',revision_conflict:'настройки изменены в другой вкладке',transaction_pending:'сначала завершите пробное применение',invalid_configuration:'некорректная конфигурация',apply_failed:'не удалось применить',action_failed:'не удалось выполнить'};
-        return (actions[op.action]||'Операция')+' · '+(codes[op.code]||states[op.state]||'результат неизвестен');
+        return (actions[op.action]||'Операция')+' · '+(startErrors[op.code]||codes[op.code]||states[op.state]||'результат неизвестен');
     }
     function message(value, error, target) { target = target || 'ttm-message'; text(target,value); el(target).className = error ? 'ttm-error' : 'ttm-note'; }
     function controls(ok) {
@@ -204,6 +205,9 @@
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
         text('ttm-revision',status.revision||'0');
         text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Правила присутствуют; прохождение пакетов не проверено',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
+        var startup=(status.diagnostics||{}).startup;
+        text('ttm-startup',startup ? (startup.blockers||[]).map(function (code) { return startErrors[code]||code; }).concat((startup.notes||[]).includes('tun_load_on_start')?['TUN будет загружен автоматически при запуске.']:[]).join(' ') : '');
+        el('ttm-startup').hidden=!el('ttm-startup').textContent;
         text('ttm-diagnostics',JSON.stringify(status.diagnostics||{hardware_tested:false},null,2));
         el('ttm-transaction').hidden=!status.transaction;
         if (status.transaction) text('ttm-transaction-state',status.transaction.phase==='trial' ?
@@ -252,7 +256,7 @@
     async function waitOperation(id) {
         var status=await poll('status',function (s) { return (s.operations||[]).some(function (op) { return op.id===id && op.state!=='running'; }); },90000);
         var op=status.operations.find(function (item) { return item.id===id; });
-        if (op.state!=='succeeded') throw new Error(op.code==='revision_conflict'?'Настройки изменены в другой вкладке. Обновите данные перед сохранением.':'Операция завершилась ошибкой: '+op.code);
+        if (op.state!=='succeeded') throw new Error(op.code==='revision_conflict'?'Настройки изменены в другой вкладке. Обновите данные перед сохранением.':startErrors[op.code]||'Операция завершилась ошибкой: '+op.code);
         message(op.code==='confirmation_required'?'Настройки применены временно. Проверьте доступ и подтвердите применение.':'Операция выполнена.',false); return op;
     }
     async function busy(task) {

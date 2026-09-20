@@ -1,7 +1,7 @@
 #!/bin/sh
 # Filesystem overrides are for offline development, never for live networking.
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-TT_VERSION=0.3.1-alpha.4
+TT_VERSION=0.3.1-alpha.5
 TT_ROOT=${TT_ROOT:-}
 TT_CONFIG="$TT_ROOT/jffs/addons/trusttunnel/config"
 TT_RUN="$TT_ROOT/tmp/trusttunnel"

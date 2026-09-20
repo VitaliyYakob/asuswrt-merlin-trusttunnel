@@ -9,14 +9,16 @@ if $mode=="remove" then [
     hook("detach";"ip6tables";"FORWARD";"TTM6_TXN"),hook("detach";"ip6tables";"INPUT";"TTM6_TXNI")]
 else [
     restore("iptables-restore";["*filter",":TTM4_TXN - [0:0]",":TTM4_TXNI - [0:0]","-F TTM4_TXN","-F TTM4_TXNI"]+
+        [$union[]|"-A TTM4_TXN -i \(.lan_if) -s \(.source) -j SKIPLOG", "-A TTM4_TXN -o \(.lan_if) -d \(.source) -j SKIPLOG"]+
         (if $mode=="trial" then [$new|nets[] as $n|$n.sources[]|"-A TTM4_TXN -i \($n.lan_if) -s \(.) -j RETURN"] else [] end)+
         [$union[]|"-A TTM4_TXN -i \(.lan_if) -s \(.source) -j REJECT",
           "-A TTM4_TXNI -i \(.lan_if) -s \(.source) -p udp --dport 53 -j REJECT",
           "-A TTM4_TXNI -i \(.lan_if) -s \(.source) -p tcp --dport 53 -j REJECT"]+["COMMIT"]),
     hook("jump";"iptables";"FORWARD";"TTM4_TXN"),hook("jump";"iptables";"INPUT";"TTM4_TXNI"),
     restore("ip6tables-restore";["*filter",":TTM6_TXN - [0:0]",":TTM6_TXNI - [0:0]","-F TTM6_TXN","-F TTM6_TXNI"]+
-        [$union|map(.lan_if)|unique[]|"-A TTM6_TXN -i \(.) -j REJECT",
+        [$union|map(.lan_if)|unique[]|"-A TTM6_TXN -i \(.) -j SKIPLOG", "-A TTM6_TXN -o \(.) -j SKIPLOG", "-A TTM6_TXN -i \(.) -j REJECT",
           "-A TTM6_TXNI -i \(.) -p udp --dport 53 -j REJECT",
           "-A TTM6_TXNI -i \(.) -p tcp --dport 53 -j REJECT"]+["COMMIT"]),
-    hook("jump";"ip6tables";"FORWARD";"TTM6_TXN"),hook("jump";"ip6tables";"INPUT";"TTM6_TXNI")]
+    hook("jump";"ip6tables";"FORWARD";"TTM6_TXN"),hook("jump";"ip6tables";"INPUT";"TTM6_TXNI"),
+    {op:"flush-flows",interfaces:($union|map(.lan_if)|unique)}]
 end

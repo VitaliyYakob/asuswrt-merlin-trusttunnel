@@ -46,7 +46,7 @@ tt_wire_dispatch() {
             tt_operation_begin "$TT_WIRE_ID" "$TT_WIRE_ACTION"; TT_WIRE_RESULT=$?
             [ "$TT_WIRE_RESULT" -ne 2 ] || return 0
             [ "$TT_WIRE_RESULT" -eq 0 ] || return 1
-            TT_WIRE_RESULT=0
+            TT_WIRE_RESULT=0; TT_FAILURE_CODE=
             if [ -f "$TT_CONFIG/transaction/manifest.json" ] && [ "$TT_WIRE_ACTION" != diagnostics ]; then
                 tt_operation_write failed transaction_pending; return 1
             fi
@@ -58,7 +58,13 @@ tt_wire_dispatch() {
                 diagnostics) tt_diagnostics >"$TT_RUN/diagnostics.json" || TT_WIRE_RESULT=$?;;
             esac
             if [ "$TT_WIRE_RESULT" -eq 0 ]; then tt_operation_write succeeded completed
-            else tt_operation_write failed action_failed; fi
+            else
+                case "$TT_FAILURE_CODE" in
+                    endpoint_missing|policy_missing|client_missing|forwarding_disabled|dns_missing|dns_conflict|network_changed|offload_unavailable|offload_flush_failed|tun_unavailable|missing_dependency) TT_WIRE_CODE=$TT_FAILURE_CODE;;
+                    *) TT_WIRE_CODE=action_failed;;
+                esac
+                tt_operation_write failed "$TT_WIRE_CODE"
+            fi
             return "$TT_WIRE_RESULT";;
         *) return 1;;
     esac

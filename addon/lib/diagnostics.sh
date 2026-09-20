@@ -1,4 +1,6 @@
 #!/bin/sh
+# shellcheck source=compatibility.sh
+. "$TT_BASE/lib/compatibility.sh"
 # Read-only inventory. No packet probes or writes to router network configuration.
 tt_client_inventory() {
     TT_LEASES="$TT_ROOT/var/lib/misc/dnsmasq.leases"
@@ -44,12 +46,13 @@ $(jq -nc --arg name "$TT_DIAG_TOOL" --argjson available "$TT_DIAG_OK" '{name:$na
             TT_DIAG_ACCEL=$(nvram get ctf_disable)
         fi
     fi
+    TT_DIAG_READINESS=$(tt_start_readiness) || TT_DIAG_READINESS=null
     printf '%s\n' "$TT_DIAG_TOOLS" | jq -s --arg model "$TT_DIAG_MODEL" --arg arch "$TT_DIAG_ARCH" \
         --arg firmware "$TT_DIAG_FW" --arg acceleration "$TT_DIAG_ACCEL" --arg guard "$(tt_guard_state)" \
-        --arg version "$TT_VERSION" --arg revision "$(tt_revision)" --argjson retry "$TT_DIAG_RETRY" \
+        --argjson startup "$TT_DIAG_READINESS" --arg version "$TT_VERSION" --arg revision "$(tt_revision)" --argjson retry "$TT_DIAG_RETRY" \
         --argjson earlier_rules "$TT_DIAG_EARLIER" --argjson binary_present "$TT_DIAG_BINARY" --arg hash "$TT_DIAG_HASH" \
         '{schema:1,addon_version:$version,revision:$revision,model:$model,architecture:$arch,
-          firmware:$firmware,tools:.,guard:$guard,ctf_disable:$acceleration,
+          firmware:$firmware,tools:.,startup:$startup,guard:$guard,ctf_disable:$acceleration,
           hnd_acceleration_verified:false,packet_path_verified:false,
           browser_transport_hardware_verified:false,client_version_target:"1.1.5",retry:$retry,
           earlier_ipv4_rules:$earlier_rules,client_binary_present:$binary_present,recorded_binary_sha256:$hash}'

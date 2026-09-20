@@ -35,6 +35,7 @@ nvram get jffs2_scripts
 nvram get ctf_disable
 nvram get fc_disable
 nvram get runner_disable
+fc status
 ip -4 addr show
 ip -4 rule show
 ip -4 route show table main

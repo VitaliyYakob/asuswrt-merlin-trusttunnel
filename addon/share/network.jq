@@ -14,12 +14,13 @@ def restore($program;$lines): {op:"restore",program:$program,stdin:(($lines|join
 [$p.networks[] as $network | $network.sources[] | {source:.,interface:$network.lan_if}] as $rules |
 if $action=="guard" then [
   restore("ip6tables-restore"; ["*filter",":TTM6_FWD - [0:0]",":TTM6_IN - [0:0]","-F TTM6_FWD","-F TTM6_IN"] +
-    [$p.networks[] | "-A TTM6_FWD -i \(.lan_if) -j REJECT",
+    [$p.networks[] | "-A TTM6_FWD -i \(.lan_if) -j SKIPLOG", "-A TTM6_FWD -o \(.lan_if) -j SKIPLOG", "-A TTM6_FWD -i \(.lan_if) -j REJECT",
       "-A TTM6_IN -i \(.lan_if) -p udp --dport 53 -j REJECT",
       "-A TTM6_IN -i \(.lan_if) -p tcp --dport 53 -j REJECT"] + ["COMMIT"]),
   jump("ip6tables";"filter";"FORWARD";"TTM6_FWD"),
   jump("ip6tables";"filter";"INPUT";"TTM6_IN"),
   restore("iptables-restore"; ["*filter",":TTM4_FWD - [0:0]","-F TTM4_FWD"] +
+    [$rules[] | "-A TTM4_FWD -i \(.interface) -s \(.source) -j SKIPLOG", "-A TTM4_FWD -o \(.interface) -d \(.source) -j SKIPLOG"] +
     [$rules[] as $r | $p.local_access[]? |
       "-A TTM4_FWD -i \($r.interface) -s \($r.source) -d \(.destination) -o \(.lan_if) -j RETURN"] +
     [$rules[] | "-A TTM4_FWD -i \(.interface) -s \(.source) -o tt0 -j ACCEPT",
@@ -33,7 +34,7 @@ if $action=="guard" then [
   jump("iptables";"nat";"PREROUTING";"TTM4_DNS"), jump("iptables";"nat";"POSTROUTING";"TTM4_SNAT"),
   cmd(["ip","-4","route","replace","prohibit","default","table",($p.table|tostring),"metric","32760"])
 ] + [$p.local_access[]? | cmd(["ip","-4","route","replace",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] +
-    [$rules|to_entries[] | {op:"rule",priority:($p.priority+.key),source:.value.source,interface:.value.interface,table:$p.table}]
+    [$rules|to_entries[] | {op:"rule",priority:($p.priority+.key),source:.value.source,interface:.value.interface,table:$p.table}] + [{op:"flush-flows",interfaces:([$p.networks[].lan_if]|unique)}]
 elif $action=="up" then [cmd(["ip","-4","route","replace","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="down" then [remove(["ip","-4","route","del","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="disarm" then
