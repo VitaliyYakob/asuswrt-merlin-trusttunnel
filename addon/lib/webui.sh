@@ -6,6 +6,12 @@ tt_hook_edit() {
     mkdir -p "$TT_HOOK_DIR" "$TT_CONFIG/hook-backups" || return 1
     TT_HOOK_FILE="$TT_HOOK_DIR/$TT_HOOK_NAME"
     [ ! -L "$TT_HOOK_FILE" ] || { tt_error 'refusing to rewrite a symlinked hook'; return 1; }
+    if [ "$TT_HOOK_MODE" = remove ]; then
+        [ -f "$TT_HOOK_FILE" ] || return 0
+        grep -qE '^# (BEGIN|END) trusttunnel-merlin$' "$TT_HOOK_FILE" || return 0
+    elif [ ! -e "$TT_HOOK_FILE" ]; then
+        mkdir -p "$TT_CONFIG/hook-created" && : >"$TT_CONFIG/hook-created/$TT_HOOK_NAME" || return 1
+    fi
     TT_HOOK_TMP=$(mktemp "$TT_HOOK_DIR/.ttm-hook.XXXXXX") || return 1
     TT_HOOK_BODY=$(mktemp "$TT_RUN/hook-body.XXXXXX") || return 1
     case "$TT_HOOK_NAME" in
@@ -22,8 +28,15 @@ tt_hook_edit() {
             return 1
         fi
     fi
+    if [ "$TT_HOOK_MODE" = remove ]; then
+        cp -p "$TT_HOOK_FILE" "$TT_HOOK_TMP" || { rm -f "$TT_HOOK_BODY" "$TT_HOOK_TMP"; return 1; }
+    else chmod 755 "$TT_HOOK_TMP" || return 1; fi
     if awk -v mode="$TT_HOOK_MODE" -v bodyfile="$TT_HOOK_BODY" -f "$TT_BASE/share/hooks.awk" "$TT_HOOK_SOURCE" >"$TT_HOOK_TMP" &&
-        sh -n "$TT_HOOK_TMP" && chmod 755 "$TT_HOOK_TMP" && mv -f "$TT_HOOK_TMP" "$TT_HOOK_FILE"; then
+        sh -n "$TT_HOOK_TMP" && mv -f "$TT_HOOK_TMP" "$TT_HOOK_FILE"; then
+        if [ "$TT_HOOK_MODE" = remove ] && [ -f "$TT_CONFIG/hook-created/$TT_HOOK_NAME" ] &&
+            [ "$(cat "$TT_HOOK_FILE")" = '#!/bin/sh' ]; then
+            rm -f "$TT_HOOK_FILE" || return 1
+        fi
         rm -f "$TT_HOOK_BODY"; return 0
     fi
     rm -f "$TT_HOOK_BODY" "$TT_HOOK_TMP"
@@ -86,10 +99,13 @@ tt_mount_ui() {
 }
 tt_unmount_ui() {
     tt_menu remove || return 1
-    for TT_CANDIDATE in /www/user/user*.asp; do
+    for TT_CANDIDATE in "$TT_ROOT"/www/user/user*.asp; do
         [ -f "$TT_CANDIDATE" ] || continue
-        if grep -qF '<!-- trusttunnel-merlin-page-v1 -->' "$TT_CANDIDATE"; then rm -f "$TT_CANDIDATE"; fi
+        if grep -qF '<!-- trusttunnel-merlin-page-v1 -->' "$TT_CANDIDATE"; then
+            [ ! -L "$TT_CANDIDATE" ] || return 1
+            rm -f "$TT_CANDIDATE" || return 1
+        fi
     done
-    rm -f "$TT_PUBLIC/status.json" "$TT_PUBLIC/transfer.json" "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css"
+    rm -f "$TT_PUBLIC/status.json" "$TT_PUBLIC/transfer.json" "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css" || return 1
     rmdir "$TT_PUBLIC" 2>/dev/null || :
 }

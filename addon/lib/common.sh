@@ -1,7 +1,7 @@
 #!/bin/sh
 # Filesystem overrides are for offline development, never for live networking.
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-TT_VERSION=0.3.1-alpha.5
+TT_VERSION=0.3.1-alpha.6
 TT_ROOT=${TT_ROOT:-}
 TT_CONFIG="$TT_ROOT/jffs/addons/trusttunnel/config"
 TT_RUN="$TT_ROOT/tmp/trusttunnel"
@@ -28,10 +28,13 @@ tt_dirs() {
     chmod 700 "$TT_CONFIG" "$TT_RUN" || return 1
 }
 tt_lock() {
+    [ -f "$TT_BASE/trusttunnel.sh" ] || { tt_error 'controller was uninstalled'; return 1; }
     tt_dirs || return 1
     type flock >/dev/null 2>&1 || { tt_error 'flock is required'; return 1; }
     exec 9>"$TT_RUN/control.lock"
     flock -w 20 9 || { tt_error 'controller is busy'; return 1; }
+    # A queued action must not resurrect files after a completed purge.
+    [ -f "$TT_BASE/trusttunnel.sh" ] || { tt_error 'controller was uninstalled'; return 1; }
 }
 tt_live() {
     [ -z "$TT_ROOT" ] || { tt_error 'live actions are prohibited with TT_ROOT'; return 1; }

@@ -17,19 +17,23 @@ TT_BASE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
 . "$TT_BASE/lib/transfer.sh"
 # shellcheck source=lib/diagnostics.sh
 . "$TT_BASE/lib/diagnostics.sh"
+# shellcheck source=lib/uninstall.sh
+. "$TT_BASE/lib/uninstall.sh"
 
 TT_ACTION=${1:-help}
 [ "$#" -eq 0 ] || shift
 case "$TT_ACTION" in
     help|--help)
         cat <<'HELP'
-TrustTunnel Merlin 0.3.1-alpha.5
+TrustTunnel Merlin 0.3.1-alpha.6
 Offline (never changes networking):
   validate endpoint|policy FILE
   render ENDPOINT_JSON           # contains credentials; protect redirected output
   plan guard|up|down|disarm POLICY_JSON
   status
   diagnostics                    # allowlisted compatibility report, no credentials
+  uninstall-plan                 # read-only inventory of removal scope
+  uninstall keep|purge --confirm-release-traffic [--confirm-delete-data]
 Configuration (TT_ROOT supported for a sandbox):
   import-endpoint FILE
   import-policy FILE             # changes require explicit disable first
@@ -47,6 +51,13 @@ HELP
     plan) [ "$#" -eq 2 ] || tt_die 'usage: plan ACTION POLICY_JSON'; tt_plan "$1" "$2"; exit $?;;
     status) tt_status; exit $?;;
     diagnostics) tt_diagnostics; exit $?;;
+    uninstall-plan) tt_uninstall_plan; exit $?;;
+    uninstall)
+        if [ "$#" -eq 2 ] && [ "$1" = keep ] && [ "$2" = --confirm-release-traffic ]; then :
+        elif [ "$#" -eq 3 ] && [ "$1" = purge ] && [ "$2" = --confirm-release-traffic ] && [ "$3" = --confirm-delete-data ]; then :
+        else tt_die 'explicit uninstall mode and confirmations required'; fi
+        tt_live && tt_lock || exit 1
+        tt_uninstall "$1"; exit $?;;
     transfer-event)
         [ "$#" -eq 1 ] || exit 1
         tt_live && tt_lock || exit 1

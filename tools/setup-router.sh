@@ -34,6 +34,7 @@ SRC=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 umask 077
 WORK="/opt/ttm-setup-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -m 700 "$WORK"
+printf '%s\n' trusttunnel-merlin-staging-v1 >"$WORK/.trusttunnel-owned"
 printf 'Installation record: %s\n' "$WORK"
 opkg list-installed >"$WORK/packages.before"
 # Install only missing utilities. Do not run an Entware-wide upgrade.

@@ -19,7 +19,7 @@ tt_backup_install() {
     TT_INSTALL_DEST=$1; TT_INSTALL_INIT=$2
     TT_INSTALL_BACKUP=
     TT_INSTALL_HAS_FILES=0
-    for TT_INSTALL_ITEM in lib share web trusttunnel.sh trusttunnel_page.asp config/LAB_ONLY_ACKNOWLEDGED; do
+    for TT_INSTALL_ITEM in lib share web trusttunnel.sh trusttunnel_page.asp uninstall.sh .trusttunnel-owned config/LAB_ONLY_ACKNOWLEDGED; do
         [ ! -L "$TT_INSTALL_DEST/$TT_INSTALL_ITEM" ] || {
             tt_error 'refusing a symlinked installation target'; return 1;
         }
@@ -33,7 +33,7 @@ tt_backup_install() {
     chmod 700 "$TT_INSTALL_DEST/install-backups" || return 1
     TT_INSTALL_BACKUP=$(mktemp -d "$TT_INSTALL_DEST/install-backups/install-$(date +%Y%m%d-%H%M%S).XXXXXX") || return 1
     chmod 700 "$TT_INSTALL_BACKUP" || return 1
-    for TT_INSTALL_ITEM in lib share web trusttunnel.sh trusttunnel_page.asp; do
+    for TT_INSTALL_ITEM in lib share web trusttunnel.sh trusttunnel_page.asp uninstall.sh .trusttunnel-owned; do
         [ ! -e "$TT_INSTALL_DEST/$TT_INSTALL_ITEM" ] || cp -Rp "$TT_INSTALL_DEST/$TT_INSTALL_ITEM" "$TT_INSTALL_BACKUP/" || return 1
     done
     if [ -f "$TT_INSTALL_DEST/config/LAB_ONLY_ACKNOWLEDGED" ]; then

@@ -1,6 +1,6 @@
 # TrustTunnel для ASUSWRT-Merlin
 
-**0.3.1-alpha.5 · ASUS RT-AX86U / ARM64 / Entware · первый тест гостевого VPN пройден; полная аппаратная приёмка продолжается.**
+**0.3.1-alpha.6 · ASUS RT-AX86U / ARM64 / Entware · первый тест гостевого VPN пройден; полная аппаратная приёмка продолжается.**
 
 Нативная страница **VPN → TrustTunnel** с настройкой подключения и выбором домашних сетей для VPN. На роутере используется штатный WebUI Merlin и shell-контроллер; отдельного web-сервера, Node.js или Python на роутере нет.
 
@@ -108,9 +108,13 @@ rm /tmp/trusttunnel-endpoint.json
 ```sh
 # Вернуть обычную маршрутизацию, сняв собственные правила аддона:
 /jffs/addons/trusttunnel/trusttunnel.sh disable
-# Снять страницу, hooks и init (сохранив конфигурацию и бинарник):
-sh uninstall.sh --confirm-release-traffic
+# Сначала посмотреть состав удаления:
+sh /jffs/addons/trusttunnel/uninstall.sh --dry-run
+# Снять интеграцию, сохранив конфигурацию и бинарник:
+sh /jffs/addons/trusttunnel/uninstall.sh --keep-config --confirm-release-traffic
 ```
+
+Полное удаление приватных настроек, кода и клиента: [UNINSTALL.md](docs/UNINSTALL.md). По умолчанию uninstaller ничего не удаляет.
 
 При импорте старые политики schema1/2 преобразуются в schema3; устаревший `dns_ipv4` удаляется, а исходный файл сохраняется в `.previous`. Schema4 сохраняется без понижения. Обычный импорт включённой политики запрещён; новый веб-канал использует отдельную транзакцию.
 

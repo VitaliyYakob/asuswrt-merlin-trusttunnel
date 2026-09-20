@@ -26,6 +26,8 @@ tt_backup_install "$DST" /opt/etc/init.d/S99trusttunnel
 # Preserve private configuration across reinstall. No rm -rf on shared paths.
 cp -R "$SRC/addon/lib" "$SRC/addon/share" "$SRC/addon/web" "$DST/"
 cp "$SRC/addon/trusttunnel.sh" "$SRC/addon/trusttunnel_page.asp" "$DST/"
+cp "$SRC/uninstall.sh" "$DST/uninstall.sh"
+printf '%s\n' trusttunnel-merlin-addon-v1 >"$DST/.trusttunnel-owned"
 chmod 755 "$DST/trusttunnel.sh"
 printf '%s\n' 'Laboratory alpha; not a verified leak-prevention product.' >"$DST/config/LAB_ONLY_ACKNOWLEDGED"
 chmod 700 "$DST/config"
