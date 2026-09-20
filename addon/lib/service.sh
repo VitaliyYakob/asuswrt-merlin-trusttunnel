@@ -166,6 +166,10 @@ tt_status() {
     [ ! -r "$TT_SYS/class/net/tt0/statistics/tx_bytes" ] || TT_TX=$(cat "$TT_SYS/class/net/tt0/statistics/tx_bytes")
     TT_HOST=
     [ ! -f "$TT_ENDPOINT" ] || TT_HOST=$(jq -r '.hostname // ""' "$TT_ENDPOINT" 2>/dev/null)
+    TT_PUBLIC_ENDPOINT='{"configured":false,"exclusions":[]}'
+    if [ -f "$TT_ENDPOINT" ] && [ ! -L "$TT_ENDPOINT" ]; then
+        TT_PUBLIC_ENDPOINT=$(jq -c '{configured:true,exclusions:(.exclusions//[])}' "$TT_ENDPOINT" 2>/dev/null) || TT_PUBLIC_ENDPOINT='{"configured":false,"exclusions":[]}'
+    fi
     TT_PUBLIC_POLICY=null
     [ ! -f "$TT_POLICY" ] || TT_PUBLIC_POLICY=$(jq -c . "$TT_POLICY" 2>/dev/null)
     TT_ENABLED_JSON=false
@@ -173,6 +177,7 @@ tt_status() {
     TT_LAST=none
     [ ! -f "$TT_RUN/last-result" ] || TT_LAST=$(cat "$TT_RUN/last-result")
     TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || TT_DISCOVERED_NETWORKS='[]'
+    TT_NETWORK_WARNINGS=$(tt_network_warnings) || TT_NETWORK_WARNINGS='[]'
     TT_STATUS_OPS=$(tt_operations_json) || TT_STATUS_OPS='[]'
     TT_STATUS_TX=null
     if type tt_transaction_state >/dev/null 2>&1; then TT_STATUS_TX=$(tt_transaction_state) || TT_STATUS_TX=null; fi
@@ -184,10 +189,10 @@ tt_status() {
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
         --argjson policy "$TT_PUBLIC_POLICY" --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson timestamp "$(date +%s)" \
         --arg revision "$(tt_revision)" --argjson operations "$TT_STATUS_OPS" --argjson transaction "$TT_STATUS_TX" \
-        --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" \
+        --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" --argjson endpoint "$TT_PUBLIC_ENDPOINT" --argjson network_warnings "$TT_NETWORK_WARNINGS" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
-          interface_up:$interface_up,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,
-          policy:$policy,discovered_networks:$discovered_networks,timestamp:$timestamp,last_result:$last_result,hardware_tested:false,
+          interface_up:$interface_up,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
+          policy:$policy,discovered_networks:$discovered_networks,network_warnings:$network_warnings,timestamp:$timestamp,last_result:$last_result,hardware_tested:false,
           revision:$revision,operations:$operations,transaction:$transaction,clients:$clients,diagnostics:$diagnostics}'
 }
 tt_publish_status() {

@@ -47,7 +47,7 @@ tt_apply_request() {
     [ -f "$TT_REQUEST_FILE" ] && [ ! -L "$TT_REQUEST_FILE" ] && [ "$(wc -c <"$TT_REQUEST_FILE")" -le 65536 ] || return 1
     if ! jq -e -s 'length==1 and (.[0] | type=="object" and
         ((keys-["version","revision","kind","data"])|length)==0 and .version==1 and
-        (.kind=="endpoint" or .kind=="policy") and (.revision|type=="string") and
+        (.kind=="endpoint" or .kind=="policy" or .kind=="exclusions") and (.revision|type=="string") and
         (.data|type=="object"))' "$TT_REQUEST_FILE" >/dev/null 2>&1; then
         tt_error 'invalid save request'; return 1
     fi
@@ -61,14 +61,27 @@ tt_apply_request() {
     fi
     if [ -e "$TT_CONFIG/transaction" ]; then tt_operation_write failed transaction_pending; return 1; fi
     TT_REQUEST_TMP=$(mktemp "$TT_RUN/request-data.XXXXXX") || return 1
-    if ! jq .data "$TT_REQUEST_FILE" >"$TT_REQUEST_TMP" || ! tt_validate "$TT_REQUEST_KIND" "$TT_REQUEST_TMP"; then
+    TT_SAVE_KIND=$TT_REQUEST_KIND
+    if [ "$TT_REQUEST_KIND" = exclusions ]; then
+        # The caller holds the controller lock. Merge only this allowlisted field
+        # into the private endpoint; credentials never travel back to the browser.
+        TT_SAVE_KIND=endpoint
+        if ! tt_validate endpoint "$TT_ENDPOINT" ||
+            ! jq -e '.data | keys==["exclusions"] and (.exclusions|type=="array")' "$TT_REQUEST_FILE" >/dev/null 2>&1 ||
+            ! jq --slurpfile request "$TT_REQUEST_FILE" '.exclusions=$request[0].data.exclusions' "$TT_ENDPOINT" >"$TT_REQUEST_TMP"; then
+            rm -f "$TT_REQUEST_TMP"; tt_operation_write failed invalid_configuration; return 1
+        fi
+    else
+        jq .data "$TT_REQUEST_FILE" >"$TT_REQUEST_TMP" || { rm -f "$TT_REQUEST_TMP"; tt_operation_write failed invalid_configuration; return 1; }
+    fi
+    if ! tt_validate "$TT_SAVE_KIND" "$TT_REQUEST_TMP"; then
         rm -f "$TT_REQUEST_TMP"; tt_operation_write failed invalid_configuration; return 1
     fi
     TT_REQUEST_RESULT=1
     if [ -f "$TT_ENABLED" ]; then
-        tt_transaction_apply "$TT_REQUEST_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
+        tt_transaction_apply "$TT_SAVE_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
     else
-        tt_import "$TT_REQUEST_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
+        tt_import "$TT_SAVE_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
     fi
     rm -f "$TT_REQUEST_TMP"
     if [ "$TT_REQUEST_RESULT" -eq 0 ]; then

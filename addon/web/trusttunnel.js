@@ -51,8 +51,8 @@
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (!root.document) return;
     function el(id) { return document.getElementById(id); }
-    function updateDirty() { text('ttm-dirty',Object.keys(dirty).length?'Есть несохранённые изменения':'Изменения сохранены'); }
-    function markDirty(kind) { if (!Object.keys(dirty).length) editRevision=latest ? latest.revision||'0' : '0'; dirty[kind]=true; updateDirty(); }
+    function updateDirty() { text('ttm-dirty',Object.keys(dirty).length?'Есть несохранённые изменения':'Нет несохранённых изменений'); }
+    function markDirty(kind) { if (!Object.keys(dirty).length) editRevision=latest ? latest.revision||'0' : '0'; dirty[kind]=true; updateDirty(); controls(true); }
     root.ttmView=function (name) {
         document.querySelectorAll('[data-view]').forEach(function (section) { section.hidden=section.dataset.view!==name; });
         document.querySelectorAll('[data-view-button]').forEach(function (button) { button.setAttribute('aria-selected',String(button.dataset.viewButton===name)); button.tabIndex=button.dataset.viewButton===name?0:-1; });
@@ -63,7 +63,7 @@
     };
     function text(id, value) { el(id).textContent = String(value); }
     function operationLabel(op) {
-        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',policy:'Маршрутизация',diagnostics:'Диагностика'};
+        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
         var codes={confirmation_required:'нужно подтверждение',revision_conflict:'настройки изменены в другой вкладке',transaction_pending:'сначала завершите пробное применение',invalid_configuration:'некорректная конфигурация',apply_failed:'не удалось применить',action_failed:'не удалось выполнить'};
         return (actions[op.action]||'Операция')+' · '+(codes[op.code]||states[op.state]||'результат неизвестен');
@@ -76,8 +76,10 @@
         el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.transaction);
         el('ttm-save').disabled = el('ttm-export-policy').disabled = el('ttm-policy-fields').disabled;
         el('ttm-save-endpoint').disabled = !ok || pending || !!(latest && latest.transaction);
+        el('ttm-save-exclusions').disabled = el('ttm-save-endpoint').disabled || !(latest && latest.endpoint && latest.endpoint.configured) || !!dirty.endpoint;
     }
     function networkTitle(network) {
+        if (Array.isArray(network.ssids) && network.ssids.length>1) return network.ssids.join(' / ');
         if (typeof network.display_name==='string' && network.display_name) return network.display_name;
         return Array.isArray(network.ssids) && network.ssids.length ? network.ssids.join(' / ') : 'Локальная сеть — SSID не определён';
     }
@@ -185,7 +187,9 @@
     function render(status) {
         if (!status || typeof status.enabled !== 'boolean' || typeof status.timestamp !== 'number') throw new Error('Invalid status');
         latest = status; lastSeen = Date.now();
-        if (editRevision===null) editRevision=status.revision||'0';
+        if (!Object.keys(dirty).length && !pending) editRevision=status.revision||'0';
+        if (!dirty.endpoint && !dirty.exclusions && !pending) fillExclusions((status.endpoint||{}).exclusions||[]);
+        text('ttm-saved-connection',status.endpoint && status.endpoint.configured ? 'Подключение сохранено на роутере. Исключения можно менять отдельно; пароль и ссылка повторно не нужны.' : 'Подключение ещё не сохранено. Заполните параметры или импортируйте ссылку.');
         var labels = {disabled:'Отключён',paused_protected:'Пауза; блокировка запрошена',blocked_or_start_failed:'Процесс остановлен / ошибка',tun_ready_unverified:'TUN создан; связь не проверена'};
         text('ttm-state',labels[status.state] || 'Неизвестное состояние'); text('ttm-version',status.version);
         text('ttm-host',status.hostname || 'Подключение ещё не импортировано');
@@ -196,6 +200,8 @@
         controls(fresh);
         if (!fresh) message('Статус устарел. Управление заблокировано до обновления контроллера.',true);
         reconcileNetworks(status);
+        text('ttm-network-warnings',(status.network_warnings||[]).join('\n'));
+        el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
         text('ttm-revision',status.revision||'0');
         text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Правила присутствуют; прохождение пакетов не проверено',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
         text('ttm-diagnostics',JSON.stringify(status.diagnostics||{hardware_tested:false},null,2));
@@ -274,6 +280,11 @@
             } catch(e) { try { await wire('start_ttm_abort_'+id); } catch (_) { /* Preserve the original error. */ } throw e; }
         });
     }
+    root.ttmSaveExclusions=async function () { try {
+        if (dirty.endpoint) throw new Error('Сначала сохраните или очистите изменения подключения.');
+        if (!(latest && latest.endpoint && latest.endpoint.configured)) throw new Error('Сначала сохраните подключение.');
+        await save('exclusions',{exclusions:root.TTMConnection.exclusionsFromFields([el('ttm-exclusion-domains').value,el('ttm-exclusion-networks').value].join('\n'))});
+    } catch(e) { message(e.message,true); } };
     root.ttmSaveEndpoint=async function () { try { await save('endpoint',readEndpoint()); } catch(e) { message(e.message,true); } };
     root.ttmAction = async function (action) { try {
         if (action==='disable' && !root.confirm('Вернуть выбранные сети к обычной маршрутизации Merlin?')) return;
@@ -305,13 +316,16 @@
         result.exclusions=[el('ttm-exclusion-domains').value,el('ttm-exclusion-networks').value].filter(Boolean).join('\n');
         return root.TTMConnection.endpointFromFields(result);
     }
+    function fillExclusions(values) {
+        var exclusions=root.TTMConnection.splitExclusions(values);
+        el('ttm-exclusion-domains').value=exclusions.domains.join('\n'); el('ttm-exclusion-networks').value=exclusions.networks.join('\n');
+    }
     function fillEndpoint(endpoint) { Object.keys(fields).forEach(function (key) { var field=el('ttm-'+fields[key]), value=endpoint[key];
         if (key==='anti_dpi') field.checked=value; else field.value=Array.isArray(value)?value.join('\n'):value;
     });
         importedDns=endpoint.dns_upstreams.slice();
         el('ttm-upstreams').value=importedDns.join('\n'); el('ttm-upstreams').readOnly=true;
-        var exclusions=root.TTMConnection.splitExclusions(endpoint.exclusions||[]);
-        el('ttm-exclusion-domains').value=exclusions.domains.join('\n'); el('ttm-exclusion-networks').value=exclusions.networks.join('\n');
+        fillExclusions(endpoint.exclusions||[]);
         text('ttm-dns-hint',importedDns.length?'DNS из конфигурации tt://. Значение сохраняется без изменений.':'В конфигурации tt:// DNS не задан. Для запуска нужна конфигурация с DNS.');
     }
     root.ttmParseLink = function () { try {
@@ -322,7 +336,7 @@
         message('Конфигурация проверена и скачана. Примените её по SSH по инструкции ниже. На роутере пока ничего не изменено.',false,'ttm-connection-message');
     } catch(e) { message(e.message,true,'ttm-connection-message'); } };
     root.ttmShowPassword = function (show) { el('ttm-password').type=show?'text':'password'; };
-    root.ttmClearConnection = function () { el('ttm-endpoint-form').reset(); importedDns=null; el('ttm-upstreams').readOnly=false; text('ttm-dns-hint','DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.'); el('ttm-link').value=''; root.ttmShowPassword(false); delete dirty.endpoint; updateDirty(); message('Данные подключения очищены из формы.',false,'ttm-connection-message'); };
+    root.ttmClearConnection = function () { el('ttm-endpoint-form').reset(); importedDns=null; el('ttm-upstreams').readOnly=false; text('ttm-dns-hint','DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.'); el('ttm-link').value=''; root.ttmShowPassword(false); delete dirty.endpoint; delete dirty.exclusions; fillExclusions((latest && latest.endpoint||{}).exclusions||[]); updateDirty(); controls(true); message('Данные подключения очищены из формы.',false,'ttm-connection-message'); };
     root.ttmImportFile=async function (input) { try {
         var file=input.files[0]; if (!file) return; if (file.size>65536) throw new Error('Файл превышает 64 КиБ.');
         var source=await file.text(), endpoint=source.trim().startsWith('tt://')?root.TTMConnection.parseLink(source.trim()).endpoint:root.TTMConnection.endpointFromFields(JSON.parse(source));
@@ -343,7 +357,7 @@
             });
         });
         ['ttm-endpoint-form','ttm-link-panel','ttm-policy-fields'].forEach(function (id) {
-            el(id).addEventListener('input',function () { markDirty(id==='ttm-policy-fields'?'policy':'endpoint'); });
+            el(id).addEventListener('input',function (event) { markDirty(id==='ttm-policy-fields'?'policy':/^ttm-exclusion-/.test(event.target.id)?'exclusions':'endpoint'); });
         });
         root.addEventListener('beforeunload',function (event) { if (pending||Object.keys(dirty).length) { event.preventDefault(); event.returnValue=''; } });
         root.ttmView('overview'); updateDirty();

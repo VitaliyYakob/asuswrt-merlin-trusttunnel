@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/user/trusttunnel/trusttunnel.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.3"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.3"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.3"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.4"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.4"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.4"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,7 +23,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.3</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.4</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Передача трафика через VPN ещё не проверена. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -56,6 +56,7 @@
 </section>
 <section class="ttm-section" data-view="connection" aria-labelledby="ttm-connection-title" hidden>
 <div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">HTTPS · приватное сохранение</span></div>
+<p id="ttm-saved-connection" class="ttm-note"></p>
 <p class="ttm-muted">Введите параметры вручную, вставьте ссылку или загрузите файл. Существующий пароль с роутера не загружается: сохранение заменяет конфигурацию подключения целиком.</p>
 <div class="ttm-row"><label class="ttm-label" for="ttm-file">Импорт из файла</label><div class="ttm-value"><input type="file" id="ttm-file" accept=".json,.txt" onchange="ttmImportFile(this)"><small>JSON подключения или текст со ссылкой tt://, до 64 КиБ.</small></div></div>
 <div class="ttm-row"><div class="ttm-label">Способ настройки</div><div class="ttm-value"><div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
@@ -91,6 +92,8 @@
 <div class="ttm-row"><label class="ttm-label" for="ttm-exclusion-domains">Домены сайтов</label><div class="ttm-value"><textarea id="ttm-exclusion-domains" spellcheck="false" placeholder="example.com&#10;*.example.net"></textarea><small><code>example.com</code> включает сам домен и его поддомены. <code>*.example.com</code> включает только поддомены. Полный URL, протокол и путь указывать нельзя.</small></div></div>
 <div class="ttm-row"><label class="ttm-label" for="ttm-exclusion-networks">IPv4, сети и порты</label><div class="ttm-value"><textarea id="ttm-exclusion-networks" spellcheck="false" placeholder="203.0.113.10&#10;198.51.100.0/24&#10;203.0.113.20:443&#10;*:80"></textarea><small>Поддерживаются IPv4, канонический CIDR, IPv4:порт и <code>*:порт</code>. IPv6 заблокирован политикой аддона и здесь недоступен.</small></div></div>
 </div>
+<div class="ttm-actions"><button type="button" id="ttm-save-exclusions" onclick="ttmSaveExclusions()" disabled>Сохранить исключения</button></div>
+<p>Эта кнопка обновляет только исключения сохранённого подключения. Для удаления всех исключений очистите оба списка и сохраните. При включённом VPN потребуется подтвердить пробное применение.</p>
 <p class="ttm-error">Исключённый трафик не защищён VPN и использует внешний адрес провайдера. Правила <code>0.0.0.0/0</code> и <code>*:порт</code> могут вывести напрямую большой объём трафика; <code>*:53</code> может вывести DNS.</p>
 </details>
 </form>
@@ -112,6 +115,7 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
+<p id="ttm-network-warnings" class="ttm-error" hidden></p>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
 <p class="ttm-muted">Выбор устройства заменяет целые подсети списком адресов /32. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>

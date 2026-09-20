@@ -26,6 +26,15 @@ test_assigned_transit_address_is_rejected (test_dns_preflight.DnsPreflight.test_
 test_failed_read_does_not_assume_the_address_is_available (test_dns_preflight.DnsPreflight.test_failed_read_does_not_assume_the_address_is_available) ... ok
 test_nonconflicting_addresses_are_accepted (test_dns_preflight.DnsPreflight.test_nonconflicting_addresses_are_accepted) ... ok
 test_offline_sandbox_never_inspects_host_addresses (test_dns_preflight.DnsPreflight.test_offline_sandbox_never_inspects_host_addresses) ... ok
+test_empty_list_removes_all_rules (test_exclusion_updates.ExclusionUpdateTests.test_empty_list_removes_all_rules) ... ok
+test_enabled_update_uses_endpoint_transaction_not_direct_writer (test_exclusion_updates.ExclusionUpdateTests.test_enabled_update_uses_endpoint_transaction_not_direct_writer) ... ok
+test_legacy_endpoint_without_exclusions (test_exclusion_updates.ExclusionUpdateTests.test_legacy_endpoint_without_exclusions) ... ok
+test_missing_endpoint_cannot_be_created_by_partial_update (test_exclusion_updates.ExclusionUpdateTests.test_missing_endpoint_cannot_be_created_by_partial_update) ... ok
+test_pending_transaction_refuses_update (test_exclusion_updates.ExclusionUpdateTests.test_pending_transaction_refuses_update) ... ok
+test_rejects_invalid_rules_extra_fields_and_wrong_types (test_exclusion_updates.ExclusionUpdateTests.test_rejects_invalid_rules_extra_fields_and_wrong_types) ... ok
+test_stale_revision_preserves_config (test_exclusion_updates.ExclusionUpdateTests.test_stale_revision_preserves_config) ... ok
+test_status_returns_only_exclusions_and_configured_flag (test_exclusion_updates.ExclusionUpdateTests.test_status_returns_only_exclusions_and_configured_flag) ... ok
+test_update_preserves_credentials_dns_certificate_and_private_backup (test_exclusion_updates.ExclusionUpdateTests.test_update_preserves_credentials_dns_certificate_and_private_backup) ... ok
 test_failed_backup_does_not_modify_hook (test_hook_backup_failure.HookBackupFailure.test_failed_backup_does_not_modify_hook) ... ok
 test_disabled_import_and_status_without_command_builtin (test_merlin_shell.MerlinShellTests.test_disabled_import_and_status_without_command_builtin) ... ok
 test_minimal_entware_jq_fails_before_install_writes (test_merlin_shell.MerlinShellTests.test_minimal_entware_jq_fails_before_install_writes) ... ok
@@ -51,15 +60,18 @@ test_pause_plan_keeps_blackhole_and_guards (test_network_executor.ExecutorTests.
 test_refresh_repositions_guard_before_foreign_accept (test_network_executor.ExecutorTests.test_refresh_repositions_guard_before_foreign_accept) ... ok
 test_reserved_priority_conflict_not_deleted (test_network_executor.ExecutorTests.test_reserved_priority_conflict_not_deleted) ... ok
 test_ambiguous_nvram_mapping_does_not_guess_an_ssid (test_network_inventory.NetworkInventoryTests.test_ambiguous_nvram_mapping_does_not_guess_an_ssid) ... ok
+test_brt_extended_guest_slot_is_preserved (test_network_inventory.NetworkInventoryTests.test_brt_extended_guest_slot_is_preserved) ... ok
 test_conflicting_alias_does_not_assume_identity (test_network_inventory.NetworkInventoryTests.test_conflicting_alias_does_not_assume_identity) ... ok
 test_direct_wireless_member_works_when_vifnames_are_absent (test_network_inventory.NetworkInventoryTests.test_direct_wireless_member_works_when_vifnames_are_absent) ... ok
 test_discovers_only_real_bridge_directories_and_normalizes_prefixes (test_network_inventory.NetworkInventoryTests.test_discovers_only_real_bridge_directories_and_normalizes_prefixes) ... ok
 test_explicit_virtual_interface_alias_is_resolved (test_network_inventory.NetworkInventoryTests.test_explicit_virtual_interface_alias_is_resolved) ... ok
 test_failed_nvram_read_is_not_published_as_an_ssid (test_network_inventory.NetworkInventoryTests.test_failed_nvram_read_is_not_published_as_an_ssid) ... ok
 test_identity_survives_ssid_rename_but_changes_with_bridge_members (test_network_inventory.NetworkInventoryTests.test_identity_survives_ssid_rename_but_changes_with_bridge_members) ... ok
+test_missing_dhcp_bridge_is_warning_not_selectable_network (test_network_inventory.NetworkInventoryTests.test_missing_dhcp_bridge_is_warning_not_selectable_network) ... ok
 test_parser_ignores_malformed_addresses_and_deduplicates_networks (test_network_inventory.NetworkInventoryTests.test_parser_ignores_malformed_addresses_and_deduplicates_networks) ... ok
 test_primary_ssid_precedes_virtual_and_disabled_members_are_omitted (test_network_inventory.NetworkInventoryTests.test_primary_ssid_precedes_virtual_and_disabled_members_are_omitted) ... ok
 test_sandbox_does_not_run_ip_or_nvram (test_network_inventory.NetworkInventoryTests.test_sandbox_does_not_run_ip_or_nvram) ... ok
+test_service_alias_is_filtered_without_reading_its_ssid (test_network_inventory.NetworkInventoryTests.test_service_alias_is_filtered_without_reading_its_ssid) ... ok
 test_ssid_json_preserves_quotes_unicode_and_newlines (test_network_inventory.NetworkInventoryTests.test_ssid_json_preserves_quotes_unicode_and_newlines) ... ok
 test_ssids_match_actual_bridge_members_instead_of_bridge_number (test_network_inventory.NetworkInventoryTests.test_ssids_match_actual_bridge_members_instead_of_bridge_number) ... ok
 test_status_falls_back_to_empty_inventory_on_ip_failure (test_network_inventory.NetworkInventoryTests.test_status_falls_back_to_empty_inventory_on_ip_failure) ... ok
@@ -145,7 +157,7 @@ test_invalid_hostnames_and_ipv4_are_rejected_from_ssh (test_validation_boundarie
 test_rejects_concatenated_json_instead_of_accepting_last (test_validation_boundaries.ValidationBoundaries.test_rejects_concatenated_json_instead_of_accepting_last) ... ok
 
 ----------------------------------------------------------------------
-Ran 144 tests in 110.926s
+Ran 156 tests in 115.559s
 
 OK
 node --check addon/web/trusttunnel.js
@@ -157,3 +169,6 @@ Connection import: 35 regression groups passed
 node --check addon/web/transfer.js
 node tests/test_transfer.js
 Private transfer: 6 interoperability/regression groups passed
+shellcheck --severity=warning -x -P addon -P addon/lib addon/trusttunnel.sh tools/*.sh install.sh uninstall.sh addon/S99trusttunnel
+python3 tools/make-preview.py
+/Users/vyakob/Documents/Codex/MyProjects/VPN/ASUS-Trusttunnel-WEB/preview/index.html

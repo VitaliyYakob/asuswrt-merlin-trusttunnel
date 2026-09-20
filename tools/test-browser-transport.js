@@ -13,7 +13,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
     const browser=await chromium.launch({headless:true,...(process.env.TTM_CHROMIUM_PATH?{executablePath:process.env.TTM_CHROMIUM_PATH}:{})});
     const context=await browser.newContext({ignoreHTTPSErrors:true});
     const page=await context.newPage(), errors=[], commands=[];
-    const state={...fixture,timestamp:Math.floor(Date.now()/1000),revision:'0',operations:[]};
+    const state={...fixture,timestamp:Math.floor(Date.now()/1000),revision:'0',endpoint:{configured:false,exclusions:[]},operations:[]};
     let transfer={state:'idle'}, keys, parts=[], plain=[], saved, stale=false;
     page.on('pageerror',e=>errors.push(String(e)));
     await context.route('**/*',async route=>{
@@ -42,7 +42,10 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
                 assert.equal(transfer.next,transfer.blocks*6);
                 const request=JSON.parse(Buffer.concat(plain).toString());
                 if(stale) state.operations=[{id:match[1],state:'failed',code:'revision_conflict',action:request.kind,revision:'other'}];
-                else { assert.equal(request.revision,'0'); saved=request.data; state.revision='abcdef0123456789'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
+                else { assert.equal(request.revision,state.revision);
+                    if(request.kind==='exclusions') { assert.deepEqual(Object.keys(request.data),['exclusions']); saved={...saved,...request.data}; }
+                    else saved=request.data;
+                    state.endpoint={configured:true,exclusions:saved.exclusions||[]}; state.revision=state.revision==='0'?'abcdef0123456789':'fedcba9876543210'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
                 transfer={state:'idle'};
             } else if(!command.startsWith('start_ttm_abort_')) throw new Error('Unexpected event');
             // Real Merlin redirects the parent from this response. The addon
@@ -60,16 +63,33 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         await page.waitForFunction(()=>document.getElementById('ttm-message').textContent==='Операция выполнена.',{},{timeout:60000});
         assert.deepEqual(saved,endpoint); assert.equal(await page.locator('#ttm-password').inputValue(),'');
         assert.ok(commands.length>3); assert.deepEqual(errors,[]);
+        await page.reload();
+        await page.getByRole('tab',{name:'Подключение',exact:true}).click();
+        assert.equal(await page.locator('#ttm-password').inputValue(),'');
+        await page.locator('#ttm-exclusion-domains').fill('example.org');
+        await page.locator('#ttm-exclusion-networks').fill('198.51.100.0/24');
+        await page.waitForTimeout(5500); // polling must preserve the unsaved exclusion draft
+        assert.equal(await page.locator('#ttm-exclusion-domains').inputValue(),'example.org');
+        await page.locator('#ttm-save-exclusions').click();
+        await page.waitForFunction(()=>document.getElementById('ttm-message').textContent==='Операция выполнена.',{},{timeout:60000});
+        assert.deepEqual(saved,{...endpoint,exclusions:['example.org','198.51.100.0/24']});
+        assert.equal(await page.locator('#ttm-password').inputValue(),'');
+        await page.reload();
+        await page.getByRole('tab',{name:'Подключение',exact:true}).click();
+        await page.waitForFunction(()=>document.getElementById('ttm-exclusion-domains').value==='example.org');
+        assert.equal(await page.locator('#ttm-exclusion-networks').inputValue(),'198.51.100.0/24');
+        assert.equal(await page.locator('#ttm-username').inputValue(),'');
         // A second browser revision conflict leaves user input intact and reports failure.
         stale=true;
         await page.locator('#ttm-file').setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(endpoint))});
         await page.waitForFunction(()=>document.getElementById('ttm-password').value.length>0);
+        assert.equal(await page.locator('#ttm-save-exclusions').isDisabled(),true);
         await page.locator('#ttm-save-endpoint').click();
         await page.waitForFunction(()=>document.getElementById('ttm-message').textContent.includes('другой вкладке'),{},{timeout:60000});
         assert.equal(await page.locator('#ttm-password').inputValue(),endpoint.password);
         assert.equal(await page.locator('#ttm-message').getAttribute('class'),'ttm-error');
         assert.deepEqual(errors,[]);
         assert.ok(!(JSON.stringify(state)+JSON.stringify(commands)).includes(endpoint.password));
-        console.log('PASS: HTTPS browser file import → encrypted native events → acknowledged save; no plaintext credentials in form/status; successful save clears secrets; stale revision preserves input and shows failure. Merlin HTTP/authentication NOT TESTED.');
+        console.log('PASS: HTTPS browser file import → encrypted native events → acknowledged save; no plaintext credentials in form/status; successful save clears secrets; exclusions-only save and reload preserve credentials/DNS; stale revision preserves input and shows failure. Merlin HTTP/authentication NOT TESTED.');
     } finally { await context.close(); await browser.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

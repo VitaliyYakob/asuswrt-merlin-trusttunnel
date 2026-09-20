@@ -260,7 +260,7 @@ async function exerciseInventory(browser) {
         }), {waitUntil: 'load'});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
         assert.equal(await page.locator('.ttm-network').count(), 2, 'several SSIDs on one bridge must remain one routing choice');
-        await page.getByRole('checkbox', {name: 'Home 2.4', exact: true}).check();
+        await page.getByRole('checkbox', {name: 'Home 2.4 / Home 5 / 0123456789ABCDEF0123456789ABCDEF', exact: true}).check();
         const ssidDetails=page.locator('.ttm-network-ssids').first();
         assert.equal(await ssidDetails.locator('li').first().isVisible(),false);
         await ssidDetails.locator('summary').click();

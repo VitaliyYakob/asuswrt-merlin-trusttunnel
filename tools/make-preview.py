@@ -13,6 +13,7 @@ fixture = {
     "version": (root/"VERSION").read_text().strip(), "state": "disabled", "hostname": "vpn.example.com",
     "process_running": False, "interface_up": False, "enabled": False, "connection_verified": False,
     "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed",
+    "endpoint":{"configured":True,"exclusions":[]},
     "revision":"0123456789abcdef", "operations":[], "transaction":None,
     "clients":[{"ip":"192.168.51.10","name":"Ноутбук"},{"ip":"192.168.50.20","name":"Телефон"}],
     "diagnostics":{"model":"RT-AX86U","firmware":"Не проверена","guard":"unverified","client_version_target":"1.1.5","packet_path_verified":False},

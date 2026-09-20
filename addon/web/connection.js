@@ -258,5 +258,5 @@
       warnings: warnings
     };
   }
-  return {parseLink: parseLink, endpointFromFields: endpointFromFields, splitExclusions: splitExclusions};
+  return {parseLink: parseLink, endpointFromFields: endpointFromFields, splitExclusions: splitExclusions, exclusionsFromFields: exclusions};
 }));

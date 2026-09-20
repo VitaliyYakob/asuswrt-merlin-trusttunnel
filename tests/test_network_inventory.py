@@ -104,7 +104,31 @@ tt_discover_networks''')
             'wl0.4_ssid':'0123456789ABCDEF0123456789ABCDEF', 'wl0.4_bss_enabled':'1'
         }))[0]
         self.assertEqual(row['display_name'], 'Home')
-        self.assertEqual(row['ssids'], ['Home', 'Old device', '0123456789ABCDEF0123456789ABCDEF'])
+        self.assertEqual(row['ssids'], ['Home', 'Old device'])
+
+    def test_service_alias_is_filtered_without_reading_its_ssid(self):
+        self.bridge('br0', ['eth6.4'])
+        row = self.parsed(self.discover({'wl0_vifnames':'wl0.1 wl0.2 wl0.3 wl0.4',
+            'wl0.4_ifname':'eth6.4', 'wl0.4_ssid':'service', 'productid':'RT-AX86U'}))[0]
+        self.assertEqual(row['ssids'], [])
+        self.assertNotIn('wl0.4_ssid', (self.path/'nvram-keys').read_text())
+
+    def test_brt_extended_guest_slot_is_preserved(self):
+        self.bridge('br2', ['wl0.4'])
+        row = self.parsed(self.discover({'productid':'BRT-AC828','wl0.4_ssid':'Guest 4'}))[0]
+        self.assertEqual(row['ssids'], ['Guest 4'])
+
+    def test_missing_dhcp_bridge_is_warning_not_selectable_network(self):
+        self.bridge('br0', ['eth6'])
+        config = self.path/'dnsmasq.conf'
+        config.write_text('interface=br0\ninterface=br2\ninterface=br2\ninterface=../../private\ndhcp-host=SECRET\n')
+        result = self.execute('tt_missing_dhcp_bridges "$TT_ROOT/dnsmasq.conf"')
+        warnings = self.parsed(result)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn('br2', warnings[0])
+        self.assertNotIn('SECRET', result.stdout)
+        self.assertEqual(len(self.parsed(self.discover({}))), 1)
+        self.assertEqual(self.parsed(self.execute('tt_network_warnings')), [])
 
     def test_identity_survives_ssid_rename_but_changes_with_bridge_members(self):
         self.bridge('br1', ['wl0.1'])

@@ -3,6 +3,13 @@
 # lists wlN.M guest interfaces. Never infer a wireless unit from a br number.
 # Sources: RMerl/asuswrt-merlin.ng release/src/router/rc/init.c (wl_defaults)
 # and release/src/router/shared/defaults.c (wl_ifname, wl_vifnames, wl_ssid).
+tt_user_wireless() {
+    # Merlin 388 state.js exposes three guest slots per radio except BRT-AC828.
+    # Other BSS interfaces may be firmware service networks, not user SSIDs.
+    printf '%s' "$1" | grep -Eq '^wl[0-3](\.[1-3])?$' && return 0
+    [ "$(nvram get productid 2>/dev/null)" = BRT-AC828 ] &&
+        printf '%s' "$1" | grep -Eq '^wl[0-3]\.[0-9]+$'
+}
 tt_wireless_ifnames() (
     [ -z "$TT_ROOT" ] || { printf '[]\n'; return 0; }
     type nvram >/dev/null 2>&1 || { printf '[]\n'; return 0; }
@@ -20,6 +27,7 @@ $(jq -nc --arg ifname "$TT_WIFI_OS" --arg nvif "$TT_WIFI_PREFIX" '{ifname:$ifnam
         TT_WIFI_VIFS=$(nvram get "${TT_WIFI_PREFIX}_vifnames" 2>/dev/null) || TT_WIFI_VIFS=
         for TT_WIFI_VIF in $TT_WIFI_VIFS; do
             printf '%s' "$TT_WIFI_VIF" | grep -Eq "^wl${TT_WIFI_UNIT}\\.[0-9]+$" || continue
+            tt_user_wireless "$TT_WIFI_VIF" || continue
             TT_WIFI_OS=$(nvram get "${TT_WIFI_VIF}_ifname" 2>/dev/null) || TT_WIFI_OS=
             [ -n "$TT_WIFI_OS" ] || TT_WIFI_OS=$TT_WIFI_VIF
             printf '%s' "$TT_WIFI_OS" | grep -Eq '^[a-zA-Z0-9_.:-]{1,15}$' || continue
@@ -48,6 +56,7 @@ tt_bridge_ssids() (
             [ -z "$TT_MEMBER_ALIAS" ] || [ "$TT_MEMBER_ALIAS" = "$TT_MEMBER" ] || continue
             TT_MEMBER_NVIFS=$TT_MEMBER
         fi
+        tt_user_wireless "$TT_MEMBER_NVIFS" || continue
         # jq reads raw SSID bytes through stdin; quotes, Unicode and newlines
         [ "$(nvram get "${TT_MEMBER_NVIFS}_bss_enabled" 2>/dev/null)" != 0 ] || continue
         # remain data. Remove only the newline added by nvram get.
@@ -60,6 +69,18 @@ $TT_MEMBER_SSID"
     done
     # Prefer the main radio name over virtual/service SSIDs; deduplicate stably.
     printf '%s\n' "$TT_BRIDGE_SSIDS" | jq -s 'sort_by(.primary|not)|map(.ssid)|reduce .[] as $s ([]; if index($s)==null then .+[$s] else . end)'
+)
+tt_network_warnings() (
+    [ -z "$TT_ROOT" ] && [ -f /etc/dnsmasq.conf ] || { printf '[]\n'; return; }
+    tt_missing_dhcp_bridges /etc/dnsmasq.conf
+)
+tt_missing_dhcp_bridges() (
+    # Read interface names only. DHCP reservations/names and other config stay private.
+    awk -F= '/^interface=br[0-9]+(\.[0-9]+)?$/ {print $2}' "$1" |
+    while IFS= read -r TT_DHCP_BRIDGE; do
+        [ -d "$TT_SYS/class/net/$TT_DHCP_BRIDGE/bridge" ] ||
+            printf '%s\n' "$TT_DHCP_BRIDGE"
+    done | jq -Rs 'split("\n")|map(select(length>0))|unique|map("DHCP ссылается на отсутствующий интерфейс " + . + ". Проверьте настройки гостевой сети Merlin; эта сеть пока недоступна для выбора.")'
 )
 tt_discover_networks() {
     # Offline sandboxes must never inspect the development host's networking.
