@@ -1,4 +1,6 @@
 #!/bin/sh
+# shellcheck source=operations.sh
+. "$TT_BASE/lib/operations.sh"
 # shellcheck source=backup.sh
 . "$TT_BASE/lib/backup.sh"
 # shellcheck source=certificate.sh
@@ -18,7 +20,12 @@ tt_validate() {
     if [ "$1" = endpoint ]; then tt_validate_certificate "$2" || return 1; fi
 }
 tt_import() {
+    [ ! -e "$TT_CONFIG/transaction" ] || { tt_error 'recover the pending transaction first'; return 1; }
     [ ! -f "$TT_ENABLED" ] || { tt_error 'disable the addon before changing configuration'; return 1; }
+    tt_save_config "$@"
+}
+tt_save_config() {
+    # Internal writer. Live callers must use the transaction coordinator.
     tt_validate "$1" "$2" || return 1
     case "$1" in endpoint) TT_DEST=$TT_ENDPOINT;; policy) TT_DEST=$TT_POLICY;; *) return 1;; esac
     # Stage first: the input may itself be the .previous file being restored.
@@ -27,12 +34,48 @@ tt_import() {
     # the private previous-file backup preserves the exact old configuration.
     if jq -S --arg kind "$1" 'if $kind=="policy" then
         (if .schema==1 then . + {networks:[{lan_if,sources}]} | del(.lan_if,.sources) else . end)
-        | .schema=3 | del(.dns_ipv4) else . end' "$2" >"$TT_IMPORT_TMP" 2>/dev/null && chmod 600 "$TT_IMPORT_TMP" &&
-        tt_validate "$1" "$TT_IMPORT_TMP" && tt_backup_private "$TT_DEST" && mv -f "$TT_IMPORT_TMP" "$TT_DEST"; then
+        | .schema=(if .schema==4 then 4 else 3 end) | del(.dns_ipv4) else . end' "$2" >"$TT_IMPORT_TMP" 2>/dev/null && chmod 600 "$TT_IMPORT_TMP" &&
+        tt_validate "$1" "$TT_IMPORT_TMP" && tt_backup_private "$TT_DEST" && tt_revision_advance && mv -f "$TT_IMPORT_TMP" "$TT_DEST"; then
         return 0
     fi
     rm -f "$TT_IMPORT_TMP"
     return 1
+}
+tt_apply_request() {
+    tt_id_valid "$1" || return 1
+    TT_REQUEST_ID=$1; TT_REQUEST_FILE=$2
+    [ -f "$TT_REQUEST_FILE" ] && [ ! -L "$TT_REQUEST_FILE" ] && [ "$(wc -c <"$TT_REQUEST_FILE")" -le 65536 ] || return 1
+    if ! jq -e -s 'length==1 and (.[0] | type=="object" and
+        ((keys-["version","revision","kind","data"])|length)==0 and .version==1 and
+        (.kind=="endpoint" or .kind=="policy") and (.revision|type=="string") and
+        (.data|type=="object"))' "$TT_REQUEST_FILE" >/dev/null 2>&1; then
+        tt_error 'invalid save request'; return 1
+    fi
+    TT_REQUEST_KIND=$(jq -r .kind "$TT_REQUEST_FILE")
+    tt_operation_begin "$TT_REQUEST_ID" "$TT_REQUEST_KIND"
+    TT_BEGIN_RESULT=$?
+    [ "$TT_BEGIN_RESULT" -ne 2 ] || return 0
+    [ "$TT_BEGIN_RESULT" -eq 0 ] || return 1
+    if ! tt_revision_check "$(jq -r .revision "$TT_REQUEST_FILE")"; then
+        tt_operation_write failed revision_conflict; return 1
+    fi
+    if [ -e "$TT_CONFIG/transaction" ]; then tt_operation_write failed transaction_pending; return 1; fi
+    TT_REQUEST_TMP=$(mktemp "$TT_RUN/request-data.XXXXXX") || return 1
+    if ! jq .data "$TT_REQUEST_FILE" >"$TT_REQUEST_TMP" || ! tt_validate "$TT_REQUEST_KIND" "$TT_REQUEST_TMP"; then
+        rm -f "$TT_REQUEST_TMP"; tt_operation_write failed invalid_configuration; return 1
+    fi
+    TT_REQUEST_RESULT=1
+    if [ -f "$TT_ENABLED" ]; then
+        tt_transaction_apply "$TT_REQUEST_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
+    else
+        tt_import "$TT_REQUEST_KIND" "$TT_REQUEST_TMP" && TT_REQUEST_RESULT=0
+    fi
+    rm -f "$TT_REQUEST_TMP"
+    if [ "$TT_REQUEST_RESULT" -eq 0 ]; then
+        if [ -f "$TT_CONFIG/transaction/manifest.json" ]; then tt_operation_write succeeded confirmation_required
+        else tt_operation_write succeeded saved; fi
+    else tt_operation_write failed apply_failed; fi
+    return "$TT_REQUEST_RESULT"
 }
 tt_render() {
     tt_validate endpoint "$1" || return 1

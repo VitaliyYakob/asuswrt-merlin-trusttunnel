@@ -50,6 +50,19 @@ tt_spawn() { : >"$TT_RUN/spawn-called"; return 0; }
         self.assertFalse((self.path / "sandbox/tmp/trusttunnel/preflight-called").exists())
         self.assertFalse((self.path / "sandbox/tmp/trusttunnel/spawn-called").exists())
 
+    def test_backoff_skips_client_retry_but_reinstalls_guards(self):
+        result = self.execute('''
+. "$TT_BASE/lib/service.sh"
+tt_live() { return 0; }
+tt_preflight() { echo unexpected >&2; return 99; }
+: >"$TT_ENABLED"
+jq -n --argjson next "$(($(date +%s)+900))" '{failures:5,next_attempt:$next}' >"$TT_RUN/retry.json"
+tt_refresh''')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('unexpected', result.stderr)
+        self.assertIn('871:32760', self.state()['routes'])
+        self.assertIn('ip6tables:filter:TTM6_FWD', self.state()['chains'])
+
 
 if __name__ == "__main__":
     unittest.main()

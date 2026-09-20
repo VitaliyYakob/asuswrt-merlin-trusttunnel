@@ -79,6 +79,7 @@ if name=='ip':
         done(text='\n'.join(' '.join(a) for a in state['routes'].values() if opt(a,'table')==table))
     if args[:2]==['-4','route']:
         key=opt(args,'table')+':'+opt(args,'metric','0')
+        if args[3] not in ('default', 'prohibit'): key += ':'+args[3]
         if args[2]=='replace':state['routes'][key]=args;done()
         if args[2]=='del':
             if key not in state['routes']:done(2)

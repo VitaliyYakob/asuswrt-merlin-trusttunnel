@@ -6,7 +6,6 @@
 
 
 
-<script>window.ttmCustomSettings = {};</script>
 
 <style>/* Match Merlin's classic forms. Rules are scoped; the firmware owns navigation. */
 .ttm-layout > tbody > tr > td { vertical-align: top; }
@@ -102,6 +101,12 @@
 .ttm-container .ttm-network-hint { margin-top: 6px; font-size: 11px; color: #c6d4d9; }
 .ttm-network > div:last-child label { margin-bottom: 4px; font-size: 11px; }
 .ttm-network textarea { height: 48px; }
+.ttm-draft { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 4px; color:#ffdb66; font-size:12px; }
+.ttm-navigation { margin:0 4px; }
+.ttm-navigation button { flex:1; min-width:0; padding:7px 9px; }
+.ttm-local-access { padding:4px 12px 12px; }
+.ttm-container .ttm-device { margin-top:8px; max-width:100%; width:100%; }
+.ttm-container input[type=file] { max-width:100%; }
 @media (max-width: 760px) {
   .ttm-container.FormTitle { padding: 8px 5px 12px; }
   .ttm-heading { flex-wrap: wrap; gap: 4px 10px; }
@@ -163,7 +168,7 @@ body{padding:0;background:#4c595e}
 .preview-tabs{padding:0 8px;gap:4px}.preview-tab{display:none;min-height:35px;padding:0 12px;font-size:12px}.preview-tab.preview-client,.preview-tab[aria-current=page]{display:flex}
 #footer{padding:12px;font-size:10px;text-align:left}
 }
-</style><script>window.TTM_PREVIEW={"version": "0.2.2-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "discovered_networks": [{"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
+</style><script>window.TTM_PREVIEW={"version": "0.3.0-alpha.1", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "revision": "0123456789abcdef", "operations": [], "transaction": null, "clients": [{"ip": "192.168.51.10", "name": "\u041d\u043e\u0443\u0442\u0431\u0443\u043a"}, {"ip": "192.168.50.20", "name": "\u0422\u0435\u043b\u0435\u0444\u043e\u043d"}], "diagnostics": {"model": "RT-AX86U", "firmware": "\u041d\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u0430", "guard": "unverified", "client_version_target": "1.1.5", "packet_path_verified": false}, "discovered_networks": [{"lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "identity": "1111111111111111111111111111111111111111111111111111111111111111", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "identity": "2222222222222222222222222222222222222222222222222222222222222222", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "identity": "3333333333333333333333333333333333333333333333333333333333333333", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
  * Client v1.1.5 pins that implementation in trusttunnel/Cargo.lock.
  * https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md
  * parseLink(uri) -> {endpoint: schema-1 object, name: string, warnings: string[]}.
@@ -383,11 +388,48 @@ body{padding:0;background:#4c595e}
   return {parseLink: parseLink, endpointFromFields: endpointFromFields};
 }));
 
-/* Native Merlin control; connection credentials stay in memory until explicit local export. */
+/* Standard RSA-OAEP/SHA-256, ephemeral receiver key. No plaintext in native forms. */
+(function (root) {
+    'use strict';
+    function id(crypto) {
+        return Array.from(crypto.getRandomValues(new Uint8Array(8)), n => n.toString(16).padStart(2, '0')).join('');
+    }
+    function bytes(value) { return new TextEncoder().encode(value); }
+    function count(value) { return Math.ceil(bytes(JSON.stringify(value)).length / 128); }
+    async function encrypt(value, session, pem, crypto) {
+        if (!/^[0-9a-f]{16}$/.test(session)) throw new Error('Некорректная сессия передачи.');
+        const data = bytes(JSON.stringify(value));
+        if (!data.length || data.length > 65536) throw new Error('Конфигурация превышает 64 КиБ.');
+        const der = Uint8Array.from(atob(pem.replace(/-----[^-]+-----|\s/g, '')), c => c.charCodeAt(0));
+        const key = await crypto.subtle.importKey('spki', der, {name: 'RSA-OAEP', hash: 'SHA-256'}, false, ['encrypt']);
+        if (key.algorithm.modulusLength !== 2048) throw new Error('Неподдерживаемый ключ передачи.');
+        const total = Math.ceil(data.length / 128), parts = [];
+        for (let i = 0; i < total; i++) {
+            const header = bytes('TTM1 ' + session + ' ' + i + ' ' + total + '\n');
+            const body = data.subarray(i * 128, (i + 1) * 128), block = new Uint8Array(header.length + body.length);
+            block.set(header); block.set(body, header.length);
+            const cipher = new Uint8Array(await crypto.subtle.encrypt({name: 'RSA-OAEP'}, key, block));
+            const hex = Array.from(cipher, n => n.toString(16).padStart(2, '0')).join('');
+            parts.push(hex.slice(0, 192), hex.slice(192, 384), hex.slice(384));
+        }
+        return parts;
+    }
+    function event(session, index, part) {
+        if (!/^[0-9a-f]{16}$/.test(session) || !Number.isInteger(index) || index < 0 || index > 1535 || !/^[0-9a-f]{128}$|^[0-9a-f]{192}$/.test(part)) throw new Error('Некорректная часть передачи.');
+        const command = 'start_ttm_part_' + session + '_' + index + '_' + part;
+        if (command.length > 255) throw new Error('Превышен предел команды Merlin.');
+        return command;
+    }
+    const api = {id, count, encrypt, event};
+    root.TTMTransfer = api;
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* Native Merlin control. Secrets leave memory only on explicit encrypted save/export. */
 (function (root) {
     'use strict';
     var api = {}, latest = null, initialized = false, lastSeen = 0, rowIndex = 0, pending = false;
-    var networkModels = new WeakMap(), importedDns = null;
+    var networkModels = new WeakMap(), importedDns = null, dirty = {}, editRevision = null;
     function ipv4(s) {
         if (typeof s !== 'string' || !/^(0|[1-9]\d{0,2})(\.(0|[1-9]\d{0,2})){3}$/.test(s)) return null;
         var a = s.split('.').map(Number);
@@ -400,6 +442,11 @@ body{padding:0;background:#4c595e}
         return n <= 32 && ((a[0] === 10 && n >= 8) || (a[0] === 172 && a[1] >= 16 && a[1] <= 31 && n >= 12) ||
             (a[0] === 192 && a[1] === 168 && n >= 16)) &&
             (a[0] * 16777216 + a[1] * 65536 + a[2] * 256 + a[3]) % size === 0;
+    }
+    function contains(cidr,address) {
+        if (!validCidr(cidr)||!ipv4(address)) return false;
+        function number(s) { return ipv4(s).reduce(function (a,n) { return a*256+n; },0); }
+        var parts=cidr.split('/'), start=number(parts[0]); return number(address)>=start && number(address)<start+Math.pow(2,32-Number(parts[1]));
     }
     function policyFromNetworks(rows, acknowledge) {
         var total = 0, seen = [], networks = rows.filter(function (row) { return row.selected !== false; }).map(function (row) {
@@ -427,16 +474,35 @@ body{padding:0;background:#4c595e}
         if (new TextEncoder().encode(serialized).length > 7600) throw new Error('Недостаточно места в хранилище аддонов. Используйте импорт политики по SSH.');
         return serialized;
     }
-    api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope;
+    api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope; api.contains=contains;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (!root.document) return;
     function el(id) { return document.getElementById(id); }
+    function updateDirty() { text('ttm-dirty',Object.keys(dirty).length?'Есть несохранённые изменения':'Изменения сохранены'); }
+    function markDirty(kind) { if (!Object.keys(dirty).length) editRevision=latest ? latest.revision||'0' : '0'; dirty[kind]=true; updateDirty(); }
+    root.ttmView=function (name) {
+        document.querySelectorAll('[data-view]').forEach(function (section) { section.hidden=section.dataset.view!==name; });
+        document.querySelectorAll('[data-view-button]').forEach(function (button) { button.setAttribute('aria-selected',String(button.dataset.viewButton===name)); button.tabIndex=button.dataset.viewButton===name?0:-1; });
+    };
+    root.ttmReload=function () {
+        if (Object.keys(dirty).length && !root.confirm('Сбросить несохранённые изменения?')) return;
+        initialized=false; dirty={}; editRevision=null; root.ttmClearConnection(); updateDirty(); refresh();
+    };
     function text(id, value) { el(id).textContent = String(value); }
+    function operationLabel(op) {
+        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',policy:'Маршрутизация',diagnostics:'Диагностика'};
+        var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
+        var codes={confirmation_required:'нужно подтверждение',revision_conflict:'настройки изменены в другой вкладке',transaction_pending:'сначала завершите пробное применение',invalid_configuration:'некорректная конфигурация',apply_failed:'не удалось применить',action_failed:'не удалось выполнить'};
+        return (actions[op.action]||'Операция')+' · '+(codes[op.code]||states[op.state]||'результат неизвестен');
+    }
     function message(value, error, target) { target = target || 'ttm-message'; text(target,value); el(target).className = error ? 'ttm-error' : 'ttm-note'; }
     function controls(ok) {
-        document.querySelectorAll('[data-runtime]').forEach(function (button) { button.disabled = !ok || pending; });
-        el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.enabled);
+        ok=ok && !!latest && (!!root.TTM_PREVIEW || Math.abs(Date.now()/1000-latest.timestamp)<150);
+        document.querySelectorAll('[data-runtime]').forEach(function (button) { button.disabled = !ok || pending || !!latest.transaction; });
+        document.querySelectorAll('[data-view="connection"] input,[data-view="connection"] textarea,[data-view="connection"] select,[data-view="connection"] button').forEach(function (field) { field.disabled=pending; });
+        el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.transaction);
         el('ttm-save').disabled = el('ttm-export-policy').disabled = el('ttm-policy-fields').disabled;
+        el('ttm-save-endpoint').disabled = !ok || pending || !!(latest && latest.transaction);
     }
     function networkTitle(network) {
         return Array.isArray(network.ssids) && network.ssids.length ? network.ssids.join(' / ') : 'Локальная сеть — SSID не определён';
@@ -457,22 +523,43 @@ body{padding:0;background:#4c595e}
         sources.value = (network.sources || []).join('\n'); sources.placeholder = '192.168.50.0/24';
         name.htmlFor = sources.id; name.textContent = 'Подсети / адреса IPv4'; box.appendChild(name); box.appendChild(sources); row.appendChild(box);
         // The firmware association is held in memory, never read from an editable DOM field.
-        networkModels.set(row,{identity:Object.freeze({lan_if:network.lan_if}),available:!!available});
+        networkModels.set(row,{identity:Object.freeze({lan_if:network.lan_if,token:network.identity}),available:!!available});
+        var devices=document.createElement('select'); devices.className='ttm-device'; devices.setAttribute('aria-label','Добавить устройство по IPv4');
+        devices.add(new Option('Добавить устройство…',''));
+        var original=(latest.discovered_networks||[]).find(function (item) { return item.lan_if===network.lan_if; })||network;
+        (latest.clients||[]).filter(function (client) { return (original.sources||[]).some(function (source) { return contains(source,client.ip); }); }).forEach(function (client) {
+            devices.add(new Option(client.name+' · '+client.ip,client.ip+'/32'));
+        });
+        devices.addEventListener('change',function () { if (!devices.value) return;
+            var list=sources.value.trim().split(/[\s,;]+/).filter(function (source) { return /\/32$/.test(source); });
+            if (list.indexOf(devices.value)<0) list.push(devices.value);
+            sources.value=list.join('\n'); checkbox.checked=true; devices.value=''; markDirty('policy'); updateCount();
+        }); box.appendChild(devices);
         el('ttm-networks').appendChild(row); return row;
     }
     function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей выбрано'); }
     function rows() { return Array.from(document.querySelectorAll('.ttm-network')).map(function (row) {
         var model = networkModels.get(row);
-        return {selected:row.querySelector('.ttm-selected').checked,available:model.available,lan_if:model.identity.lan_if,sources:row.querySelector('.ttm-cidrs').value};
+        return {selected:row.querySelector('.ttm-selected').checked,available:model.available,identity:model.identity.token,lan_if:model.identity.lan_if,sources:row.querySelector('.ttm-cidrs').value};
     }); }
     function policy() {
         if (rows().some(function (row) { return row.selected && !row.available; })) throw new Error('Выбранная сеть больше не обнаружена. Снимите её выбор и проверьте настройки Wi-Fi роутера.');
-        return policyFromNetworks(rows(),el('ttm-v6ack').checked);
+        var p=policyFromNetworks(rows(),el('ttm-v6ack').checked);
+        p.schema=4; p.local_access=[];
+        p.networks.forEach(function (network) {
+            network.identity=rows().find(function (row) { return row.lan_if===network.lan_if; }).identity;
+            if (!/^[0-9a-f]{64}$/.test(network.identity||'')) throw new Error('Обновите список сетей: не получена привязка от роутера.');
+        });
+        document.querySelectorAll('#ttm-local-access input:checked').forEach(function (input) {
+            var network=(latest.discovered_networks||[]).find(function (n) { return n.identity===input.value; });
+            if (!network) throw new Error('Локальная сеть изменилась. Обновите список.');
+            network.sources.forEach(function (source) { p.local_access.push({lan_if:network.lan_if,destination:source,identity:network.identity}); });
+        }); return p;
     }
     root.ttmSelectNetworks = function (value) { document.querySelectorAll('.ttm-network').forEach(function (row) {
         var checkbox=row.querySelector('.ttm-selected'), available=networkModels.get(row).available;
         checkbox.checked = !!value && available; checkbox.disabled=!available;
-    }); updateCount(); };
+    }); updateCount(); markDirty('policy'); };
     function reconcileNetworks(status) {
         var inventory = Array.isArray(status.discovered_networks) ? status.discovered_networks : [];
         var selected = status.policy ? (status.policy.schema === 1 ? [{lan_if:status.policy.lan_if,sources:status.policy.sources}] : status.policy.networks) : [];
@@ -486,6 +573,14 @@ body{padding:0;background:#4c595e}
                 if (!inventory.some(function (n) { return n.lan_if===network.lan_if; })) addNetwork(network,true,false);
             });
             if (status.policy) el('ttm-v6ack').checked=status.policy.block_ipv6_bridge;
+            el('ttm-local-access').textContent='';
+            inventory.forEach(function (network) {
+                var label=document.createElement('label'), checkbox=document.createElement('input'); label.className='ttm-check';
+                checkbox.type='checkbox'; checkbox.value=network.identity||'';
+                checkbox.checked=!!(status.policy && (status.policy.local_access||[]).some(function (n) { return n.identity===network.identity; }));
+                label.appendChild(checkbox); label.appendChild(document.createTextNode(networkTitle(network)+' · '+network.sources.join(', ')));
+                el('ttm-local-access').appendChild(label);
+            });
             initialized=true;
         } else {
             inventory.forEach(function (network) {
@@ -494,11 +589,11 @@ body{padding:0;background:#4c595e}
         }
         document.querySelectorAll('.ttm-network').forEach(function (row) {
             var model=networkModels.get(row), network=inventory.find(function (n) { return n.lan_if===model.identity.lan_if; });
-            model.available=!!network;
-            row.querySelector('.ttm-selected').disabled=!network && !row.querySelector('.ttm-selected').checked;
-            row.querySelector('.ttm-cidrs').disabled=!network;
-            row.querySelector('.ttm-caption').textContent=network?networkTitle(network):'Сохранённая сеть недоступна';
-            row.querySelector('.ttm-network-hint').textContent=!network?'Эта сеть не обнаружена. Её нельзя включить в новую политику.':
+            model.available=!!network && model.identity.token===network.identity;
+            row.querySelector('.ttm-selected').disabled=!model.available && !row.querySelector('.ttm-selected').checked;
+            row.querySelector('.ttm-cidrs').disabled=!model.available;
+            row.querySelector('.ttm-caption').textContent=model.available?networkTitle(network):'Сохранённая сеть недоступна';
+            row.querySelector('.ttm-network-hint').textContent=!model.available?'Сеть исчезла или её состав изменился. Обновите данные перед сохранением.':
                 (Array.isArray(network.ssids)&&network.ssids.length>1?'Эти SSID используют одну сеть и выбираются вместе.':
                 (network.ssids&&network.ssids.length?'Сетевое подключение определено роутером.':'Имя Wi-Fi получить не удалось. Сеть можно определить по её подсети.'));
         });
@@ -508,16 +603,26 @@ body{padding:0;background:#4c595e}
     function render(status) {
         if (!status || typeof status.enabled !== 'boolean' || typeof status.timestamp !== 'number') throw new Error('Invalid status');
         latest = status; lastSeen = Date.now();
+        if (editRevision===null) editRevision=status.revision||'0';
         var labels = {disabled:'Отключён',paused_protected:'Пауза; блокировка запрошена',blocked_or_start_failed:'Процесс остановлен / ошибка',tun_ready_unverified:'TUN создан; связь не проверена'};
         text('ttm-state',labels[status.state] || 'Неизвестное состояние'); text('ttm-version',status.version);
         text('ttm-host',status.hostname || 'Подключение ещё не импортировано');
         text('ttm-process',status.process_running ? 'Запущен' : 'Не запущен'); text('ttm-tun',status.interface_up ? 'tt0' : 'Нет TUN');
         text('ttm-counter',(status.rx_bytes/1048576).toFixed(2) + ' / ' + (status.tx_bytes/1048576).toFixed(2) + ' MiB');
-        text('ttm-age',new Date(status.timestamp*1000).toLocaleTimeString()); text('ttm-last',status.last_result || 'none');
+        text('ttm-age',new Date(status.timestamp*1000).toLocaleTimeString()); text('ttm-last',(status.operations||[]).length?operationLabel(status.operations[0]):'Нет записей');
         var fresh = !!root.TTM_PREVIEW || Math.abs(Date.now()/1000-status.timestamp) < 150;
         controls(fresh);
         if (!fresh) message('Статус устарел. Управление заблокировано до обновления контроллера.',true);
         reconcileNetworks(status);
+        text('ttm-revision',status.revision||'0');
+        text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Правила присутствуют; прохождение пакетов не проверено',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
+        text('ttm-diagnostics',JSON.stringify(status.diagnostics||{hardware_tested:false},null,2));
+        el('ttm-transaction').hidden=!status.transaction;
+        if (status.transaction) text('ttm-transaction-state',status.transaction.phase==='trial' ?
+            'Проверьте Интернет и DNS на выбранных устройствах. Подтвердите в течение '+Math.max(0,status.transaction.deadline-Math.floor(Date.now()/1000))+' с. Без подтверждения будет запрошен откат.' :
+            'Восстановление настроек. Блокировки сохранены; при ошибке используйте «Откатить».');
+        el('ttm-confirm').disabled=pending||!status.transaction||status.transaction.phase!=='trial';
+        text('ttm-operation-list',(status.operations||[]).slice(0,8).map(operationLabel).join('\n')||'Операций пока нет');
     }
 
     function refresh() {
@@ -527,23 +632,72 @@ body{padding:0;background:#4c595e}
             catch (_) { controls(false); message('Не удалось прочитать статус. Проверьте контроллер по SSH.',true); } };
         request.onerror = request.ontimeout = function () { controls(false); message('Нет актуального статуса роутера.',true); }; request.send();
     }
-    function send(action,p) {
-        if (['start','pause','restart','disable','policy'].indexOf(action)<0) throw new Error('Unknown action');
-        if (root.TTM_PREVIEW) { message('Демонстрация: проверка пройдена, команда не отправлена на роутер.',false); return; }
-        if (!latest || Date.now()-lastSeen>15000 || Math.abs(Date.now()/1000-latest.timestamp)>150 || pending) throw new Error('Дождитесь актуального статуса и завершения предыдущей команды.');
+    function wire(command) {
+        if (!/^start_ttm_[a-z0-9_]+$/.test(command)||command.length>255) throw new Error('Некорректная команда.');
         var form = document.forms.ttm_form;
-        form.elements.amng_custom.disabled = !p;
-        form.elements.amng_custom.value = p ? makeEnvelope(root.ttmCustomSettings || {},p) : '';
-        form.elements.action_script.value = 'start_ttm_'+action;
+        form.elements.amng_custom.disabled=true; form.elements.amng_custom.value='';
+        form.elements.action_script.value=command;
         form.elements.current_page.value = form.elements.next_page.value = location.pathname.substring(1);
-        pending = true; controls(false); form.submit();
-        message('Команда отправлена. Проверьте последнюю операцию и время обновления статуса.',false);
-        root.setTimeout(function () { pending=false; refresh(); },12000);
+        form.submit();
     }
-    root.ttmAction = function (action) { try {
+    function delay(ms) { return new Promise(function (resolve) { root.setTimeout(resolve,ms); }); }
+    async function poll(file,check,timeout) {
+        var deadline=Date.now()+timeout;
+        while (Date.now()<deadline) {
+            await delay(1000);
+            var controller=new AbortController(), timer=root.setTimeout(function () { controller.abort(); },5000);
+            try { var response=await root.fetch('/user/trusttunnel/'+file+'.json?t='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+                if (response.ok) { var value=await response.json(); if (file==='status') render(value); if (check(value)) return value; }
+            } catch (_) { /* A timeout never means successful completion. */ }
+            finally { root.clearTimeout(timer); }
+        }
+        throw new Error('Подтверждение не получено. Результат неизвестен: обновите статус перед повторной операцией.');
+    }
+    async function waitOperation(id) {
+        var status=await poll('status',function (s) { return (s.operations||[]).some(function (op) { return op.id===id && op.state!=='running'; }); },90000);
+        var op=status.operations.find(function (item) { return item.id===id; });
+        if (op.state!=='succeeded') throw new Error(op.code==='revision_conflict'?'Настройки изменены в другой вкладке. Обновите данные перед сохранением.':'Операция завершилась ошибкой: '+op.code);
+        message(op.code==='confirmation_required'?'Настройки применены временно. Проверьте доступ и подтвердите применение.':'Операция выполнена.',false); return op;
+    }
+    async function busy(task) {
+        if (!latest||Date.now()-lastSeen>15000||pending) throw new Error('Дождитесь актуального статуса и завершения предыдущей операции.');
+        pending=true; controls(false);
+        try { return await task(); } finally { pending=false; controls(true); refresh(); }
+    }
+    async function save(kind,data) {
+        if (root.TTM_PREVIEW) { message('Демонстрация: конфигурация проверена; сохранение на роутер не выполнялось.',false); return; }
+        if (!root.isSecureContext||location.protocol!=='https:'||!root.crypto.subtle) throw new Error('Для приватного сохранения откройте WebUI роутера по HTTPS.');
+        await busy(async function () {
+            var id=root.TTMTransfer.id(root.crypto), envelope={version:1,revision:editRevision,kind:kind,data:data};
+            try {
+            var count=root.TTMTransfer.count(envelope); wire('start_ttm_begin_'+id+'_'+count);
+            var state=await poll('transfer',function (s) { return s.id===id&&s.state==='receiving'; },30000);
+            var parts=await root.TTMTransfer.encrypt(envelope,id,state.public_key,root.crypto);
+            for (var i=0;i<parts.length;i++) {
+                message('Передача конфигурации: '+Math.round(i/parts.length*100)+'%.',false);
+                wire(root.TTMTransfer.event(id,i,parts[i]));
+                await poll('transfer',function (s) { return s.id===id && s.next===i+1; },20000);
+            }
+            wire('start_ttm_commit_'+id); await waitOperation(id);
+            delete dirty[kind]; editRevision=(latest.operations.find(function (op) { return op.id===id; })||{}).revision||latest.revision; updateDirty();
+            if (kind==='endpoint') root.ttmClearConnection();
+            } catch(e) { wire('start_ttm_abort_'+id); throw e; }
+        });
+    }
+    root.ttmSaveEndpoint=async function () { try { await save('endpoint',readEndpoint()); } catch(e) { message(e.message,true); } };
+    root.ttmAction = async function (action) { try {
         if (action==='disable' && !root.confirm('Вернуть выбранные сети к обычной маршрутизации Merlin?')) return;
-        if (action==='policy' && latest && latest.enabled) throw new Error('Сначала отключите аддон.');
-        send(action,action==='policy' ? policy() : null);
+        if (action==='policy') { await save('policy',policy()); return; }
+        if (['start','pause','restart','disable','diagnostics'].indexOf(action)<0) throw new Error('Неизвестное действие');
+        if (root.TTM_PREVIEW) { message('Демонстрация: команда не отправлена на роутер.',false); return; }
+        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); wire('start_ttm_do_'+id+'_'+action); await waitOperation(id); });
+    } catch(e) { message(e.message,true); } };
+    root.ttmTransaction=async function (action) { try {
+        if (['confirm','rollback'].indexOf(action)<0||!latest.transaction) return;
+        if (root.TTM_PREVIEW) { message('Демонстрация: подтверждение не отправлено.',false); return; }
+        await busy(async function () { wire('start_ttm_'+action+'_'+latest.transaction.id);
+            await poll('status',function (s) { return !s.transaction; },90000); message('Транзакция завершена.',false);
+        });
     } catch(e) { message(e.message,true); } };
     function download(value,name) {
         var url = URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'})), a=document.createElement('a');
@@ -569,16 +723,37 @@ body{padding:0;background:#4c595e}
     }
     root.ttmParseLink = function () { try {
         var result=root.TTMConnection.parseLink(el('ttm-link').value.trim()); fillEndpoint(result.endpoint); el('ttm-link').value='';
-        root.ttmConnectionMode('manual'); message('Ссылка разобрана.'+(result.name?' Профиль: '+result.name+'.':'')+' Проверьте параметры перед экспортом.'+(result.warnings.length?' '+result.warnings.join(' '):''),false,'ttm-connection-message');
+        markDirty('endpoint'); root.ttmConnectionMode('manual'); message('Ссылка разобрана.'+(result.name?' Профиль: '+result.name+'.':'')+' Проверьте параметры перед сохранением.'+(result.warnings.length?' '+result.warnings.join(' '):''),false,'ttm-connection-message');
     } catch(e) { message(e.message,true,'ttm-connection-message'); } };
     root.ttmExportEndpoint = function () { try { var endpoint=readEndpoint(); download(endpoint,'trusttunnel-endpoint.json');
         message('Конфигурация проверена и скачана. Примените её по SSH по инструкции ниже. На роутере пока ничего не изменено.',false,'ttm-connection-message');
     } catch(e) { message(e.message,true,'ttm-connection-message'); } };
     root.ttmShowPassword = function (show) { el('ttm-password').type=show?'text':'password'; };
-    root.ttmClearConnection = function () { el('ttm-endpoint-form').reset(); importedDns=null; el('ttm-upstreams').readOnly=false; text('ttm-dns-hint','DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.'); el('ttm-link').value=''; root.ttmShowPassword(false); message('Данные подключения очищены из формы.',false,'ttm-connection-message'); };
+    root.ttmClearConnection = function () { el('ttm-endpoint-form').reset(); importedDns=null; el('ttm-upstreams').readOnly=false; text('ttm-dns-hint','DNS задаётся только в конфигурации подключения. Для ручного подключения укажите его здесь.'); el('ttm-link').value=''; root.ttmShowPassword(false); delete dirty.endpoint; updateDirty(); message('Данные подключения очищены из формы.',false,'ttm-connection-message'); };
+    root.ttmImportFile=async function (input) { try {
+        var file=input.files[0]; if (!file) return; if (file.size>65536) throw new Error('Файл превышает 64 КиБ.');
+        var source=await file.text(), endpoint=source.trim().startsWith('tt://')?root.TTMConnection.parseLink(source.trim()).endpoint:root.TTMConnection.endpointFromFields(JSON.parse(source));
+        fillEndpoint(endpoint); markDirty('endpoint'); root.ttmConnectionMode('manual'); message('Файл загружен в форму. Проверьте данные перед сохранением.',false,'ttm-connection-message');
+    } catch(e) { message('Не удалось импортировать конфигурацию. '+(e instanceof SyntaxError?'Некорректный JSON.':e.message),true,'ttm-connection-message'); } finally { input.value=''; } };
+    root.ttmDownloadDiagnostics=function () { download({diagnostics:latest.diagnostics||{},operations:latest.operations||[],transaction:latest.transaction||null},'trusttunnel-diagnostics.json'); };
     root.done_validating = function () { refresh(); };
     root.ttmInitial = function () {
         if (typeof root.show_menu==='function') root.show_menu();
+        var tabs=Array.from(document.querySelectorAll('[data-view-button]'));
+        tabs.forEach(function (button,index) {
+            var name=button.dataset.viewButton, panel=document.querySelector('[data-view="'+name+'"]');
+            button.id='ttm-nav-'+name; panel.id='ttm-view-'+name; button.setAttribute('aria-controls',panel.id);
+            panel.setAttribute('role','tabpanel'); panel.setAttribute('aria-labelledby',button.id);
+            button.addEventListener('keydown',function (event) {
+                var next=event.key==='ArrowRight'?(index+1)%tabs.length:event.key==='ArrowLeft'?(index+tabs.length-1)%tabs.length:event.key==='Home'?0:event.key==='End'?tabs.length-1:null;
+                if (next!==null) { event.preventDefault(); root.ttmView(tabs[next].dataset.viewButton); tabs[next].focus(); }
+            });
+        });
+        ['ttm-endpoint-form','ttm-link-panel','ttm-policy-fields'].forEach(function (id) {
+            el(id).addEventListener('input',function () { markDirty(id==='ttm-policy-fields'?'policy':'endpoint'); });
+        });
+        root.addEventListener('beforeunload',function (event) { if (pending||Object.keys(dirty).length) { event.preventDefault(); event.returnValue=''; } });
+        root.ttmView('overview'); updateDirty();
         refresh(); if (!root.TTM_PREVIEW) root.setInterval(refresh,5000);
     };
     root.TTM=api;
@@ -594,7 +769,7 @@ body{padding:0;background:#4c595e}
 <input type="hidden" name="current_page"><input type="hidden" name="next_page">
 <input type="hidden" name="group_id" value=""><input type="hidden" name="modified" value="0">
 <input type="hidden" name="action_mode" value="apply"><input type="hidden" name="action_wait" value="2">
-<input type="hidden" name="action_script"><input type="hidden" name="amng_custom">
+<input type="hidden" name="action_script"><input type="hidden" name="amng_custom" disabled>
 
 
 </form>
@@ -602,9 +777,18 @@ body{padding:0;background:#4c595e}
 <td class="ttm-sidebar"><div id="mainMenu" aria-label="Образец меню прошивки"><div class="preview-quick"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Быстрая настройка<br>Интернет</span></div><div class="preview-menu-group"><div class="preview-menu-heading">Общие настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Карта сети</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>AiMesh</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Гостевая сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>AiProtection</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Родительский контроль</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Адаптивный QoS</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Анализатор трафика</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Игры</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Open NAT</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V5m-4 4 4-5 4 5M16 22H9a3 3 0 0 1-3-3v-4M16 17h7a3 3 0 0 0 3-3v-2"/><circle cx="6" cy="12" r="3"/><rect x="23" y="5" width="6" height="6"/><circle cx="16" cy="28" r="2"/></svg><span>USB-приложение</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Информация о системе</span></div></div><div class="preview-menu-group"><div class="preview-menu-heading">Дополнительные настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>Беспроводная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Локальная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Интернет</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>IPv6</span></div><div class="preview-menu-item is-active"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>VPN</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>Брандмауэр</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Администрирование</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3h19v26H7zM3 7h4M3 13h4M3 19h4M3 25h4M12 9h9M12 14h9M12 19h9M12 24h6"/></svg><span>Системный журнал</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Сетевые утилиты</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Дополнения</span></div></div></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"><div class="preview-status"><span>Режим: <b>Беспроводной роутер</b></span><span>Модель: <b>RT-AX86U</b></span><span class="preview-offline">Нет подключения к прошивке</span></div><div class="preview-tabs" aria-label="Образец вкладок VPN"><span class="preview-tab">VPN Status</span><span class="preview-tab">VPN Director</span><span class="preview-tab">VPN Server</span><span class="preview-tab preview-client">VPN Client</span><span class="preview-tab">Instant Guard</span><span class="preview-tab" aria-current="page">TrustTunnel</span></div></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.2.2-alpha.1</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.0-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
-<section class="ttm-section" aria-labelledby="ttm-status-title">
+<div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
+<button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
+<button role="tab" type="button" data-view-button="connection" onclick="ttmView('connection')">Подключение</button>
+<button role="tab" type="button" data-view-button="networks" onclick="ttmView('networks')">Сети</button>
+<button role="tab" type="button" data-view-button="diagnostics" onclick="ttmView('diagnostics')">Диагностика</button>
+</div>
+<div class="ttm-draft"><span id="ttm-dirty">Изменения сохранены</span><button type="button" onclick="ttmReload()">Обновить данные</button></div>
+<div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
+<div id="ttm-transaction" class="ttm-banner" hidden><p id="ttm-transaction-state"></p><div class="ttm-actions"><button id="ttm-confirm" type="button" onclick="ttmTransaction('confirm')">Доступ проверен, подтвердить</button><button type="button" onclick="ttmTransaction('rollback')">Откатить</button></div></div>
+<section class="ttm-section" data-view="overview" aria-labelledby="ttm-status-title">
 <div class="ttm-heading"><h3 id="ttm-status-title">Управление клиентом</h3></div>
 <dl class="ttm-grid">
 <dt>Состояние</dt><dd id="ttm-state">Загрузка…</dd>
@@ -613,6 +797,8 @@ body{padding:0;background:#4c595e}
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
 <dt>Обновлено</dt><dd id="ttm-age">—</dd>
 <dt>Последняя операция</dt><dd id="ttm-last">—</dd>
+<dt>Блокировка обхода VPN</dt><dd id="ttm-guard">—</dd>
+<dt>Ревизия настроек</dt><dd id="ttm-revision">—</dd>
 </dl>
 <div class="ttm-actions">
 <button type="button" data-runtime onclick="ttmAction('start')" disabled>Запустить</button>
@@ -622,10 +808,10 @@ body{padding:0;background:#4c595e}
 </div>
 <p class="ttm-muted">Пауза сохраняет блокировку. Отключение возвращает выбранные сети к обычной маршрутизации Merlin.</p>
 </section>
-<div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
-<section class="ttm-section" aria-labelledby="ttm-connection-title">
-<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">Локальная подготовка</span></div>
-<p class="ttm-muted">Введите параметры вручную или вставьте ссылку TrustTunnel. Пароль остаётся в памяти этой страницы до экспорта; автоматического сохранения нет.</p>
+<section class="ttm-section" data-view="connection" aria-labelledby="ttm-connection-title" hidden>
+<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">HTTPS · приватное сохранение</span></div>
+<p class="ttm-muted">Введите параметры вручную, вставьте ссылку или загрузите файл. Существующий пароль с роутера не загружается: сохранение заменяет конфигурацию подключения целиком.</p>
+<div class="ttm-row"><label class="ttm-label" for="ttm-file">Импорт из файла</label><div class="ttm-value"><input type="file" id="ttm-file" accept=".json,.txt" onchange="ttmImportFile(this)"><small>JSON подключения или текст со ссылкой tt://, до 64 КиБ.</small></div></div>
 <div class="ttm-row"><div class="ttm-label">Способ настройки</div><div class="ttm-value"><div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
 <button type="button" role="tab" id="ttm-tab-manual" aria-selected="true" aria-controls="ttm-manual" onclick="ttmConnectionMode('manual')">Вручную</button>
 <button type="button" role="tab" id="ttm-tab-link" aria-selected="false" aria-controls="ttm-link-panel" onclick="ttmConnectionMode('link')">Ссылка tt://</button>
@@ -654,11 +840,11 @@ body{padding:0;background:#4c595e}
 </div>
 </details>
 </form>
-<div class="ttm-actions"><button type="button" class="ttm-primary" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
+<div class="ttm-actions"><button type="button" id="ttm-save-endpoint" class="ttm-primary" onclick="ttmSaveEndpoint()">Сохранить подключение</button><button type="button" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
 </div>
 <div id="ttm-connection-message" role="status" aria-live="polite" class="ttm-note"></div>
 <details class="ttm-import-help"><summary>Как применить подключение на роутере</summary>
-<p>В этой alpha конфигурация переносится по SSH. Штатное общее хранилище Merlin не используется для пароля.</p>
+<p>Кнопка сохранения использует зашифрованную передачу через штатный интерфейс Merlin по HTTPS. Если этот экспериментальный канал недоступен, используйте импорт по SSH:</p>
 <ol><li>Скачайте <code>trusttunnel-endpoint.json</code>, ограничьте доступ к нему на компьютере и перенесите по SCP/SFTP в <code>/tmp/</code> роутера.</li><li>Отключите аддон перед изменением подключения. В SSH выполните:</li></ol>
 <pre>chmod 600 /tmp/trusttunnel-endpoint.json
 /jffs/addons/trusttunnel/trusttunnel.sh import-endpoint /tmp/trusttunnel-endpoint.json
@@ -667,17 +853,25 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <p class="ttm-muted">Скачанный файл содержит пароль. После импорта удалите свою временную копию из загрузок. Экспорт сам по себе не меняет настройки роутера.</p>
 </details>
 </section>
-<section class="ttm-section" aria-labelledby="ttm-routing-title">
+<section class="ttm-section" data-view="networks" aria-labelledby="ttm-routing-title" hidden>
 <div class="ttm-heading"><h3 id="ttm-routing-title">Маршрутизация сетей через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
 <p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
+<p class="ttm-muted">Выбор устройства заменяет целые подсети списком адресов /32. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
+<details><summary>Доступ к локальным ресурсам</summary><p>Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
 <label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
-<p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>
+<p class="ttm-muted">При работающем клиенте изменения применяются временно. Проверьте доступ и подтвердите их в течение 3 минут; иначе контроллер запросит откат. До подтверждения удалённые из политики сети остаются заблокированы.</p>
+</section>
+<section class="ttm-section" data-view="diagnostics" aria-labelledby="ttm-diagnostics-title" hidden>
+<div class="ttm-heading"><h3 id="ttm-diagnostics-title">Диагностика и история</h3></div>
+<p class="ttm-muted">Отчёт содержит версии, доступность инструментов и результаты операций. Пароль, ссылка подключения и журнал клиента в него не включаются. Проверка прохождения трафика и ускорения HND требует роутера.</p>
+<div class="ttm-actions"><button type="button" data-runtime onclick="ttmAction('diagnostics')">Обновить диагностику</button><button type="button" onclick="ttmDownloadDiagnostics()">Скачать отчёт</button></div>
+<pre id="ttm-operation-list"></pre><details><summary>Совместимость и версии</summary><pre id="ttm-diagnostics"></pre></details>
 </section>
 </div></td></tr></table><div id="footer">TrustTunnel · автономный предпросмотр интерфейса ASUSWRT-Merlin · без запросов к роутеру</div></body></html>

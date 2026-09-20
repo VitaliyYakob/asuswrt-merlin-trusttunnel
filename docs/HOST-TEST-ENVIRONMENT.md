@@ -1,5 +1,17 @@
 # Temporary host testing environment
 
+## Rebuilt on 2026-09-20 for 0.3
+
+The previous `/tmp/ttm-test-deps` no longer existed. The same pinned BusyBox 1.37.0 and flock 0.4.0 sources were verified and rebuilt in `/private/tmp/ttm-host-tests.wJHyq1`. Load its `env.sh` for this session. No global installation or router network configuration was changed.
+
+BusyBox ash uses the same Darwin build adjustments described below; `busybox_unstripped` is the tested executable. Browser: bundled Playwright 1.62.1, downloaded Chromium Headless Shell 151.0.7922.34 in the temporary directory. The precise Playwright version and integrity were checked against the official npm registry before defining CI installation.
+
+ShellCheck 0.10.0 was obtained from its official GitHub release (`shellcheck-v0.10.0.darwin.aarch64.tar.xz`), archive SHA256 `bbd2f14826328eee7679da7221f2bc3afb011f6a928b848c80c321f6046ddf81`. `make lint` checks warning/error severity on entry points with their sourced libraries. Informational suggestions are not included in that gate.
+
+The runtime PATH resolves the OpenSSL CLI to `/usr/bin/openssl`, **LibreSSL 3.3.6**; real RSA-OAEP interoperability tests used that implementation. Homebrew OpenSSL 3.6.4 also exists, but its presence is not reported as an Entware/OpenSSL router test. GnuPG was not installed: signature-verifier control-flow tests use a stub and do not verify an official release.
+
+## Historical 2026-09-14 environment
+
 No project files or global installed binaries were changed. Source archives, builds and installed binaries are in this directory.
 
 ## Shell checks and locking

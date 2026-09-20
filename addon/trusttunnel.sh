@@ -1,6 +1,6 @@
 #!/bin/sh
 # TrustTunnel Client Addon for ASUSWRT-Merlin. Experimental, disabled by default.
-TT_BASE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+TT_BASE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
 # shellcheck source=lib/common.sh
 . "$TT_BASE/lib/common.sh"
 # shellcheck source=lib/config.sh
@@ -11,18 +11,25 @@ TT_BASE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
 . "$TT_BASE/lib/service.sh"
 # shellcheck source=lib/webui.sh
 . "$TT_BASE/lib/webui.sh"
+# shellcheck source=lib/transaction.sh
+. "$TT_BASE/lib/transaction.sh"
+# shellcheck source=lib/transfer.sh
+. "$TT_BASE/lib/transfer.sh"
+# shellcheck source=lib/diagnostics.sh
+. "$TT_BASE/lib/diagnostics.sh"
 
 TT_ACTION=${1:-help}
 [ "$#" -eq 0 ] || shift
 case "$TT_ACTION" in
     help|--help)
         cat <<'HELP'
-TrustTunnel Merlin 0.2.2-alpha.1
+TrustTunnel Merlin 0.3.0-alpha.1
 Offline (never changes networking):
   validate endpoint|policy FILE
   render ENDPOINT_JSON           # contains credentials; protect redirected output
   plan guard|up|down|disarm POLICY_JSON
   status
+  diagnostics                    # allowlisted compatibility report, no credentials
 Configuration (TT_ROOT supported for a sandbox):
   import-endpoint FILE
   import-policy FILE             # changes require explicit disable first
@@ -30,6 +37,7 @@ Router laboratory only:
   start | restart | pause        # pause retains requested protection
   disable                        # intentionally releases traffic to normal routing
   refresh | wan | shutdown
+  recover                        # roll back a pending transaction; retain guards on failure
   install-webui | uninstall-webui
 Internal: event TYPE EVENT; hook NAME; apply-web-policy; boot
 HELP
@@ -38,9 +46,19 @@ HELP
     render) [ "$#" -eq 1 ] || tt_die 'usage: render ENDPOINT_JSON'; tt_render "$1"; exit $?;;
     plan) [ "$#" -eq 2 ] || tt_die 'usage: plan ACTION POLICY_JSON'; tt_plan "$1" "$2"; exit $?;;
     status) tt_status; exit $?;;
+    diagnostics) tt_diagnostics; exit $?;;
+    transfer-event)
+        [ "$#" -eq 1 ] || exit 1
+        tt_live && tt_lock || exit 1
+        tt_wire_dispatch "$1"; TT_RESULT=$?
+        case "$1" in ttm_begin_*|ttm_part_*) :;; *) tt_publish_status || :;; esac
+        exit "$TT_RESULT";;
     event)
         [ "$#" -eq 2 ] || exit 1
         case "$1:$2" in
+            start:ttm_begin_*|start:ttm_part_*|start:ttm_commit_*|start:ttm_do_*|start:ttm_confirm_*|start:ttm_rollback_*|start:ttm_abort_*)
+                "$TT_BASE/trusttunnel.sh" transfer-event "$2" >/dev/null 2>&1 &
+                exit 0;;
             start:ttm_start) TT_DISPATCH=start;;
             start:ttm_pause) TT_DISPATCH=pause;;
             start:ttm_restart) TT_DISPATCH=restart;;
@@ -65,13 +83,18 @@ HELP
         TT_RESULT=$?
         tt_publish_status || :
         exit "$TT_RESULT";;
-    start|restart|pause|disable|refresh|wan|shutdown|install-webui|uninstall-webui|apply-web-policy|boot) :;;
+    start|restart|pause|disable|refresh|wan|shutdown|install-webui|uninstall-webui|apply-web-policy|boot|recover) :;;
     *) tt_die 'unknown command; use --help';;
 esac
 [ "$#" -eq 0 ] || tt_die 'unexpected command arguments'
 tt_live && tt_lock || exit 1
+case "$TT_ACTION" in
+    start|restart|pause|disable|uninstall-webui|apply-web-policy)
+        [ ! -e "$TT_CONFIG/transaction" ] || tt_die 'pending transaction: confirm in WebUI or run recover';;
+esac
 TT_RESULT=0
 case "$TT_ACTION" in
+    recover) tt_transaction_rollback || TT_RESULT=$?;;
     start) tt_start || TT_RESULT=$?;;
     pause) tt_pause || TT_RESULT=$?;;
     restart) tt_stop_process && tt_start || TT_RESULT=$?;;
@@ -91,6 +114,7 @@ case "$TT_ACTION" in
         tt_disable && tt_hooks remove && tt_unmount_ui || TT_RESULT=$?
         [ "$TT_RESULT" -ne 0 ] || cru d TrustTunnelMerlin;;
     boot)
+        tt_transaction_reconcile || TT_RESULT=$?
         tt_mount_ui || TT_RESULT=$?
         cru a TrustTunnelMerlin '* * * * * /jffs/addons/trusttunnel/trusttunnel.sh refresh >/dev/null 2>&1' || TT_RESULT=$?
         tt_refresh || TT_RESULT=$?;;

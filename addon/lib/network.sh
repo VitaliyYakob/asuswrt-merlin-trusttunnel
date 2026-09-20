@@ -50,12 +50,19 @@ tt_rule() {
     ip -4 rule add pref "$TT_RULE_PREF" from "$TT_RULE_SRC" iif "$TT_RULE_IF" lookup "$TT_RULE_TABLE"
 }
 tt_run_plan() {
-    TT_PLAN_TMP=$(mktemp "$TT_RUN/plan.XXXXXX") || return 1
     TT_PLAN_RAW=$(mktemp "$TT_RUN/plan-raw.XXXXXX") || return 1
-    if ! tt_plan "$1" "$2" >"$TT_PLAN_RAW" || ! jq -c '.[]' "$TT_PLAN_RAW" >"$TT_PLAN_TMP"; then
-        rm -f "$TT_PLAN_TMP" "$TT_PLAN_RAW"; return 1
+    if ! tt_plan "$1" "$2" >"$TT_PLAN_RAW"; then
+        rm -f "$TT_PLAN_RAW"; return 1
     fi
+    tt_execute_plan "$TT_PLAN_RAW"
+    TT_EXEC_RESULT=$?
     rm -f "$TT_PLAN_RAW"
+    return "$TT_EXEC_RESULT"
+}
+tt_execute_plan() {
+    # Input must be a locally generated plan, never a browser-supplied document.
+    TT_PLAN_TMP=$(mktemp "$TT_RUN/plan.XXXXXX") || return 1
+    jq -c '.[]' "$1" >"$TT_PLAN_TMP" || { rm -f "$TT_PLAN_TMP"; return 1; }
     TT_PLAN_OK=1
     while IFS= read -r TT_OP; do
         TT_KIND=$(printf '%s' "$TT_OP" | jq -r .op)
@@ -122,6 +129,21 @@ tt_rpf_restore() {
             cat "$TT_SAVED" >"$TT_RPF_FILE" || return 1
         fi
         rm -f "$TT_SAVED"
+    done
+}
+tt_rpf_prune() {
+    # A confirmed migration no longer owns rp_filter on bridges it stopped using.
+    TT_RPF_KEEP=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if end' "$TT_RUNTIME_POLICY") || return 1
+    for TT_SAVED in "$TT_RUN"/rpf-*; do
+        [ -f "$TT_SAVED" ] || continue
+        TT_IF=${TT_SAVED##*/rpf-}
+        [ "$TT_IF" != tt0 ] || continue
+        if printf '%s\n' "$TT_RPF_KEEP" | grep -Fxq "$TT_IF"; then continue; fi
+        TT_RPF_FILE="$TT_PROC/sys/net/ipv4/conf/$TT_IF/rp_filter"
+        if [ -f "$TT_RPF_FILE" ] && [ "$(cat "$TT_RPF_FILE")" = 2 ]; then
+            cat "$TT_SAVED" >"$TT_RPF_FILE" || return 1
+        fi
+        rm -f "$TT_SAVED" || return 1
     done
 }
 tt_disarm() {

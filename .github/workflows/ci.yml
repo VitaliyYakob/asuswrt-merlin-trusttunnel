@@ -8,11 +8,19 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      # Pin a reviewed commit before first external/public release.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install host-side test tools
-        run: sudo apt-get update && sudo apt-get install -y jq busybox util-linux
+        run: sudo apt-get update && sudo apt-get install -y jq busybox util-linux openssl shellcheck
       - name: Tests (no router, no privileged network access)
         run: make test
+      - name: ShellCheck (warning and error severity)
+        run: make lint
+      - name: Install pinned host browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ttm-browser" --no-save --ignore-scripts playwright@1.62.1
+          node "$RUNNER_TEMP/ttm-browser/node_modules/playwright/cli.js" install --with-deps chromium --only-shell
+          echo "NODE_PATH=$RUNNER_TEMP/ttm-browser/node_modules" >> "$GITHUB_ENV"
+      - name: Browser regression tests (simulated router only)
+        run: make browser-test
       - name: Offline preview and source package
         run: make preview package

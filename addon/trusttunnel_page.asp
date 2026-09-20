@@ -6,8 +6,7 @@
 <link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css">
 <link rel="stylesheet" href="/user/trusttunnel/trusttunnel.css">
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script>window.ttmCustomSettings = <% get_custom_settings(); %>;</script>
-<script src="/user/trusttunnel/connection.js"></script><script src="/user/trusttunnel/trusttunnel.js"></script>
+<script src="/user/trusttunnel/connection.js"></script><script src="/user/trusttunnel/transfer.js"></script><script src="/user/trusttunnel/trusttunnel.js"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -15,7 +14,7 @@
 <input type="hidden" name="current_page"><input type="hidden" name="next_page">
 <input type="hidden" name="group_id" value=""><input type="hidden" name="modified" value="0">
 <input type="hidden" name="action_mode" value="apply"><input type="hidden" name="action_wait" value="2">
-<input type="hidden" name="action_script"><input type="hidden" name="amng_custom">
+<input type="hidden" name="action_script"><input type="hidden" name="amng_custom" disabled>
 <input type="hidden" name="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
 </form>
@@ -23,9 +22,18 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.2.2-alpha.1</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.0-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
-<section class="ttm-section" aria-labelledby="ttm-status-title">
+<div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
+<button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
+<button role="tab" type="button" data-view-button="connection" onclick="ttmView('connection')">Подключение</button>
+<button role="tab" type="button" data-view-button="networks" onclick="ttmView('networks')">Сети</button>
+<button role="tab" type="button" data-view-button="diagnostics" onclick="ttmView('diagnostics')">Диагностика</button>
+</div>
+<div class="ttm-draft"><span id="ttm-dirty">Изменения сохранены</span><button type="button" onclick="ttmReload()">Обновить данные</button></div>
+<div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
+<div id="ttm-transaction" class="ttm-banner" hidden><p id="ttm-transaction-state"></p><div class="ttm-actions"><button id="ttm-confirm" type="button" onclick="ttmTransaction('confirm')">Доступ проверен, подтвердить</button><button type="button" onclick="ttmTransaction('rollback')">Откатить</button></div></div>
+<section class="ttm-section" data-view="overview" aria-labelledby="ttm-status-title">
 <div class="ttm-heading"><h3 id="ttm-status-title">Управление клиентом</h3></div>
 <dl class="ttm-grid">
 <dt>Состояние</dt><dd id="ttm-state">Загрузка…</dd>
@@ -34,6 +42,8 @@
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
 <dt>Обновлено</dt><dd id="ttm-age">—</dd>
 <dt>Последняя операция</dt><dd id="ttm-last">—</dd>
+<dt>Блокировка обхода VPN</dt><dd id="ttm-guard">—</dd>
+<dt>Ревизия настроек</dt><dd id="ttm-revision">—</dd>
 </dl>
 <div class="ttm-actions">
 <button type="button" data-runtime onclick="ttmAction('start')" disabled>Запустить</button>
@@ -43,10 +53,10 @@
 </div>
 <p class="ttm-muted">Пауза сохраняет блокировку. Отключение возвращает выбранные сети к обычной маршрутизации Merlin.</p>
 </section>
-<div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
-<section class="ttm-section" aria-labelledby="ttm-connection-title">
-<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">Локальная подготовка</span></div>
-<p class="ttm-muted">Введите параметры вручную или вставьте ссылку TrustTunnel. Пароль остаётся в памяти этой страницы до экспорта; автоматического сохранения нет.</p>
+<section class="ttm-section" data-view="connection" aria-labelledby="ttm-connection-title" hidden>
+<div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">HTTPS · приватное сохранение</span></div>
+<p class="ttm-muted">Введите параметры вручную, вставьте ссылку или загрузите файл. Существующий пароль с роутера не загружается: сохранение заменяет конфигурацию подключения целиком.</p>
+<div class="ttm-row"><label class="ttm-label" for="ttm-file">Импорт из файла</label><div class="ttm-value"><input type="file" id="ttm-file" accept=".json,.txt" onchange="ttmImportFile(this)"><small>JSON подключения или текст со ссылкой tt://, до 64 КиБ.</small></div></div>
 <div class="ttm-row"><div class="ttm-label">Способ настройки</div><div class="ttm-value"><div class="ttm-tabs" role="tablist" aria-label="Способ настройки">
 <button type="button" role="tab" id="ttm-tab-manual" aria-selected="true" aria-controls="ttm-manual" onclick="ttmConnectionMode('manual')">Вручную</button>
 <button type="button" role="tab" id="ttm-tab-link" aria-selected="false" aria-controls="ttm-link-panel" onclick="ttmConnectionMode('link')">Ссылка tt://</button>
@@ -75,11 +85,11 @@
 </div>
 </details>
 </form>
-<div class="ttm-actions"><button type="button" class="ttm-primary" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
+<div class="ttm-actions"><button type="button" id="ttm-save-endpoint" class="ttm-primary" onclick="ttmSaveEndpoint()">Сохранить подключение</button><button type="button" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
 </div>
 <div id="ttm-connection-message" role="status" aria-live="polite" class="ttm-note"></div>
 <details class="ttm-import-help"><summary>Как применить подключение на роутере</summary>
-<p>В этой alpha конфигурация переносится по SSH. Штатное общее хранилище Merlin не используется для пароля.</p>
+<p>Кнопка сохранения использует зашифрованную передачу через штатный интерфейс Merlin по HTTPS. Если этот экспериментальный канал недоступен, используйте импорт по SSH:</p>
 <ol><li>Скачайте <code>trusttunnel-endpoint.json</code>, ограничьте доступ к нему на компьютере и перенесите по SCP/SFTP в <code>/tmp/</code> роутера.</li><li>Отключите аддон перед изменением подключения. В SSH выполните:</li></ol>
 <pre>chmod 600 /tmp/trusttunnel-endpoint.json
 /jffs/addons/trusttunnel/trusttunnel.sh import-endpoint /tmp/trusttunnel-endpoint.json
@@ -88,17 +98,25 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <p class="ttm-muted">Скачанный файл содержит пароль. После импорта удалите свою временную копию из загрузок. Экспорт сам по себе не меняет настройки роутера.</p>
 </details>
 </section>
-<section class="ttm-section" aria-labelledby="ttm-routing-title">
+<section class="ttm-section" data-view="networks" aria-labelledby="ttm-routing-title" hidden>
 <div class="ttm-heading"><h3 id="ttm-routing-title">Маршрутизация сетей через VPN</h3><span id="ttm-network-count" class="ttm-step">0 сетей</span></div>
 <p class="ttm-muted">Выберите основную и гостевые сети. Сети показаны по именам Wi-Fi (SSID); привязку к интерфейсам определяет роутер. Можно уточнить IPv4-подсети или отдельные адреса /32. Неотмеченные сети сохраняют обычную маршрутизацию Merlin.</p>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <p class="ttm-muted">Список формируется автоматически. Если несколько SSID используют одну сеть, они выбираются вместе. До 16 сетей и 32 записей подсетей суммарно.</p>
+<p class="ttm-muted">Выбор устройства заменяет целые подсети списком адресов /32. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
+<details><summary>Доступ к локальным ресурсам</summary><p>Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
 <label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Подтверждаю блокировку IPv6-транзита и IPv6 DNS к роутеру во <strong>всех выбранных сетях целиком</strong>, в том числе для IPv4-адресов вне указанных подсетей.</span></label>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button><button type="button" id="ttm-export-policy" onclick="ttmExportPolicy()" disabled>Скачать политику для SSH</button></div>
-<p class="ttm-muted">Изменения доступны при отключённом аддоне. После сохранения проверьте результат операции. Переключение работающей политики без отключения пока не поддерживается.</p>
+<p class="ttm-muted">При работающем клиенте изменения применяются временно. Проверьте доступ и подтвердите их в течение 3 минут; иначе контроллер запросит откат. До подтверждения удалённые из политики сети остаются заблокированы.</p>
+</section>
+<section class="ttm-section" data-view="diagnostics" aria-labelledby="ttm-diagnostics-title" hidden>
+<div class="ttm-heading"><h3 id="ttm-diagnostics-title">Диагностика и история</h3></div>
+<p class="ttm-muted">Отчёт содержит версии, доступность инструментов и результаты операций. Пароль, ссылка подключения и журнал клиента в него не включаются. Проверка прохождения трафика и ускорения HND требует роутера.</p>
+<div class="ttm-actions"><button type="button" data-runtime onclick="ttmAction('diagnostics')">Обновить диагностику</button><button type="button" onclick="ttmDownloadDiagnostics()">Скачать отчёт</button></div>
+<pre id="ttm-operation-list"></pre><details><summary>Совместимость и версии</summary><pre id="ttm-diagnostics"></pre></details>
 </section>
 </div></td></tr></table><div id="footer"></div></body></html>

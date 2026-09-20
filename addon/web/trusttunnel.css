@@ -92,6 +92,12 @@
 .ttm-container .ttm-network-hint { margin-top: 6px; font-size: 11px; color: #c6d4d9; }
 .ttm-network > div:last-child label { margin-bottom: 4px; font-size: 11px; }
 .ttm-network textarea { height: 48px; }
+.ttm-draft { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 4px; color:#ffdb66; font-size:12px; }
+.ttm-navigation { margin:0 4px; }
+.ttm-navigation button { flex:1; min-width:0; padding:7px 9px; }
+.ttm-local-access { padding:4px 12px 12px; }
+.ttm-container .ttm-device { margin-top:8px; max-width:100%; width:100%; }
+.ttm-container input[type=file] { max-width:100%; }
 @media (max-width: 760px) {
   .ttm-container.FormTitle { padding: 8px 5px 12px; }
   .ttm-heading { flex-wrap: wrap; gap: 4px 10px; }

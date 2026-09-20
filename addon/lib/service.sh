@@ -2,6 +2,16 @@
 # shellcheck source=inventory.sh
 . "$TT_BASE/lib/inventory.sh"
 tt_check_interfaces() {
+    if [ "$(jq -r .schema "$TT_POLICY")" -eq 4 ]; then
+        TT_CURRENT_NETWORKS=$(tt_discover_networks) || return 1
+        jq -e --argjson inventory "$TT_CURRENT_NETWORKS" '
+            all(.networks[]; . as $n | any($inventory[]; .lan_if==$n.lan_if and
+                (($n|has("identity")|not) or .identity==$n.identity))) and
+            all(.local_access[]; . as $n | any($inventory[]; .lan_if==$n.lan_if and .identity==$n.identity and
+                (.sources|index($n.destination))!=null))' "$TT_POLICY" >/dev/null || {
+            tt_error 'network topology changed; review networks and local exceptions'; return 1;
+        }
+    fi
     TT_LANS=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if end' "$TT_POLICY") || return 1
     for TT_LAN in $TT_LANS; do
         [ -d "$TT_SYS/class/net/$TT_LAN/bridge" ] || { tt_error 'configured LAN bridge does not exist'; return 1; }
@@ -85,6 +95,7 @@ tt_spawn() {
     return 1
 }
 tt_start() {
+    rm -f "$TT_RUN/retry.json"
     tt_preflight && tt_claim_resources || return 1
     # Remember intent before constructing rules. A failed start is not a silent disable.
     : >"$TT_ENABLED"
@@ -105,9 +116,30 @@ tt_refresh() {
     [ -f "$TT_ENABLED" ] || return 0
     # Rebuild requested guards independently of client/endpoint availability.
     # A firewall callback can arrive after firmware removed the previous rules.
-    tt_live && tt_validate policy "$TT_POLICY" && tt_claim_resources &&
+    tt_live || return 1
+    if command -v tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
+    tt_validate policy "$TT_POLICY" && tt_claim_resources &&
         tt_run_plan guard "$TT_RUNTIME_POLICY" && tt_rpf_loose || return 1
-    if [ -f "$TT_PAUSED" ]; then tt_stop_process; else tt_preflight && tt_spawn; fi
+    if [ -f "$TT_PAUSED" ]; then tt_stop_process; else tt_retry_client; fi
+    TT_REFRESH_RESULT=$?
+    if command -v tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
+    return "$TT_REFRESH_RESULT"
+}
+tt_retry_client() {
+    # Guards have already been restored. Backoff never releases protection.
+    TT_RETRY_COUNT=0
+    if [ -f "$TT_RUN/retry.json" ]; then
+        TT_RETRY_COUNT=$(jq -r '.failures' "$TT_RUN/retry.json") || return 1
+        if jq -e --argjson now "$(date +%s)" '.next_attempt>$now' "$TT_RUN/retry.json" >/dev/null; then return 1; fi
+    fi
+    if tt_preflight && tt_spawn; then rm -f "$TT_RUN/retry.json"; return 0; fi
+    TT_RETRY_COUNT=$((TT_RETRY_COUNT+1)); [ "$TT_RETRY_COUNT" -le 5 ] || TT_RETRY_COUNT=5
+    TT_RETRY_DELAY=60; TT_RETRY_I=1
+    while [ "$TT_RETRY_I" -lt "$TT_RETRY_COUNT" ]; do TT_RETRY_DELAY=$((TT_RETRY_DELAY*2)); TT_RETRY_I=$((TT_RETRY_I+1)); done
+    [ "$TT_RETRY_DELAY" -le 900 ] || TT_RETRY_DELAY=900
+    jq -n --argjson failures "$TT_RETRY_COUNT" --argjson next "$(($(date +%s)+TT_RETRY_DELAY))" \
+        '{failures:$failures,next_attempt:$next}' >"$TT_RUN/retry.json"
+    return 1
 }
 tt_limit_log() {
     [ -f "$TT_RUN/client.log" ] || return 0
@@ -141,15 +173,25 @@ tt_status() {
     TT_LAST=none
     [ ! -f "$TT_RUN/last-result" ] || TT_LAST=$(cat "$TT_RUN/last-result")
     TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || TT_DISCOVERED_NETWORKS='[]'
+    TT_STATUS_OPS=$(tt_operations_json) || TT_STATUS_OPS='[]'
+    TT_STATUS_TX=null
+    if command -v tt_transaction_state >/dev/null 2>&1; then TT_STATUS_TX=$(tt_transaction_state) || TT_STATUS_TX=null; fi
+    TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
+    if command -v tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
+    if command -v tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
     jq -n --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
         --arg last_result "$TT_LAST" --argjson process_running "$TT_PROCESS" --argjson interface_up "$TT_TUN" \
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
         --argjson policy "$TT_PUBLIC_POLICY" --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson timestamp "$(date +%s)" \
+        --arg revision "$(tt_revision)" --argjson operations "$TT_STATUS_OPS" --argjson transaction "$TT_STATUS_TX" \
+        --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
           interface_up:$interface_up,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,
-          policy:$policy,discovered_networks:$discovered_networks,timestamp:$timestamp,last_result:$last_result,hardware_tested:false}'
+          policy:$policy,discovered_networks:$discovered_networks,timestamp:$timestamp,last_result:$last_result,hardware_tested:false,
+          revision:$revision,operations:$operations,transaction:$transaction,clients:$clients,diagnostics:$diagnostics}'
 }
 tt_publish_status() {
+    if command -v tt_transfer_expire >/dev/null 2>&1; then tt_transfer_expire || :; fi
     tt_limit_log
     TT_STATUS_TMP=$(mktemp "$TT_RUN/status.XXXXXX") || return 1
     if tt_status >"$TT_STATUS_TMP"; then

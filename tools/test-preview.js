@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {spawnSync} = require('node:child_process');
+const {createHash} = require('node:crypto');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 const preview = path.join(root, 'preview', 'index.html');
@@ -25,6 +26,7 @@ function previewWithStatus(change) {
     return fs.readFileSync(preview, 'utf8').replace(/window\.TTM_PREVIEW=(.*?);<\/script>/s, (_, data) => {
         const status = JSON.parse(data);
         change(status);
+        status.discovered_networks.forEach(network => { network.identity ||= createHash('sha256').update(network.lan_if).digest('hex'); });
         return 'window.TTM_PREVIEW=' + JSON.stringify(status).replace(/</g, '\\u003c') + ';</script>';
     });
 }
@@ -84,6 +86,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('.ttm-remove').count(), 0);
         await page.getByRole('button', {name: 'Запустить', exact: true}).click();
         assert.match(await page.locator('#ttm-message').innerText(), /Демонстрация/);
+        await page.getByRole('tab', {name:'Подключение',exact:true}).click();
 
         const exportEndpoint = page.getByRole('button', {name: 'Проверить и скачать конфигурацию', exact: true});
         await expectError(exportEndpoint, '#ttm-connection-message', /Некорректное поле/);
@@ -143,6 +146,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('#ttm-upstreams').inputValue(), '');
         assert.equal(await page.locator('#ttm-upstreams').evaluate(field => field.readOnly), false);
 
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
         const rows = await networkRows();
         assert.deepEqual(Object.keys(rows).sort(), Object.keys(sources).sort());
         for (const bridge of Object.keys(sources)) await rows[bridge].locator('.ttm-cidrs').fill(sources[bridge]);
@@ -150,16 +154,30 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('.ttm-selected:checked').count(), 4);
         assert.match(await page.locator('#ttm-network-count').innerText(), /^4 /);
         const exportPolicy = page.getByRole('button', {name: 'Скачать политику для SSH', exact: true});
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
         const savePolicy = page.getByRole('button', {name: 'Сохранить маршрутизацию', exact: true});
         await page.locator('#ttm-v6ack').uncheck();
         await expectError(savePolicy, '#ttm-message', /Подтвердите/);
         await page.locator('#ttm-v6ack').check();
         const all = await downloadJson(exportPolicy, 'policy', 'trusttunnel-policy.json');
-        assert.equal(all.schema, 3);
+        assert.equal(all.schema, 4);
         assert.equal(Object.hasOwn(all, 'dns_ipv4'), false);
         assert.deepEqual(all.networks.map(network => network.lan_if).sort(), ['br0', 'br1', 'br2', 'br3']);
         await savePolicy.click();
         assert.match(await page.locator('#ttm-message').innerText(), /Демонстрация/);
+
+        await rows.br1.locator('.ttm-device').selectOption('192.168.50.20/32');
+        assert.equal(await rows.br1.locator('.ttm-cidrs').inputValue(),'192.168.50.20/32','device selection replaces the broad subnet');
+        await page.getByText('Доступ к локальным ресурсам',{exact:true}).click();
+        const localHome=page.locator('#ttm-local-access input').first();
+        await localHome.check();
+        const devices=await downloadJson(exportPolicy,'policy','trusttunnel-policy.json');
+        assert.deepEqual(devices.networks.find(n=>n.lan_if==='br1').sources,['192.168.50.20/32']);
+        assert.equal(devices.local_access[0].lan_if,'br0');
+        assert.equal(devices.local_access[0].destination,sources.br0);
+        assert.match(devices.local_access[0].identity,/^[0-9a-f]{64}$/);
+        await localHome.uncheck();
+        await page.getByText('Доступ к локальным ресурсам',{exact:true}).click();
 
         await page.getByRole('button', {name: 'Снять выбор', exact: true}).click();
         await expectError(exportPolicy, '#ttm-message', /Выберите/);
@@ -175,12 +193,17 @@ async function exercise(browser, viewport, screenshot) {
 
         await page.evaluate(() => { Object.assign(window.TTM_PREVIEW, {enabled: true, process_running: true, interface_up: true, state: 'tun_ready_unverified'}); window.done_validating(); });
         assert.equal(await page.locator('#ttm-state').innerText(), 'TUN создан; связь не проверена', 'process/TUN presence must not be presented as a verified VPN');
-        assert.equal(await savePolicy.isDisabled(), true, 'editing must remain disabled while the addon is enabled');
+        assert.equal(await savePolicy.isEnabled(), true, 'active edits use the transactional save path');
+        await page.evaluate(() => { window.TTM_PREVIEW.transaction={id:'0123456789abcdef',phase:'trial',deadline:Math.floor(Date.now()/1000)+180}; window.done_validating(); });
+        assert.equal(await savePolicy.isDisabled(), true, 'a pending transaction prevents another edit');
         assert.equal(await exportPolicy.isDisabled(), true);
+        assert.match(await page.locator('#ttm-transaction-state').innerText(), /Подтвердите/);
+        await page.evaluate(() => { window.TTM_PREVIEW.transaction=null; });
         await page.evaluate(() => { Object.assign(window.TTM_PREVIEW, {enabled: false, process_running: false, interface_up: false, state: 'disabled'}); window.done_validating(); });
         assert.equal(await savePolicy.isEnabled(), true);
         for (const bridge of Object.keys(sources)) await rows[bridge].locator('.ttm-cidrs').fill(sources[bridge]);
         await page.getByRole('button', {name: 'Выбрать все', exact: true}).click();
+        await page.getByRole('tab', {name:'Подключение',exact:true}).click();
         await page.getByRole('tab', {name: 'Ссылка tt://', exact: true}).click();
         await page.locator('#ttm-link').fill(dnsLinkFixture);
         await page.getByRole('button', {name: 'Разобрать ссылку', exact: true}).click();
@@ -191,10 +214,12 @@ async function exercise(browser, viewport, screenshot) {
         assert.ok(overflow.width <= overflow.viewport + 1, 'page must fit viewport without horizontal scrolling: ' + JSON.stringify(overflow));
         await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
         await page.screenshot({path: path.join(root, 'preview', screenshot), fullPage: true});
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.screenshot({path:path.join(root,'preview',screenshot.replace('.png','-networks.png')),fullPage:true});
         assert.deepEqual(errors, [], 'no page or console errors');
         assert.deepEqual(httpRequests, [], 'offline preview must issue no HTTP requests');
         assert.deepEqual((await context.storageState()).origins, [], 'no persisted connection data');
-        console.log('PASS: ' + viewport.width + 'px; manual/tt:// DNS-preserving downloads, ' + validations + ' backend validations, SSID-labelled 4-network/subset selection, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, enabled-state controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests');
+        console.log('PASS: ' + viewport.width + 'px; manual/tt:// DNS-preserving downloads, ' + validations + ' backend validations, SSID-labelled 4-network/subset selection, device /32 and local exceptions, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, pending-transaction controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests');
     } finally {
         await context.close();
         fs.rmSync(temporary, {recursive: true, force: true});
@@ -209,6 +234,7 @@ async function exerciseInventory(browser) {
     await context.route('**/*', route => route.abort());
     try {
         await page.setContent(previewWithStatus(status => { status.policy = null; status.discovered_networks = []; }), {waitUntil: 'load'});
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
         assert.equal(await page.locator('.ttm-network').count(), 0, 'an empty inventory must not invent br0–br3');
         assert.equal(await page.locator('.ttm-selected').count(), 0);
         await page.getByRole('button', {name: 'Скачать политику для SSH', exact: true}).click();
@@ -222,6 +248,7 @@ async function exerciseInventory(browser) {
                 {lan_if: 'br1', sources: ['192.168.50.0/24'], ssids: [untrustedSsid]}
             ];
         }), {waitUntil: 'load'});
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
         assert.equal(await page.locator('.ttm-network').count(), 2, 'several SSIDs on one bridge must remain one routing choice');
         await page.getByRole('checkbox', {name: 'Home 2.4 / Home 5', exact: true}).check();
         assert.equal(await page.getByRole('checkbox', {name: untrustedSsid, exact: true}).count(), 1, 'SSID markup must be preserved as visible text');
@@ -238,7 +265,9 @@ async function exerciseInventory(browser) {
         const chunks = [];
         for await (const chunk of await download.createReadStream()) chunks.push(chunk);
         const policy = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        assert.deepEqual(policy.networks, [{lan_if: 'br0', sources: ['192.168.10.0/24']}], 'immutable inventory model determines the exported bridge');
+        assert.equal(policy.schema,4);
+        assert.match(policy.networks[0].identity,/^[0-9a-f]{64}$/);
+        assert.deepEqual(policy.networks.map(({lan_if,sources})=>({lan_if,sources})), [{lan_if: 'br0', sources: ['192.168.10.0/24']}], 'immutable inventory model determines the exported bridge');
         assert.equal(Object.hasOwn(policy, 'dns_ipv4'), false);
 
         await page.setContent(previewWithStatus(status => {
@@ -248,6 +277,7 @@ async function exerciseInventory(browser) {
                 {lan_if: 'br1', sources: ['192.168.50.0/24'], ssids: ['Guest 1']}
             ];
         }), {waitUntil: 'load'});
+        await page.getByRole('tab', {name:'Сети',exact:true}).click();
         await page.getByRole('checkbox', {name: 'Home', exact: true}).check();
         await page.getByRole('checkbox', {name: 'Guest 1', exact: true}).check();
         const homeRow = page.locator('.ttm-network').first();
@@ -276,7 +306,7 @@ async function exerciseInventory(browser) {
         const remainingChunks = [];
         for await (const chunk of await remainingDownload.createReadStream()) remainingChunks.push(chunk);
         const remainingPolicy = JSON.parse(Buffer.concat(remainingChunks).toString('utf8'));
-        assert.deepEqual(remainingPolicy.networks, [{lan_if: 'br1', sources: ['192.168.50.0/24']}]);
+        assert.deepEqual(remainingPolicy.networks.map(({lan_if,sources})=>({lan_if,sources})), [{lan_if: 'br1', sources: ['192.168.50.0/24']}]);
         assert.deepEqual(errors, []);
         assert.deepEqual(httpRequests, []);
         console.log('PASS: empty inventory has no guessed networks; multiple SSIDs share one immutable bridge choice; SSID HTML is text and executes no script; unavailable network can be removed individually without resetting other selections and cannot be reselected');

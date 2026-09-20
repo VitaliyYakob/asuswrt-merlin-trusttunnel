@@ -78,8 +78,8 @@ tt_mount_ui() {
     cp "$TT_BASE/trusttunnel_page.asp" "/www/user/$TT_PAGE" || return 1
     chmod 644 "/www/user/$TT_PAGE"
     mkdir -p "$TT_PUBLIC" && chmod 755 "$TT_PUBLIC" || return 1
-    cp "$TT_BASE/web/trusttunnel.js" "$TT_BASE/web/connection.js" "$TT_BASE/web/trusttunnel.css" "$TT_PUBLIC/" || return 1
-    chmod 644 "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/trusttunnel.css"
+    cp "$TT_BASE/web/trusttunnel.js" "$TT_BASE/web/connection.js" "$TT_BASE/web/transfer.js" "$TT_BASE/web/trusttunnel.css" "$TT_PUBLIC/" || return 1
+    chmod 644 "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css"
     tt_menu install "$TT_PAGE" || return 1
     printf '%s\n' "$TT_PAGE" >"$TT_RUN/page"
     tt_publish_status
@@ -90,6 +90,6 @@ tt_unmount_ui() {
         [ -f "$TT_CANDIDATE" ] || continue
         if grep -qF '<!-- trusttunnel-merlin-page-v1 -->' "$TT_CANDIDATE"; then rm -f "$TT_CANDIDATE"; fi
     done
-    rm -f "$TT_PUBLIC/status.json" "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/trusttunnel.css"
+    rm -f "$TT_PUBLIC/status.json" "$TT_PUBLIC/transfer.json" "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css"
     rmdir "$TT_PUBLIC" 2>/dev/null || :
 }

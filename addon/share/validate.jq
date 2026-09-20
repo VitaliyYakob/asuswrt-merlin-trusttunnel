@@ -44,19 +44,29 @@ def endpoint:
   .;
 def network:
   require(type=="object"; "network: expected an object") |
-  require((keys - ["lan_if","sources"]|length)==0; "network: unknown field") |
+  require((keys - ["lan_if","sources","identity"]|length)==0; "network: unknown field") |
+  require((has("identity")|not) or (.identity|type=="string" and test("^[0-9a-f]{64}$")); "network: invalid topology identity") |
   require(.lan_if|type=="string" and length<=15 and test("^br[0-9]+(\\.[0-9]+)?$"); "network: expected a LAN bridge, for example br1") |
   require((.sources|type)=="array" and (.sources|length)>=1 and (.sources|length)<=32 and all(.sources[];private_cidr); "network: sources must be canonical private IPv4 CIDRs (1..32)") |
   require((.sources|unique|length)==(.sources|length); "network: duplicate sources");
 def networks: if .schema==1 then [{lan_if,sources}] else .networks end;
 def policy:
   require(type=="object"; "policy: expected an object") |
-  require(.schema==1 or .schema==2 or .schema==3; "policy: unsupported schema") |
-  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==2 then ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] else ["schema","networks","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
+  require(.schema==1 or .schema==2 or .schema==3 or .schema==4; "policy: unsupported schema") |
+  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==2 then ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==4 then ["schema","networks","local_access","block_ipv6_bridge","table","priority"] else ["schema","networks","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
   require((networks|type)=="array" and (networks|length)>=1 and (networks|length)<=16; "policy: choose 1..16 bridges") |
   require(all(networks[]; network | true); "policy: invalid network") |
   require(([networks[].lan_if]|unique|length)==(networks|length); "policy: duplicate bridge") |
   require(([networks[].sources|length]|add)<=32; "policy: at most 32 source rules across all bridges") |
+  (if .schema==4 then
+    require(all(.networks[];has("identity")); "policy: schema four requires topology identities") |
+    require((.local_access|type)=="array" and (.local_access|length)<=16 and
+        all(.local_access[];type=="object" and ((keys-["lan_if","destination","identity"])|length)==0 and
+          (.lan_if|type=="string" and length<=15 and test("^br[0-9]+(\\.[0-9]+)?$")) and
+          (.destination|private_cidr) and (.identity|type=="string" and test("^[0-9a-f]{64}$")));
+        "policy: invalid local access") |
+    require((.local_access|unique_by(.destination)|length)==(.local_access|length); "policy: duplicate local destination")
+  else . end) |
   (if .schema<3 then
     # Validate legacy input before explicitly discarding its obsolete resolver.
     require(.dns_ipv4|ipv4; "policy: invalid legacy DNS IPv4") |

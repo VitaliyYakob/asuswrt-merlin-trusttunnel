@@ -20,6 +20,8 @@ if $action=="guard" then [
   jump("ip6tables";"filter";"FORWARD";"TTM6_FWD"),
   jump("ip6tables";"filter";"INPUT";"TTM6_IN"),
   restore("iptables-restore"; ["*filter",":TTM4_FWD - [0:0]","-F TTM4_FWD"] +
+    [$rules[] as $r | $p.local_access[]? |
+      "-A TTM4_FWD -i \($r.interface) -s \($r.source) -d \(.destination) -o \(.lan_if) -j RETURN"] +
     [$rules[] | "-A TTM4_FWD -i \(.interface) -s \(.source) -o tt0 -j ACCEPT",
       "-A TTM4_FWD -i \(.interface) -s \(.source) -j REJECT",
       "-A TTM4_FWD -i tt0 -o \(.interface) -d \(.source) -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"] + ["COMMIT"]),
@@ -30,11 +32,13 @@ if $action=="guard" then [
     [$rules|map(.source)|unique[] | "-A TTM4_SNAT -s \(.) -o tt0 -j MASQUERADE"] + ["COMMIT"]),
   jump("iptables";"nat";"PREROUTING";"TTM4_DNS"), jump("iptables";"nat";"POSTROUTING";"TTM4_SNAT"),
   cmd(["ip","-4","route","replace","prohibit","default","table",($p.table|tostring),"metric","32760"])
-] + [$rules|to_entries[] | {op:"rule",priority:($p.priority+.key),source:.value.source,interface:.value.interface,table:$p.table}]
+] + [$p.local_access[]? | cmd(["ip","-4","route","replace",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] +
+    [$rules|to_entries[] | {op:"rule",priority:($p.priority+.key),source:.value.source,interface:.value.interface,table:$p.table}]
 elif $action=="up" then [cmd(["ip","-4","route","replace","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="down" then [remove(["ip","-4","route","del","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="disarm" then
-  [$rules|to_entries[] | remove(["ip","-4","rule","del","pref",($p.priority+.key|tostring),"from",.value.source,"iif",.value.interface,"lookup",($p.table|tostring)])] + [
+  [$rules|to_entries[] | remove(["ip","-4","rule","del","pref",($p.priority+.key|tostring),"from",.value.source,"iif",.value.interface,"lookup",($p.table|tostring)])] +
+  [$p.local_access[]? | remove(["ip","-4","route","del",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] + [
   remove(["ip","-4","route","del","default","dev","tt0","table",($p.table|tostring),"metric","10"]),
   remove(["ip","-4","route","del","prohibit","default","table",($p.table|tostring),"metric","32760"]),
   detach("iptables";"nat";"PREROUTING";"TTM4_DNS"),detach("iptables";"nat";"POSTROUTING";"TTM4_SNAT"),

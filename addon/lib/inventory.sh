@@ -75,6 +75,12 @@ tt_discover_networks() {
             jq -Rn --arg interface "$TT_BRIDGE_NAME" -f "$TT_BASE/share/inventory.jq" |
             jq --argjson ssids "$TT_DISCOVERY_SSIDS" '. + {ssids:$ssids,
                 display_name:(if ($ssids|length)>0 then ($ssids|join(" / ")) else "Локальная сеть (SSID не определён)" end)}') || return 1
+        # SSID renaming does not change identity; bridge members/subnets do.
+        TT_ID_MEMBERS=$(for TT_ID_PATH in "$TT_BRIDGE_PARENT"/brif/*; do
+            [ ! -e "$TT_ID_PATH" ] || printf '%s\n' "${TT_ID_PATH##*/}"
+        done | LC_ALL=C sort)
+        TT_ID_HASH=$(printf '%s\n%s\n' "$TT_ID_MEMBERS" "$(printf '%s' "$TT_DISCOVERY_ITEM" | jq -c .sources)" | sha256sum | awk '{print $1}') || return 1
+        TT_DISCOVERY_ITEM=$(printf '%s' "$TT_DISCOVERY_ITEM" | jq --arg identity "$TT_ID_HASH" '. + {identity:$identity}') || return 1
         TT_DISCOVERY_RESULT="$TT_DISCOVERY_RESULT
 $TT_DISCOVERY_ITEM"
     done

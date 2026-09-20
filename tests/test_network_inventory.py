@@ -69,7 +69,10 @@ nvram() { return 99; }
 TT_ROOT=
 tt_discover_networks''')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), [
+        discovered = json.loads(result.stdout)
+        for network in discovered:
+            self.assertRegex(network.pop('identity'), r'^[0-9a-f]{64}$')
+        self.assertEqual(discovered, [
             {"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
             {"lan_if": "br2", "sources": ["172.16.96.0/20"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
             {"lan_if": "br9.12", "sources": ["10.0.0.0/8"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
@@ -92,6 +95,15 @@ tt_discover_networks''')
         keys = (self.path / "nvram-keys").read_text().splitlines()
         self.assertNotIn("wl0.2_ssid", keys)
         self.assertTrue(all(key.endswith(("_ssid", "_ifname", "_vifnames")) for key in keys))
+
+    def test_identity_survives_ssid_rename_but_changes_with_bridge_members(self):
+        self.bridge('br1', ['wl0.1'])
+        first = self.parsed(self.discover({'wl0.1_ssid':'Before'}))[0]['identity']
+        renamed = self.parsed(self.discover({'wl0.1_ssid':'After'}))[0]['identity']
+        self.assertEqual(first, renamed)
+        (self.path/'sys/class/net/br1/brif/wl1.1').mkdir()
+        changed = self.parsed(self.discover({'wl0.1_ssid':'After'}))[0]['identity']
+        self.assertNotEqual(first, changed)
 
     def test_explicit_virtual_interface_alias_is_resolved(self):
         self.bridge("br7", ["eth6.1"])

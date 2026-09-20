@@ -8,9 +8,10 @@ command -v nvram >/dev/null && nvram get rc_support | grep -qw am_addons || { ec
 [ "$(nvram get jffs2_scripts)" = 1 ] || { echo 'Enable JFFS custom scripts and configs in Administration > System first' >&2; exit 1; }
 for tool in jq flock ip sha256sum cru; do command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }; done
 [ -d /opt/etc/init.d ] || { echo 'Entware /opt is not ready' >&2; exit 1; }
-SRC=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 DST=/jffs/addons/trusttunnel
 [ ! -f "$DST/config/enabled" ] || { echo 'Disable the existing addon before upgrade' >&2; exit 1; }
+[ ! -e "$DST/config/transaction" ] || { echo 'Recover the pending transaction before upgrade' >&2; exit 1; }
 [ ! -L "$DST" ] || { echo 'Refusing symlinked installation directory' >&2; exit 1; }
 [ ! -L "$DST/config" ] || { echo 'Refusing symlinked configuration directory' >&2; exit 1; }
 umask 077
@@ -28,4 +29,4 @@ chmod 700 "$DST/config"
 cp "$SRC/addon/S99trusttunnel" /opt/etc/init.d/S99trusttunnel
 chmod 755 /opt/etc/init.d/S99trusttunnel
 "$DST/trusttunnel.sh" install-webui
-printf '%s\n' 'Installed, not enabled. Open VPN > TrustTunnel. Import credentials by SSH before starting.'
+printf '%s\n' 'Installed, not enabled. Open VPN > TrustTunnel over HTTPS; SSH import is also available.'
