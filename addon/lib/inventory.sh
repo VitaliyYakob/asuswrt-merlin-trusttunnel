@@ -5,7 +5,7 @@
 # and release/src/router/shared/defaults.c (wl_ifname, wl_vifnames, wl_ssid).
 tt_wireless_ifnames() (
     [ -z "$TT_ROOT" ] || { printf '[]\n'; return 0; }
-    command -v nvram >/dev/null 2>&1 || { printf '[]\n'; return 0; }
+    type nvram >/dev/null 2>&1 || { printf '[]\n'; return 0; }
     set -f
     TT_WIFI_MAP=
     # The intended AX86U has two radios. Also cover up to four Broadcom radios
@@ -31,7 +31,7 @@ $(jq -nc --arg ifname "$TT_WIFI_OS" --arg nvif "$TT_WIFI_VIF" '{ifname:$ifname,n
 )
 tt_bridge_ssids() (
     [ -z "$TT_ROOT" ] || { printf '[]\n'; return 0; }
-    command -v nvram >/dev/null 2>&1 || { printf '[]\n'; return 0; }
+    type nvram >/dev/null 2>&1 || { printf '[]\n'; return 0; }
     TT_BRIDGE_SSIDS=
     for TT_MEMBER_PATH in "$1"/brif/*; do
         [ -e "$TT_MEMBER_PATH" ] || continue

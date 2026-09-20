@@ -4,9 +4,12 @@ set -eu
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 [ "${1:-}" = --lab-only ] && [ "$#" -eq 1 ] || { echo 'Usage: sh install.sh --lab-only (ISOLATED LAB ONLY)' >&2; exit 2; }
 [ "$(id -u)" = 0 ] || { echo 'root required' >&2; exit 1; }
-command -v nvram >/dev/null && nvram get rc_support | grep -qw am_addons || { echo 'Merlin Addons API required' >&2; exit 1; }
+type nvram >/dev/null && nvram get rc_support | grep -qw am_addons || { echo 'Merlin Addons API required' >&2; exit 1; }
 [ "$(nvram get jffs2_scripts)" = 1 ] || { echo 'Enable JFFS custom scripts and configs in Administration > System first' >&2; exit 1; }
-for tool in jq flock ip sha256sum cru; do command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }; done
+for tool in jq flock ip sha256sum cru mktemp base64 od stat openssl; do type "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }; done
+jq -en '"merlin" | test("^merlin$")' >/dev/null 2>&1 || {
+    echo 'jq with regex support is required (Entware jq-full)' >&2; exit 1;
+}
 [ -d /opt/etc/init.d ] || { echo 'Entware /opt is not ready' >&2; exit 1; }
 SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 DST=/jffs/addons/trusttunnel

@@ -39,7 +39,7 @@ tt_check_dns_transit() {
 tt_preflight() {
     tt_live || return 1
     for TT_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock sha256sum; do
-        command -v "$TT_TOOL" >/dev/null 2>&1 || { tt_error "required tool missing: $TT_TOOL"; return 1; }
+        type "$TT_TOOL" >/dev/null 2>&1 || { tt_error "required tool missing: $TT_TOOL"; return 1; }
     done
     [ -c /dev/net/tun ] || { tt_error 'TUN device is unavailable'; return 1; }
     [ -x "$TT_BIN" ] || { tt_error 'install a verified TrustTunnel client binary first'; return 1; }
@@ -117,12 +117,12 @@ tt_refresh() {
     # Rebuild requested guards independently of client/endpoint availability.
     # A firewall callback can arrive after firmware removed the previous rules.
     tt_live || return 1
-    if command -v tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
+    if type tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
     tt_validate policy "$TT_POLICY" && tt_claim_resources &&
         tt_run_plan guard "$TT_RUNTIME_POLICY" && tt_rpf_loose || return 1
     if [ -f "$TT_PAUSED" ]; then tt_stop_process; else tt_retry_client; fi
     TT_REFRESH_RESULT=$?
-    if command -v tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
+    if type tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
     return "$TT_REFRESH_RESULT"
 }
 tt_retry_client() {
@@ -175,10 +175,10 @@ tt_status() {
     TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || TT_DISCOVERED_NETWORKS='[]'
     TT_STATUS_OPS=$(tt_operations_json) || TT_STATUS_OPS='[]'
     TT_STATUS_TX=null
-    if command -v tt_transaction_state >/dev/null 2>&1; then TT_STATUS_TX=$(tt_transaction_state) || TT_STATUS_TX=null; fi
+    if type tt_transaction_state >/dev/null 2>&1; then TT_STATUS_TX=$(tt_transaction_state) || TT_STATUS_TX=null; fi
     TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
-    if command -v tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
-    if command -v tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
+    if type tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
+    if type tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
     jq -n --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
         --arg last_result "$TT_LAST" --argjson process_running "$TT_PROCESS" --argjson interface_up "$TT_TUN" \
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
@@ -191,7 +191,7 @@ tt_status() {
           revision:$revision,operations:$operations,transaction:$transaction,clients:$clients,diagnostics:$diagnostics}'
 }
 tt_publish_status() {
-    if command -v tt_transfer_expire >/dev/null 2>&1; then tt_transfer_expire || :; fi
+    if type tt_transfer_expire >/dev/null 2>&1; then tt_transfer_expire || :; fi
     tt_limit_log
     TT_STATUS_TMP=$(mktemp "$TT_RUN/status.XXXXXX") || return 1
     if tt_status >"$TT_STATUS_TMP"; then

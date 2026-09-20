@@ -23,7 +23,7 @@ tt_diagnostics() {
     [ ! -f "$TT_RUN/retry.json" ] || TT_DIAG_RETRY=$(jq '{failures,next_attempt}' "$TT_RUN/retry.json")
     TT_DIAG_TOOLS=
     for TT_DIAG_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock openssl sha256sum; do
-        TT_DIAG_OK=false; command -v "$TT_DIAG_TOOL" >/dev/null 2>&1 && TT_DIAG_OK=true
+        TT_DIAG_OK=false; type "$TT_DIAG_TOOL" >/dev/null 2>&1 && TT_DIAG_OK=true
         TT_DIAG_TOOLS="$TT_DIAG_TOOLS
 $(jq -nc --arg name "$TT_DIAG_TOOL" --argjson available "$TT_DIAG_OK" '{name:$name,available:$available}')"
     done
@@ -38,7 +38,7 @@ $(jq -nc --arg name "$TT_DIAG_TOOL" --argjson available "$TT_DIAG_OK" '{name:$na
         TT_DIAG_ARCH=$(uname -m)
         TT_DIAG_RULES=$(ip -4 rule show 2>/dev/null) &&
             TT_DIAG_EARLIER=$(printf '%s\n' "$TT_DIAG_RULES" | awk -F: '$1>0 && $1<17100 {n++} END {print n+0}')
-        if command -v nvram >/dev/null 2>&1; then
+        if type nvram >/dev/null 2>&1; then
             TT_DIAG_MODEL=$(nvram get productid)
             TT_DIAG_FW="$(nvram get firmver).$(nvram get buildno)_$(nvram get extendno)"
             TT_DIAG_ACCEL=$(nvram get ctf_disable)

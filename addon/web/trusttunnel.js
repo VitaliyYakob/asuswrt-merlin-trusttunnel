@@ -206,7 +206,7 @@
         request.onerror = request.ontimeout = function () { controls(false); message('Нет актуального статуса роутера.',true); }; request.send();
     }
     function wire(command) {
-        if (!/^start_ttm_[a-z0-9_]+$/.test(command)||command.length>255) throw new Error('Некорректная команда.');
+        if (!/^start_ttm_[a-z0-9_]+$/.test(command)||command.length>127) throw new Error('Некорректная команда.');
         var form = document.forms.ttm_form;
         form.elements.amng_custom.disabled=true; form.elements.amng_custom.value='';
         form.elements.action_script.value=command;

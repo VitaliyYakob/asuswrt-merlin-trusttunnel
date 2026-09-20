@@ -22,7 +22,7 @@ tt_transfer_clear() {
     done
 }
 tt_wire_dispatch() {
-    [ "${#1}" -le 249 ] || return 1
+    [ "${#1}" -le 121 ] || return 1
     TT_WIRE=$1
     case "$TT_WIRE" in
         ttm_begin_*) TT_WIRE=${TT_WIRE#ttm_begin_}; tt_transfer_begin "${TT_WIRE%%_*}" "${TT_WIRE#*_}";;
@@ -83,7 +83,7 @@ tt_transfer_begin() {
         tt_transfer_publish; return $?
     fi
     [ ! -f "$TT_RUN/operations/$TT_X_ID.json" ] || return 1
-    command -v openssl >/dev/null 2>&1 || { tt_error 'OpenSSL is required for private browser saves'; return 1; }
+    type openssl >/dev/null 2>&1 || { tt_error 'OpenSSL is required for private browser saves'; return 1; }
     mkdir -p "$TT_X_DIR" && chmod 700 "$TT_X_DIR" || return 1
     tt_transfer_clear || return 1
     if ! openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$TT_X_DIR/private.pem" >/dev/null 2>&1 ||
@@ -91,33 +91,33 @@ tt_transfer_begin() {
         tt_transfer_clear; tt_error 'cannot create a private transfer key'; return 1
     fi
     : >"$TT_X_DIR/payload.json"; : >"$TT_X_DIR/cipher.hex"
-    jq -n --arg id "$TT_X_ID" --argjson blocks "$TT_X_BLOCKS" --argjson expires "$(($(date +%s)+1800))" \
+    jq -n --arg id "$TT_X_ID" --argjson blocks "$TT_X_BLOCKS" --argjson expires "$(($(date +%s)+7200))" \
         '{id:$id,blocks:$blocks,next:0,state:"receiving",expires_at:$expires}' >"$TT_X_DIR/meta.json" || return 1
     tt_transfer_publish
 }
 tt_transfer_part() {
     tt_id_valid "$1" || return 1
     case "$2" in ''|*[!0-9]*) return 1;; esac
-    [ "${#2}" -le 4 ] && [ "${#3}" -le 192 ] && printf '%s' "$3" | grep -Eq '^[0-9a-f]+$' || return 1
+    [ "${#2}" -le 4 ] && [ "${#3}" -le 88 ] && printf '%s' "$3" | grep -Eq '^[0-9a-f]+$' || return 1
     TT_X_ID=$1; TT_X_INDEX=$2; TT_X_HEX=$3; TT_X_DIR="$TT_RUN/transfer"
     [ -f "$TT_X_DIR/meta.json" ] || return 1
     jq -e --arg id "$TT_X_ID" --argjson now "$(date +%s)" '.id==$id and .expires_at>$now and .state=="receiving"' "$TT_X_DIR/meta.json" >/dev/null || return 1
     TT_X_NEXT=$(jq -r .next "$TT_X_DIR/meta.json"); TT_X_BLOCKS=$(jq -r .blocks "$TT_X_DIR/meta.json")
-    [ "$TT_X_INDEX" -lt "$((TT_X_BLOCKS*3))" ] || return 1
+    [ "$TT_X_INDEX" -lt "$((TT_X_BLOCKS*6))" ] || return 1
     # One acknowledged chunk may be retried after a lost HTTP response.
     if [ "$TT_X_INDEX" -eq "$((TT_X_NEXT-1))" ]; then
         [ "$TT_X_HEX" = "$(cat "$TT_X_DIR/incoming.hex")" ] || return 1
         tt_transfer_publish; return $?
     fi
     [ "$TT_X_INDEX" -eq "$TT_X_NEXT" ] || return 1
-    TT_X_SIZE=192; [ "$((TT_X_INDEX%3))" -ne 2 ] || TT_X_SIZE=128
+    TT_X_SIZE=88; [ "$((TT_X_INDEX%6))" -ne 5 ] || TT_X_SIZE=72
     [ "${#TT_X_HEX}" -eq "$TT_X_SIZE" ] || return 1
     printf '%s' "$TT_X_HEX" >>"$TT_X_DIR/cipher.hex" || return 1
-    if [ "$((TT_X_INDEX%3))" -eq 2 ]; then
+    if [ "$((TT_X_INDEX%6))" -eq 5 ]; then
         if ! LC_ALL=C awk -f "$TT_BASE/share/decode-hex.awk" "$TT_X_DIR/cipher.hex" >"$TT_X_DIR/cipher.bin" ||
             ! openssl pkeyutl -decrypt -inkey "$TT_X_DIR/private.pem" -in "$TT_X_DIR/cipher.bin" -out "$TT_X_DIR/block.bin" \
                 -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -pkeyopt rsa_mgf1_md:sha256 >/dev/null 2>&1 ||
-            [ "$(head -n 1 "$TT_X_DIR/block.bin")" != "TTM1 $TT_X_ID $((TT_X_INDEX/3)) $TT_X_BLOCKS" ]; then
+            [ "$(head -n 1 "$TT_X_DIR/block.bin")" != "TTM1 $TT_X_ID $((TT_X_INDEX/6)) $TT_X_BLOCKS" ]; then
             tt_transfer_clear; tt_transfer_publish; tt_error 'private transfer rejected'; return 1
         fi
         TT_X_BYTES=$(wc -c <"$TT_X_DIR/block.bin")
@@ -136,7 +136,7 @@ tt_transfer_finish() {
     # A repeated commit never repeats an already recorded operation.
     [ ! -f "$TT_RUN/operations/$TT_X_ID.json" ] || return 0
     [ -f "$TT_X_DIR/meta.json" ] || return 1
-    jq -e --arg id "$TT_X_ID" --argjson now "$(date +%s)" '.id==$id and .expires_at>$now and .next==(.blocks*3)' "$TT_X_DIR/meta.json" >/dev/null || return 1
+    jq -e --arg id "$TT_X_ID" --argjson now "$(date +%s)" '.id==$id and .expires_at>$now and .next==(.blocks*6)' "$TT_X_DIR/meta.json" >/dev/null || return 1
     TT_X_RESULT=1
     tt_apply_request "$TT_X_ID" "$TT_X_DIR/payload.json" && TT_X_RESULT=0
     tt_transfer_clear && tt_transfer_publish || return 1

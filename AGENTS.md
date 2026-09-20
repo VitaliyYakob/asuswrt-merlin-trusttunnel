@@ -4,7 +4,7 @@ This is an experimental native ASUSWRT-Merlin TrustTunnel CLIENT addon. UI belon
 No separate HTTP daemon, REST server, Docker, Node/Python runtime on the router, firmware rebuild, or unrelated multi-VPN manager.
 
 ## Ground truth
-- No router has been tested. Never mark hardware tests PASS from mocks, generated plans or screenshots.
+- Router installation checks have begun on RT-AX86U / Merlin 388.12_2; consult docs/TEST-REPORT.md for the exact scope. VPN packet-flow tests remain unverified. Never mark hardware tests PASS from mocks, generated plans or screenshots.
 - Primary intended target: RT-AX86U aarch64, actual firmware/kernel compatibility unknown.
 - Runtime uses /bin/sh (BusyBox ash), jq, iproute2, iptables/ip6tables and flock.
 - Core schema is based on upstream TrustTunnelClient v1.1.5. Verify upstream before adding fields.

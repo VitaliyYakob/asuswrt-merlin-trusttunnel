@@ -24,7 +24,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         if(url.pathname.endsWith('/transfer.json')) { await route.fulfill({json:transfer}); return; }
         if(url.pathname==='/start_apply.htm') {
             const form=new URLSearchParams(req.postData()), command=form.get('action_script'); commands.push(command);
-            assert.ok(command.length<=255); assert.equal(form.has('amng_custom'),false);
+            assert.ok(command.length<=127); assert.equal(form.has('amng_custom'),false);
             assert.ok(!req.postData().includes(endpoint.password)&&!req.postData().includes(endpoint.username));
             let match;
             if((match=command.match(/^start_ttm_begin_([a-f0-9]{16})_(\d+)$/))) {
@@ -33,13 +33,13 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
             } else if((match=command.match(/^start_ttm_part_([a-f0-9]{16})_(\d+)_([a-f0-9]+)$/))) {
                 assert.equal(match[1],transfer.id); assert.equal(Number(match[2]),transfer.next);
                 parts.push(match[3]); transfer.next++;
-                if(parts.length===3) {
+                if(parts.length===6) {
                     const block=privateDecrypt({key:keys.privateKey,oaepHash:'sha256',padding:constants.RSA_PKCS1_OAEP_PADDING},Buffer.from(parts.join(''),'hex'));
                     const split=block.indexOf(10); assert.equal(block.subarray(0,split).toString(),`TTM1 ${transfer.id} ${plain.length} ${transfer.blocks}`);
                     plain.push(block.subarray(split+1)); parts=[];
                 }
             } else if((match=command.match(/^start_ttm_commit_([a-f0-9]{16})$/))) {
-                assert.equal(transfer.next,transfer.blocks*3);
+                assert.equal(transfer.next,transfer.blocks*6);
                 const request=JSON.parse(Buffer.concat(plain).toString());
                 if(stale) state.operations=[{id:match[1],state:'failed',code:'revision_conflict',action:request.kind,revision:'other'}];
                 else { assert.equal(request.revision,'0'); saved=request.data; state.revision='abcdef0123456789'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }

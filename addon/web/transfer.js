@@ -20,14 +20,15 @@
             block.set(header); block.set(body, header.length);
             const cipher = new Uint8Array(await crypto.subtle.encrypt({name: 'RSA-OAEP'}, key, block));
             const hex = Array.from(cipher, n => n.toString(16).padStart(2, '0')).join('');
-            parts.push(hex.slice(0, 192), hex.slice(192, 384), hex.slice(384));
+            // Merlin update_variables() uses notify_cmd[128], before rc's 256.
+            for (let offset = 0; offset < hex.length; offset += 88) parts.push(hex.slice(offset, offset + 88));
         }
         return parts;
     }
     function event(session, index, part) {
-        if (!/^[0-9a-f]{16}$/.test(session) || !Number.isInteger(index) || index < 0 || index > 1535 || !/^[0-9a-f]{128}$|^[0-9a-f]{192}$/.test(part)) throw new Error('Некорректная часть передачи.');
+        if (!/^[0-9a-f]{16}$/.test(session) || !Number.isInteger(index) || index < 0 || index > 3071 || !/^[0-9a-f]{72}$|^[0-9a-f]{88}$/.test(part)) throw new Error('Некорректная часть передачи.');
         const command = 'start_ttm_part_' + session + '_' + index + '_' + part;
-        if (command.length > 255) throw new Error('Превышен предел команды Merlin.');
+        if (command.length > 127) throw new Error('Превышен предел команды Merlin.');
         return command;
     }
     const api = {id, count, encrypt, event};

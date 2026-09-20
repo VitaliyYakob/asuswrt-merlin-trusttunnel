@@ -1,6 +1,7 @@
 #!/bin/sh
 # Install a local, independently verified binary. No network download; no 'latest'.
 set -eu
+export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 [ "$#" -eq 2 ] || { echo 'Usage: sh tools/install-client.sh LOCAL_BINARY EXPECTED_SHA256' >&2; exit 2; }
 [ "$(id -u)" = 0 ] || { echo 'root required' >&2; exit 1; }
 [ "$(uname -m)" = aarch64 ] || { echo 'This alpha installer targets aarch64 only' >&2; exit 1; }

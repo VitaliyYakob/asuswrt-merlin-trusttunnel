@@ -3,7 +3,7 @@ tt_validate_certificate() (
     # Upstream can fall back to the system store if a supplied X509 cannot be
     # parsed. Reject malformed custom trust data before importing or rendering.
     jq -e '.certificate == ""' "$1" >/dev/null 2>&1 && return 0
-    command -v openssl >/dev/null 2>&1 || {
+    type openssl >/dev/null 2>&1 || {
         tt_error 'openssl is required to validate a custom certificate'; return 1;
     }
     umask 077

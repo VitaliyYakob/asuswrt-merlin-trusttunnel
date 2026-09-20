@@ -1,7 +1,7 @@
 #!/bin/sh
 # Filesystem overrides are for offline development, never for live networking.
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-TT_VERSION=0.3.1-alpha.1
+TT_VERSION=0.3.1-alpha.2
 TT_ROOT=${TT_ROOT:-}
 TT_CONFIG="$TT_ROOT/jffs/addons/trusttunnel/config"
 TT_RUN="$TT_ROOT/tmp/trusttunnel"
@@ -29,7 +29,7 @@ tt_dirs() {
 }
 tt_lock() {
     tt_dirs || return 1
-    command -v flock >/dev/null 2>&1 || { tt_error 'flock is required'; return 1; }
+    type flock >/dev/null 2>&1 || { tt_error 'flock is required'; return 1; }
     exec 9>"$TT_RUN/control.lock"
     flock -w 20 9 || { tt_error 'controller is busy'; return 1; }
 }
@@ -37,7 +37,7 @@ tt_live() {
     [ -z "$TT_ROOT" ] || { tt_error 'live actions are prohibited with TT_ROOT'; return 1; }
     [ "$(id -u)" = 0 ] || { tt_error 'root is required'; return 1; }
     [ -f "$TT_ACK" ] || { tt_error 'experimental live actions are locked; see README'; return 1; }
-    command -v nvram >/dev/null 2>&1 && nvram get rc_support | grep -qw am_addons || {
+    type nvram >/dev/null 2>&1 && nvram get rc_support | grep -qw am_addons || {
         tt_error 'Merlin Addons API was not detected'; return 1;
     }
 }

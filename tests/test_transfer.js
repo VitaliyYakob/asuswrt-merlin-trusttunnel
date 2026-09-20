@@ -30,7 +30,7 @@ function part(session,index,value) { return `tt_transfer_part ${session} ${index
     shell(part(second,0,parts[0]),1);
     shell(`tt_transfer_finish ${id}`,1);
     shell(part(id,0,parts[0])); shell(part(id,0,parts[0])); // exact retry idempotent
-    for(let i=1;i<parts.length;i++) { assert.ok(transfer.event(id,i,parts[i]).length<=255); shell(part(id,i,parts[i])); }
+    for(let i=1;i<parts.length;i++) { assert.ok(transfer.event(id,i,parts[i]).length<=127); shell(part(id,i,parts[i])); }
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(run,'transfer/payload.json'),'utf8')),request);
     shell(`tt_transfer_finish ${id}`);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config,'policy.json'),'utf8')),policy);
@@ -48,12 +48,12 @@ function part(session,index,value) { return `tt_transfer_part ${session} ${index
     // OAEP corruption is rejected without writing the destination or printing data.
     const bad='1111111111111111'; parts=await begin(request,bad);
     const broken=(parts[0][0]==='0'?'1':'0')+parts[0].slice(1);
-    shell(part(bad,0,broken)); shell(part(bad,1,parts[1])); shell(part(bad,2,parts[2]),1);
+    shell(part(bad,0,broken)); for(let i=1;i<5;i++) shell(part(bad,i,parts[i])); shell(part(bad,5,parts[5]),1);
     assert.ok(!fs.existsSync(path.join(run,'transfer/private.pem'))); passed++;
     // Receiver/header session binding rejects otherwise valid encrypted blocks.
     const bound='2222222222222222'; await begin(request,bound);
     const wrong=await transfer.encrypt(request,id,fs.readFileSync(path.join(run,'transfer/public.pem'),'utf8'),webcrypto);
-    shell(part(bound,0,wrong[0])); shell(part(bound,1,wrong[1])); shell(part(bound,2,wrong[2]),1); passed++;
+    for(let i=0;i<5;i++) shell(part(bound,i,wrong[i])); shell(part(bound,5,wrong[5]),1); passed++;
     // Ciphertext decoder round-trips every possible byte, including NUL/non-ASCII.
     fs.writeFileSync(path.join(tmp,'bytes.hex'),Buffer.from(Array.from({length:256},(_,i)=>i)).toString('hex'));
     shell('LC_ALL=C awk -f "$TT_BASE/share/decode-hex.awk" "$TT_ROOT/bytes.hex" >"$TT_ROOT/bytes.bin"');
@@ -65,8 +65,10 @@ function part(session,index,value) { return `tt_transfer_part ${session} ${index
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(run,'transfer/payload.json'),'utf8')),unicode);
     shell('jq ".expires_at=0" "$TT_RUN/transfer/meta.json" >"$TT_RUN/transfer/meta.next" && mv "$TT_RUN/transfer/meta.next" "$TT_RUN/transfer/meta.json"; tt_transfer_expire');
     assert.ok(!fs.existsSync(path.join(run,'transfer/payload.json'))); passed++;
-    assert.throws(()=>transfer.event('../bad',0,'a'.repeat(192)));
-    assert.throws(()=>transfer.event(id,1536,'a'.repeat(192)));
+    assert.throws(()=>transfer.event('../bad',0,'a'.repeat(88)));
+    assert.throws(()=>transfer.event(id,3072,'a'.repeat(88)));
+    assert.ok(transfer.event(id,3070,'a'.repeat(88)).length<=127);
+    assert.throws(()=>transfer.event(id,0,'a'.repeat(192))); // old oversized frame
     assert.throws(()=>transfer.event(id,0,'; reboot'));
     console.log('Private transfer: '+passed+' interoperability/regression groups passed');
 } finally {fs.rmSync(tmp,{recursive:true,force:true});} })().catch(e=>{console.error(e); process.exitCode=1;});
