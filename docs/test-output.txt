@@ -71,6 +71,7 @@ test_local_access_returns_to_merlin_filters_without_main_route_edits (test_polic
 test_topology_identity_required_and_local_destinations_bounded (test_policy_four.PolicyFourTests.test_topology_identity_required_and_local_destinations_bounded) ... ok
 test_changes_refused_while_enabled (test_project.ConfigTests.test_changes_refused_while_enabled) ... ok
 test_endpoint_valid (test_project.ConfigTests.test_endpoint_valid) ... ok
+test_endpoint_without_exclusions_is_backwards_compatible (test_project.ConfigTests.test_endpoint_without_exclusions_is_backwards_compatible) ... ok
 test_import_permissions_and_no_web_secret (test_project.ConfigTests.test_import_permissions_and_no_web_secret) ... ok
 test_import_preserves_old_on_invalid (test_project.ConfigTests.test_import_preserves_old_on_invalid) ... ok
 test_invalid_endpoints (test_project.ConfigTests.test_invalid_endpoints) ... ok
@@ -84,6 +85,7 @@ test_symlink_rejected (test_project.ConfigTests.test_symlink_rejected) ... ok
 test_unknown_endpoint_field (test_project.ConfigTests.test_unknown_endpoint_field) ... ok
 test_unknown_event_ignored (test_project.ConfigTests.test_unknown_event_ignored) ... ok
 test_valid_private_subnets (test_project.ConfigTests.test_valid_private_subnets) ... ok
+test_documented_exclusions_are_imported (test_project.ConverterTests.test_documented_exclusions_are_imported) ... ok
 test_insecure_cert_refused (test_project.ConverterTests.test_insecure_cert_refused) ... ok
 test_internal_split_routing_refused (test_project.ConverterTests.test_internal_split_routing_refused) ... ok
 test_standard_config (test_project.ConverterTests.test_standard_config) ... ok
@@ -135,7 +137,7 @@ test_invalid_hostnames_and_ipv4_are_rejected_from_ssh (test_validation_boundarie
 test_rejects_concatenated_json_instead_of_accepting_last (test_validation_boundaries.ValidationBoundaries.test_rejects_concatenated_json_instead_of_accepting_last) ... ok
 
 ----------------------------------------------------------------------
-Ran 134 tests in 109.243s
+Ran 136 tests in 105.476s
 
 OK
 node --check addon/web/trusttunnel.js
@@ -143,7 +145,7 @@ node tests/test_web.js
 WebUI policy: 19 regression groups passed
 node --check addon/web/connection.js
 node tests/test_connection.js
-Connection import: 33 regression groups passed
+Connection import: 35 regression groups passed
 node --check addon/web/transfer.js
 node tests/test_transfer.js
 Private transfer: 6 interoperability/regression groups passed

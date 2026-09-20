@@ -19,8 +19,8 @@ def convert(source: dict) -> dict:
         raise ValueError("Endpoint contains fields not supported by this alpha; inspect locally")
     if endpoint.get("skip_verification", False):
         raise ValueError("Insecure certificate verification settings are not accepted")
-    if endpoint.get("client_random") or source.get("exclusions"):
-        raise ValueError("Custom client_random or internal exclusions are not supported")
+    if endpoint.get("client_random"):
+        raise ValueError("Custom client_random is not supported")
     if source.get("vpn_mode", "general") != "general":
         raise ValueError("Internal selective routing cannot be silently converted")
     for key in ("hostname", "addresses", "username", "password"):
@@ -34,6 +34,7 @@ def convert(source: dict) -> dict:
         # v1.1.5 uses legacy DNS only when the endpoint field is absent;
         # an explicitly empty endpoint list must not acquire another resolver.
         "dns_upstreams": endpoint.get("dns_upstreams", source.get("dns_upstreams", [])),
+        "exclusions": source.get("exclusions", []),
         "anti_dpi": endpoint.get("anti_dpi", False), "mtu": tun.get("mtu_size", 1350),
         "wan_if": tun.get("bound_if", "") or "",
     }

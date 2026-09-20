@@ -1,8 +1,8 @@
-# Архитектура 0.3.0-alpha.1
+# Архитектура 0.3.1-alpha.1
 
 ## Потоки данных
 
-- Ручные поля/tt:///файл → JavaScript parser → endpoint schema1 → приватное сохранение либо JSON export/SSH → TOML → официальный клиент.
+- Ручные поля/tt:///файл → JavaScript parser → endpoint schema1 (включая необязательный `exclusions`) → приватное сохранение либо JSON export/SSH → TOML → официальный клиент.
 - Выбранные сети/устройства/локальные ресурсы → policy schema4 → тот же приватный транспорт → контроллер. Совместимый старый `apply-web-policy` оставлен для отключённого аддона; новый UI его не вызывает.
 - Контроллер → ограниченный status.json → XMLHttpRequest страницы. Статус не содержит username, password, ссылку, сертификат или TOML.
 - `/www/user/userN.asp` и ресурсы `/www/user/trusttunnel/` обслуживает штатный httpd Merlin. Страница находится в VPN. Отдельного сервера и собственной авторизации нет.
@@ -18,6 +18,8 @@
 ## Владельцы
 
 TrustTunnelClient создаёт tt0 и отвечает за транспорт/TLS. Генератор использует `use_existing=false`, `included_routes=[]`, `excluded_routes=[]`, `change_system_dns=false`, `has_ipv6=false`, `skip_verification=false`. Пустые included_routes подавляют управление таблицей 880 upstream-клиентом; маршруты, DNS DNAT, SNAT и guards принадлежат аддону.
+
+Верхнеуровневый `exclusions` имеет другое назначение: при фиксированном `vpn_mode="general"` TrustTunnelClient отправляет совпавшие назначения напрямую. WebUI принимает документированные домены/wildcard, IPv4/CIDR, IPv4:порт и `*:порт`. Он не переносит их в `[listener.tun].excluded_routes`, поэтому клиент не получает владение системными маршрутами. IPv6-формы upstream намеренно не принимаются при `has_ipv6=false` и bridge-wide IPv6 block.
 
 Конфигурация: `/jffs/addons/trusttunnel/config/` (0700), JSON и `.previous` (0600). Runtime: `/tmp/trusttunnel/` (0700). При включённом аддоне обычный импорт запрещён; изменения идут только через транзакцию. В контроллере flock; дочерний клиент закрывает lock FD. PID сверяется по starttime и executable realpath.
 

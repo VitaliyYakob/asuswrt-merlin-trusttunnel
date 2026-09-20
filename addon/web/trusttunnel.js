@@ -285,6 +285,7 @@
     function readEndpoint() {
         var result={}; Object.keys(fields).forEach(function (key) { var field=el('ttm-'+fields[key]); result[key]=key==='anti_dpi'?field.checked:field.value; });
         result.dns_upstreams=importedDns===null?el('ttm-upstreams').value:importedDns.slice();
+        result.exclusions=[el('ttm-exclusion-domains').value,el('ttm-exclusion-networks').value].filter(Boolean).join('\n');
         return root.TTMConnection.endpointFromFields(result);
     }
     function fillEndpoint(endpoint) { Object.keys(fields).forEach(function (key) { var field=el('ttm-'+fields[key]), value=endpoint[key];
@@ -292,6 +293,8 @@
     });
         importedDns=endpoint.dns_upstreams.slice();
         el('ttm-upstreams').value=importedDns.join('\n'); el('ttm-upstreams').readOnly=true;
+        var exclusions=root.TTMConnection.splitExclusions(endpoint.exclusions||[]);
+        el('ttm-exclusion-domains').value=exclusions.domains.join('\n'); el('ttm-exclusion-networks').value=exclusions.networks.join('\n');
         text('ttm-dns-hint',importedDns.length?'DNS из конфигурации tt://. Значение сохраняется без изменений.':'В конфигурации tt:// DNS не задан. Для запуска нужна конфигурация с DNS.');
     }
     root.ttmParseLink = function () { try {

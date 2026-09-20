@@ -27,9 +27,33 @@ def endpoint_address:
   if type != "string" or (test("^[A-Za-z0-9.-]+:[0-9]{1,5}$")|not) then false else
     split(":") as $a | ($a[0]|host) and ($a[1]|tonumber) > 0 and ($a[1]|tonumber) <= 65535
   end;
+def port:
+  type=="string" and test("^[0-9]{1,5}$") and (tonumber)>=1 and (tonumber)<=65535;
+def public_cidr:
+  if type != "string" or (test("^[0-9.]+/(0|[1-9]|[12][0-9]|3[0-2])$")|not) then false else
+    split("/") as $p | ($p[0]|ipv4) and
+    ($p[1]|tonumber) as $n | $n >= 0 and $n <= 32 and
+    ($p[0]|split(".")|map(tonumber)) as $o |
+    (((($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]) / pow(2;32-$n))|floor)*pow(2;32-$n)
+      == ($o[0]*16777216+$o[1]*65536+$o[2]*256+$o[3]))
+  end;
+def exclusion_domain:
+  if type != "string" then false else
+    (if startswith("*.") then .[2:] else . end) as $name |
+    ($name|host) and ($name|test("^[0-9.]+$")|not)
+  end;
+def exclusion_network:
+  if type != "string" then false
+  elif startswith("*:") then (.[2:]|port)
+  elif contains("/") then public_cidr
+  elif contains(":") then split(":") as $p | ($p|length)==2 and ($p[0]|ipv4) and ($p[1]|port)
+  else ipv4
+  end;
+def exclusion: exclusion_domain or exclusion_network;
+def endpoint_exclusions: if has("exclusions") then .exclusions else [] end;
 def endpoint:
   require(type=="object"; "endpoint: expected an object") |
-  require((keys - ["schema","hostname","addresses","username","password","protocol","certificate","dns_upstreams","anti_dpi","mtu","wan_if"] | length)==0; "endpoint: unknown field") |
+  require((keys - ["schema","hostname","addresses","username","password","protocol","certificate","dns_upstreams","exclusions","anti_dpi","mtu","wan_if"] | length)==0; "endpoint: unknown field") |
   require(.schema==1; "endpoint: unsupported schema") |
   require(.hostname|host; "endpoint: invalid TLS hostname") |
   require((.addresses|type)=="array" and (.addresses|length)>=1 and (.addresses|length)<=8 and all(.addresses[];endpoint_address); "endpoint: use host:port or IPv4:port") |
@@ -38,6 +62,8 @@ def endpoint:
   require(.protocol=="http2" or .protocol=="http3"; "endpoint: supported protocols are http2 and http3") |
   require((.certificate|type)=="string" and (.certificate|length)<=16384 and (.certificate|contains("\u0000")|not); "endpoint: invalid certificate") |
   require((.dns_upstreams|type)=="array" and (.dns_upstreams|length)<=4 and all(.dns_upstreams[];text(512) and (test("\\s")|not)); "endpoint: DNS upstreams must be an array of up to four addresses") |
+  require((endpoint_exclusions|type)=="array" and (endpoint_exclusions|length)<=256 and all(endpoint_exclusions[];exclusion); "endpoint: exclusions must be supported domains, IPv4 addresses, CIDRs or ports (up to 256)") |
+  require(((endpoint_exclusions|map(ascii_downcase)|unique|length))==(endpoint_exclusions|length); "endpoint: duplicate exclusions") |
   require((.anti_dpi|type)=="boolean"; "endpoint: anti_dpi must be boolean") |
   require((.mtu|type)=="number" and (.mtu|floor)==.mtu and .mtu>=1280 and .mtu<=1500; "endpoint: MTU must be an integer from 1280 to 1500") |
   require(.wan_if|type=="string" and length<=15 and test("^([A-Za-z][A-Za-z0-9_.-]*)?$"); "endpoint: invalid WAN interface") |

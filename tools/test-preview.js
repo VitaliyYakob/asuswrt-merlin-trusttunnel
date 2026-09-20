@@ -93,6 +93,12 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('#ttm-upstreams').inputValue(), '', 'manual connection must not inject a DNS provider');
         assert.equal(await page.locator('#ttm-upstreams').evaluate(field => field.readOnly), false);
         for (const [name, value] of Object.entries(manual)) await page.locator('#ttm-' + name).fill(value);
+        await page.locator('#ttm-exclusion-domains').fill('https://example.com/private/path');
+        await expectError(exportEndpoint, '#ttm-connection-message', /без протокола, пути|URL/);
+        await page.locator('#ttm-exclusion-domains').fill('example.com\n*.example.net');
+        await page.locator('#ttm-exclusion-networks').fill('203.0.113.0/24\n203.0.113.10:443\n*:80');
+        assert.match(await page.locator('.ttm-exclusions-help').innerText(), /без протокола, пути|Полный URL/);
+        assert.match(await page.locator('.ttm-exclusions-help').innerText(), /напрямую через WAN/);
         assert.equal(await page.locator('#ttm-password').getAttribute('type'), 'password');
         await page.locator('#ttm-show-password').check();
         assert.equal(await page.locator('#ttm-password').getAttribute('type'), 'text');
@@ -103,6 +109,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(endpoint.username, manual.username);
         assert.equal(endpoint.password, manual.password);
         assert.deepEqual(endpoint.dns_upstreams, [], 'empty manual DNS remains empty in the exported connection');
+        assert.deepEqual(endpoint.exclusions, ['example.com', '*.example.net', '203.0.113.0/24', '203.0.113.10:443', '*:80']);
         const nativeForm = await page.locator('form[name=ttm_form]').evaluate(form => Array.from(form.elements).map(field => field.value).join('\n'));
         assert.ok(!nativeForm.includes(manual.username) && !nativeForm.includes(manual.password), 'credentials must not enter the native control form');
         assert.equal(await page.locator('#ttm-password').getAttribute('name'), null);
@@ -126,6 +133,9 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(imported.password, 'p');
         assert.equal(imported.protocol, 'http2');
         assert.deepEqual(imported.dns_upstreams, [], 'tt:// without DNS must not gain a fallback');
+        assert.deepEqual(imported.exclusions, [], 'tt:// does not contain client exclusion rules');
+        assert.equal(await page.locator('#ttm-exclusion-domains').inputValue(), '');
+        assert.equal(await page.locator('#ttm-exclusion-networks').inputValue(), '');
         assert.equal(await page.locator('#ttm-upstreams').inputValue(), '');
         assert.equal(await page.locator('#ttm-upstreams').evaluate(field => field.readOnly), true);
         await page.getByRole('tab', {name: 'Ссылка tt://', exact: true}).click();
@@ -219,7 +229,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.deepEqual(errors, [], 'no page or console errors');
         assert.deepEqual(httpRequests, [], 'offline preview must issue no HTTP requests');
         assert.deepEqual((await context.storageState()).origins, [], 'no persisted connection data');
-        console.log('PASS: ' + viewport.width + 'px; manual/tt:// DNS-preserving downloads, ' + validations + ' backend validations, SSID-labelled 4-network/subset selection, device /32 and local exceptions, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, pending-transaction controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests');
+        console.log('PASS: ' + viewport.width + 'px; manual/tt:// DNS-preserving downloads and validated domain/network exclusions, ' + validations + ' backend validations, SSID-labelled 4-network/subset selection, device /32 and local exceptions, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, pending-transaction controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests');
     } finally {
         await context.close();
         fs.rmSync(temporary, {recursive: true, force: true});

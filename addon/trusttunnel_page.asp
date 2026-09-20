@@ -22,7 +22,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.0-alpha.1</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.1</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверки на роутере ещё не выполнены. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -83,6 +83,14 @@
 <div class="ttm-row"><label class="ttm-label" for="ttm-wan">WAN-интерфейс</label><div class="ttm-value"><input type="text" id="ttm-wan" maxlength="15" placeholder="Автоматически" spellcheck="false"><small>Необязательно. Оставьте пустым для автоматического выбора.</small></div></div>
 <div class="ttm-row"><label class="ttm-label" for="ttm-certificate">Сертификат PEM</label><div class="ttm-value"><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea><small>Если выдан вашим сервером. Для доверенного публичного сертификата оставьте пустым. Проверка TLS всегда включена.</small></div></div>
 </div>
+</details>
+<details class="ttm-exclusions-help" open><summary>Исключения из VPN</summary>
+<p>Совпавшие назначения обходят TrustTunnel и выходят напрямую через WAN. Указывайте по одному правилу в строке.</p>
+<div class="ttm-settings">
+<div class="ttm-row"><label class="ttm-label" for="ttm-exclusion-domains">Домены сайтов</label><div class="ttm-value"><textarea id="ttm-exclusion-domains" spellcheck="false" placeholder="example.com&#10;*.example.net"></textarea><small><code>example.com</code> включает сам домен и его поддомены. <code>*.example.com</code> включает только поддомены. Полный URL, протокол и путь указывать нельзя.</small></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-exclusion-networks">IPv4, сети и порты</label><div class="ttm-value"><textarea id="ttm-exclusion-networks" spellcheck="false" placeholder="203.0.113.10&#10;198.51.100.0/24&#10;203.0.113.20:443&#10;*:80"></textarea><small>Поддерживаются IPv4, канонический CIDR, IPv4:порт и <code>*:порт</code>. IPv6 заблокирован политикой аддона и здесь недоступен.</small></div></div>
+</div>
+<p class="ttm-error">Исключённый трафик не защищён VPN и использует внешний адрес провайдера. Правила <code>0.0.0.0/0</code> и <code>*:порт</code> могут вывести напрямую большой объём трафика; <code>*:53</code> может вывести DNS.</p>
 </details>
 </form>
 <div class="ttm-actions"><button type="button" id="ttm-save-endpoint" class="ttm-primary" onclick="ttmSaveEndpoint()">Сохранить подключение</button><button type="button" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>

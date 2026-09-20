@@ -30,6 +30,11 @@ class ConfigTests(unittest.TestCase):
     def validate(self, kind, data):
         return run(str(CTL), "validate", kind, str(self.write(data)))
     def test_endpoint_valid(self): self.assertEqual(self.validate("endpoint", EP).returncode, 0)
+    def test_endpoint_without_exclusions_is_backwards_compatible(self):
+        data=copy.deepcopy(EP);data.pop("exclusions")
+        self.assertEqual(self.validate("endpoint",data).returncode,0)
+        rendered=run(str(CTL),"render",str(self.write(data)))
+        self.assertEqual(tomllib.loads(rendered.stdout)["exclusions"],[])
     def test_policy_valid(self): self.assertEqual(self.validate("policy", POL).returncode, 0)
     def test_unknown_endpoint_field(self):
         data=copy.deepcopy(EP); data["skip_verification"]=True
@@ -39,6 +44,9 @@ class ConfigTests(unittest.TestCase):
                           ("addresses",["host:0"]),("addresses",[]),("protocol","auto"),
                           ("password",""),("password","x\ny"),("username","\u0000"),
                           ("mtu",1279),("mtu",1350.5),("dns_upstreams",None),
+                          ("exclusions",None),("exclusions",["https://example.com/path"]),
+                          ("exclusions",["192.0.2.1/24"]),("exclusions",["192.0.2.0/00"]),("exclusions",["example.com","EXAMPLE.COM"]),
+                          ("exclusions",["[2001:db8::1]"]),("exclusions",["example.com"]*257),
                           ("wan_if","br0;reboot"),("anti_dpi","false")]:
             with self.subTest(key=key,value=value):
                 data=copy.deepcopy(EP);data[key]=value
@@ -61,12 +69,14 @@ class ConfigTests(unittest.TestCase):
                 self.assertEqual(self.validate("policy",data).returncode,0)
     def test_render_toml_roundtrip_secret(self):
         data=copy.deepcopy(EP);data["password"]='password"\\$(touch /tmp/NEVER);`id` Привет'
+        data["exclusions"]=["example.com","*.example.net","203.0.113.0/24","*:80"]
         data["certificate"]=(ROOT/"tests/fixtures/test-cert.crt").read_text()
         result=run(str(CTL),"render",str(self.write(data)))
         self.assertEqual(result.returncode,0,result.stderr)
         cfg=tomllib.loads(result.stdout)
         self.assertEqual(cfg["endpoint"]["password"],data["password"])
         self.assertEqual(cfg["endpoint"]["certificate"],data["certificate"])
+        self.assertEqual(cfg["exclusions"],data["exclusions"])
         self.assertEqual(cfg["listener"]["tun"]["included_routes"],[])
         self.assertFalse(cfg["listener"]["tun"]["change_system_dns"])
         self.assertFalse(cfg["endpoint"]["skip_verification"])
@@ -219,7 +229,11 @@ class ConverterTests(unittest.TestCase):
     def test_unknown_protocol_fields_refused(self):
         with self.assertRaises(ValueError):self.mod.convert({"endpoint":{"tls_profile":"chrome"}})
     def test_internal_split_routing_refused(self):
-        with self.assertRaises(ValueError):self.mod.convert({"exclusions":["example.com"]})
+        with self.assertRaises(ValueError):self.mod.convert({"vpn_mode":"selective"})
+    def test_documented_exclusions_are_imported(self):
+        source=tomllib.loads(run(str(CTL),"render",str(ROOT/"examples/endpoint.example.json")).stdout)
+        source["exclusions"]=["example.com","203.0.113.0/24"]
+        self.assertEqual(self.mod.convert(source)["exclusions"],source["exclusions"])
 
 class SourceSafetyTests(unittest.TestCase):
     def test_shell_syntax(self):

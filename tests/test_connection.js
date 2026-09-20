@@ -26,7 +26,7 @@ function reject(parts, match) { assert.throws(() => api.parseLink(minimal(parts)
 
 test('minimal link, defaults and IPv4/DNS notices', () => {
   const result = api.parseLink(minimal());
-  assert.deepEqual(result.endpoint, {schema: 1, hostname: 'vpn.example.com', addresses: ['203.0.113.10:443'], username: 'test-user', password: 'test-password', protocol: 'http2', certificate: '', dns_upstreams: [], anti_dpi: false, mtu: 1350, wan_if: ''});
+  assert.deepEqual(result.endpoint, {schema: 1, hostname: 'vpn.example.com', addresses: ['203.0.113.10:443'], username: 'test-user', password: 'test-password', protocol: 'http2', certificate: '', dns_upstreams: [], exclusions: [], anti_dpi: false, mtu: 1350, wan_if: ''});
   assert.equal(result.name, '');
   assert.equal(result.warnings.length, 2);
 });
@@ -171,6 +171,22 @@ test('encrypted DNS transports and explicit ports from imported configuration ar
   const dns = ['https://dns.example.test/custom/path?profile=synthetic', 'tls://dns.example.test:8853', 'quic://dns.example.test:8853', '9.9.9.9:5353'];
   const data = Buffer.concat(dns.map(value => Buffer.concat([vi(Buffer.byteLength(value)), Buffer.from(value)])));
   assert.deepEqual(api.parseLink(minimal([tlv(13, data)])).endpoint.dns_upstreams, dns);
+});
+test('documented domain and IPv4 exclusions are normalized and classified', () => {
+  const rules = ['EXAMPLE.COM', '*.Example.Net', '203.0.113.10', '198.51.100.0/24', '203.0.113.20:00443', '*:80'];
+  const endpoint = api.endpointFromFields(fields({exclusions: rules.join('\n')}));
+  assert.deepEqual(endpoint.exclusions, ['example.com', '*.example.net', '203.0.113.10', '198.51.100.0/24', '203.0.113.20:443', '*:80']);
+  assert.deepEqual(api.splitExclusions(endpoint.exclusions), {
+    domains: ['example.com', '*.example.net'],
+    networks: ['203.0.113.10', '198.51.100.0/24', '203.0.113.20:443', '*:80']
+  });
+});
+test('URL paths, invalid networks, duplicates and unsupported IPv6 exclusions reject', () => {
+  for (const rule of ['https://example.com/path', 'example.com/path', 'example.com?x=1', '192.0.2.1/24', '192.0.2.0/00', '256.1.1.1', '192.0.2.1:0', '*:65536', 'example.com:443', '[2001:db8::1]', '2001:db8::/32']) {
+    assert.throws(() => api.endpointFromFields(fields({exclusions: [rule]})), /исключ|CIDR|IPv4|Порт|URL/i, rule);
+  }
+  assert.throws(() => api.endpointFromFields(fields({exclusions: ['Example.com', 'example.com']})), /повтор/i);
+  assert.throws(() => api.endpointFromFields(fields({exclusions: Array(257).fill('example.com')})), /256/);
 });
 test('manual invalid host port and control input reject', () => {
   for (const hostname of ['bad..host', '-bad.example', 'bad-.example', '256.1.1.1', '01.2.3.4', 'x;reboot', 'x'.repeat(64) + '.com']) assert.throws(() => api.endpointFromFields(fields({hostname})));

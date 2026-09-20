@@ -3,6 +3,7 @@
  * https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md
  * parseLink(uri) -> {endpoint: schema-1 object, name: string, warnings: string[]}.
  * endpointFromFields(fields) -> schema-1 object. Lists accept arrays or lines.
+ * splitExclusions(values) -> validated domain/network lists for the WebUI.
  * This module is pure: no network, persistence, logging or connection side effects.
  * Certificate validation checks DER/PEM framing; the client verifies X.509 trust.
  */
@@ -17,7 +18,7 @@
   var MAX_PAYLOAD = 24576;
   var MAX_CERT = 16384;
   var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  var KEYS = ['schema', 'hostname', 'addresses', 'username', 'password', 'protocol', 'certificate', 'dns_upstreams', 'anti_dpi', 'mtu', 'wan_if'];
+  var KEYS = ['schema', 'hostname', 'addresses', 'username', 'password', 'protocol', 'certificate', 'dns_upstreams', 'exclusions', 'anti_dpi', 'mtu', 'wan_if'];
   var TAGS = ['version', 'hostname', 'addresses', 'custom_sni', 'has_ipv6', 'username', 'password', 'skip_verification', 'certificate', 'upstream_protocol', 'anti_dpi', 'client_random_prefix', 'name', 'dns_upstreams'];
   function fail(message) { throw new Error(message); }
   function own(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }
@@ -50,6 +51,47 @@
     if (!match || Number(match[2]) < 1 || Number(match[2]) > 65535) fail('Адрес сервера должен иметь вид host:port или IPv4:port; порт 1–65535.');
     hostname(match[1], 'адрес сервера');
     return match[1] + ':' + Number(match[2]);
+  }
+  function port(value) {
+    if (!/^[0-9]{1,5}$/.test(value) || Number(value) < 1 || Number(value) > 65535) fail('Порт исключения должен быть числом от 1 до 65535.');
+    return String(Number(value));
+  }
+  function cidr(value) {
+    var match = /^([^/]+)\/(0|[1-9]|[12][0-9]|3[0-2])$/.exec(value);
+    if (!match || !ipv4(match[1])) fail('IPv4-сеть исключения должна быть каноническим CIDR, например 203.0.113.0/24.');
+    var octets = match[1].split('.').map(Number), prefix = Number(match[2]);
+    var number = octets[0] * 16777216 + octets[1] * 65536 + octets[2] * 256 + octets[3];
+    if (number % Math.pow(2, 32 - prefix) !== 0) fail('Укажите адрес сети, а не узла внутри CIDR исключения.');
+    return match[1] + '/' + prefix;
+  }
+  function exclusion(value) {
+    if (typeof value !== 'string') fail('Некорректное исключение.');
+    value = value.trim().toLowerCase();
+    clean(value, 255, 'исключение', false);
+    if (/^https?:\/\//.test(value) || /[?#]/.test(value) || (value.indexOf('/') >= 0 && !/^[0-9.]+\/[0-9]{1,2}$/.test(value))) fail('Указывайте домен без протокола, пути и параметров URL.');
+    if (value.indexOf(':') >= 0 && value.indexOf(']:') >= 0 || value.indexOf('[') >= 0 || (value.match(/:/g) || []).length > 1) fail('IPv6-исключения недоступны: выбранные сети работают только с IPv4.');
+    if (value.indexOf('/') >= 0) return cidr(value);
+    if (value.indexOf('*:') === 0) return '*:' + port(value.slice(2));
+    var ipPort = /^([^:]+):(.+)$/.exec(value);
+    if (ipPort) {
+      if (!ipv4(ipPort[1])) fail('Порт можно указывать только для IPv4-адреса или как *:port.');
+      return ipPort[1] + ':' + port(ipPort[2]);
+    }
+    if (ipv4(value)) return value;
+    var wildcard = value.indexOf('*.') === 0, name = wildcard ? value.slice(2) : value;
+    if (/^[0-9.]+$/.test(name)) fail('Некорректный IPv4-адрес исключения.');
+    hostname(name, 'домен исключения');
+    return (wildcard ? '*.' : '') + name;
+  }
+  function exclusions(value) {
+    var output = list(value, 256, 'Исключения', true).map(exclusion), seen = Object.create(null);
+    output.forEach(function (item) { if (seen[item]) fail('Исключения не должны повторяться.'); seen[item] = true; });
+    return output;
+  }
+  function splitExclusions(value) {
+    var result = {domains: [], networks: []};
+    exclusions(value).forEach(function (item) { result[ipv4(item) || item.indexOf('/') >= 0 || item.indexOf(':') >= 0 ? 'networks' : 'domains'].push(item); });
+    return result;
   }
   function encode64(bytes) {
     var out = '';
@@ -127,13 +169,14 @@
     if (typeof wan !== 'string' || wan.length > 15 || !/^([A-Za-z][A-Za-z0-9_.-]*)?$/.test(wan)) fail('Некорректное имя WAN-интерфейса.');
     var dns = list(own(fields, 'dns_upstreams') ? fields.dns_upstreams : [], 4, 'DNS', true);
     dns.forEach(function (value) { clean(value, 512, 'DNS', false); if (/\s/.test(value)) fail('DNS-адрес не должен содержать пробелы.'); });
+    var bypass = exclusions(own(fields, 'exclusions') ? fields.exclusions : []);
     return {
       schema: 1, hostname: hostname(fields.hostname.trim(), 'TLS hostname'),
       addresses: list(fields.addresses, 8, 'Адреса сервера').map(address),
       username: clean(fields.username, 256, 'имя пользователя', false),
       password: clean(fields.password, 1024, 'пароль', false),
       protocol: protocol, certificate: certificate(own(fields, 'certificate') ? fields.certificate : ''),
-      dns_upstreams: dns, anti_dpi: anti, mtu: mtu, wan_if: wan
+      dns_upstreams: dns, exclusions: bypass, anti_dpi: anti, mtu: mtu, wan_if: wan
     };
   }
   function varint(bytes, cursor) {
@@ -215,5 +258,5 @@
       warnings: warnings
     };
   }
-  return {parseLink: parseLink, endpointFromFields: endpointFromFields};
+  return {parseLink: parseLink, endpointFromFields: endpointFromFields, splitExclusions: splitExclusions};
 }));
