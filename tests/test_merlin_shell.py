@@ -15,18 +15,33 @@ class MerlinShellTests(unittest.TestCase):
         self.assertLess(page.index('src="/js/httpApi.js"'), page.index('src="/state.js"'))
 
     def test_minimal_entware_jq_fails_before_install_writes(self):
-        result = subprocess.run(['busybox', 'ash', '-c', '''
+        with tempfile.TemporaryDirectory() as folder:
+            sandbox = Path(folder)
+            (sandbox / 'tools').mkdir()
+            (sandbox / 'router/opt/etc/init.d').mkdir(parents=True)
+            (sandbox / 'router/proc/self').mkdir(parents=True)
+            (sandbox / 'router/proc/self/status').write_text('Uid:\t0\t0\t0\t0\n')
+            for relative in ('install.sh', 'tools/router-platform.sh'):
+                text = (ROOT / relative).read_text()
+                for prefix in ('/opt/', '/jffs/', '/proc/', '/tmp/trusttunnel'):
+                    text = text.replace(prefix, str(sandbox / 'router') + prefix)
+                (sandbox / relative).write_text(text)
+            before = sorted(str(p.relative_to(sandbox)) for p in sandbox.rglob('*'))
+            result = subprocess.run(['busybox', 'ash', '-c', '''
 id() { echo 0; }
-nvram() { case "$2" in rc_support) echo am_addons;; jffs2_scripts) echo 1;; esac; }
+uname() { case "$1" in -s) echo Linux;; -m) echo aarch64;; esac; }
+nvram() { case "$2" in rc_support) echo am_addons;; jffs2_scripts) echo 1;; firmver) echo 3.0.0.4;; buildno) echo 388.12;; esac; }
+opkg() { return 0; }
 jq() { return 5; }
 cru() { return 0; }
 ip() { return 0; }
 installer=$1
 set -- --lab-only
 . "$installer"
-''', 'test', str(ROOT / 'install.sh')], capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('jq with regex support is required', result.stderr)
+''', 'test', str(sandbox / 'install.sh')], cwd=sandbox, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('jq with regex support is required', result.stderr)
+            self.assertEqual(before, sorted(str(p.relative_to(sandbox)) for p in sandbox.rglob('*')))
 
     def test_disabled_import_and_status_without_command_builtin(self):
         with tempfile.TemporaryDirectory() as folder:

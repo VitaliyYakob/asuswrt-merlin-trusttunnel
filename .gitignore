@@ -14,3 +14,5 @@ trusttunnel-endpoint.json
 trusttunnel-policy.json
 *.previous
 install-backups/
+backups/
+preview/screenshot*.png

@@ -1,9 +1,0 @@
-{
-  "schema": 1,
-  "lan_if": "br1",
-  "sources": ["192.168.50.0/24"],
-  "dns_ipv4": "1.1.1.1",
-  "block_ipv6_bridge": true,
-  "table": 871,
-  "priority": 17100
-}

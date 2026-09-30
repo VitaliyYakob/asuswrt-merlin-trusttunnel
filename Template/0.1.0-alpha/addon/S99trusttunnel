@@ -1,9 +1,0 @@
-#!/bin/sh
-CTL=/jffs/addons/trusttunnel/trusttunnel.sh
-[ -x "$CTL" ] || exit 0
-case "${1:-}" in
-    start) "$CTL" boot;;
-    stop) "$CTL" shutdown;;
-    restart) "$CTL" wan;;
-    *) echo 'Usage: S99trusttunnel {start|stop|restart}' >&2; exit 2;;
-esac

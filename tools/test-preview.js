@@ -13,6 +13,8 @@ const {createHash} = require('node:crypto');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 const preview = path.join(root, 'preview', 'index.html');
+const screenshots = path.join(root, 'build', 'browser-screenshots');
+fs.mkdirSync(screenshots, {recursive: true});
 // Independently assembled wire fixture from test_connection.js: h, 1.2.3.4:443, u, p.
 // All credentials in this file are synthetic test data.
 const linkFixture = 'tt://?' + Buffer.from('010168020b312e322e332e343a343433050175060170', 'hex').toString('base64url');
@@ -226,10 +228,10 @@ async function exercise(browser, viewport, screenshot) {
         const overflow = await page.evaluate(() => ({width: document.documentElement.scrollWidth, viewport: window.innerWidth}));
         assert.ok(overflow.width <= overflow.viewport + 1, 'page must fit viewport without horizontal scrolling: ' + JSON.stringify(overflow));
         await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
-        await page.screenshot({path: path.join(root, 'preview', screenshot), fullPage: true});
+        await page.screenshot({path: path.join(screenshots, screenshot), fullPage: true});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
         await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
-        await page.screenshot({path:path.join(root,'preview',screenshot.replace('.png','-networks.png')),fullPage:true});
+        await page.screenshot({path:path.join(screenshots,screenshot.replace('.png','-networks.png')),fullPage:true});
         assert.deepEqual(errors, [], 'no page or console errors');
         assert.deepEqual(httpRequests, [], 'offline preview must issue no HTTP requests');
         assert.deepEqual((await context.storageState()).origins, [], 'no persisted connection data');
@@ -280,7 +282,7 @@ async function exerciseOverview(browser, width) {
             u.check={id:'0123456789abcdef',channel:'stable',checked_at:Math.floor(Date.now()/1000),state:'available',candidate:{tag:'v1.1.7',channel:'stable'}};
             window.done_validating();
         });
-        await page.screenshot({path:path.join(root,'preview',width===390?'screenshot-mobile-overview.png':'screenshot-overview.png'),fullPage:true});
+        await page.screenshot({path:path.join(screenshots,width===390?'screenshot-mobile-overview.png':'screenshot-overview.png'),fullPage:true});
         await page.getByRole('tab',{name:'Сети',exact:true}).click();
         await page.getByText('Дополнительно: интерфейсы и подсети Wi-Fi',{exact:true}).click();
         assert.equal(await page.locator('#ttm-wifi-inventory .ttm-wifi-row').count(),2);
@@ -301,7 +303,7 @@ async function exerciseOverview(browser, width) {
         assert.equal(await page.locator('.ttm-cidrs').inputValue(),'192.168.10.10/32\n192.168.10.20/32','refresh keeps draft IP routing');
         assert.equal(await page.locator('#ttm-export-policy').isVisible(),false,'SSH fallback stays in advanced details');
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
-        await page.screenshot({path:path.join(root,'preview',width===390?'screenshot-mobile-topology.png':'screenshot-topology.png'),fullPage:true});
+        await page.screenshot({path:path.join(screenshots,width===390?'screenshot-mobile-topology.png':'screenshot-topology.png'),fullPage:true});
         assert.deepEqual(errors,[]); assert.deepEqual(requests,[]);
         console.log('PASS: '+width+'px overview/update dates, nightly absence, dependencies/recovery/transaction guards, TUN address, passive proof scope, distinct SSID device rows, association-scoped clients and roaming with draft preserved, shared routing scope, hidden SSH fallback; no HTTP');
     } finally { await context.close(); }

@@ -1,0 +1,18 @@
+title = "Поиск секретов asuswrt-merlin-trusttunnel"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "trusttunnel-connection-link"
+description = "Полная ссылка TrustTunnel может содержать учётные данные"
+regex = '''tt://\?[A-Za-z0-9_-]{32,}'''
+keywords = ["tt://?"]
+
+[[allowlists]]
+description = "Опубликованная контрольная сумма исходников flock 0.4.0"
+regexTarget = "line"
+regexes = [
+  '''SHA256 verified against the Homebrew formula API: `01bbd497d168e9b7306f06794c57602da0f61ebd463a3210d63c1d8a0513c5cc`''',
+  '''SHA-256 проверен по Homebrew formula API: `01bbd497d168e9b7306f06794c57602da0f61ebd463a3210d63c1d8a0513c5cc`'''
+]

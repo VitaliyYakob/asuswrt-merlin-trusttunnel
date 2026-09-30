@@ -3,6 +3,8 @@
 set -eu
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 [ "$#" -eq 2 ] || { echo 'Usage: sh tools/install-client.sh LOCAL_BINARY EXPECTED_SHA256' >&2; exit 2; }
+[ -z "${TT_ROOT:-}" ] || { echo 'Installation is prohibited with TT_ROOT' >&2; exit 1; }
+[ "$(uname -s)" = Linux ] || { echo 'Linux router required' >&2; exit 1; }
 [ "$(id -u)" = 0 ] || { echo 'root required' >&2; exit 1; }
 [ "$(uname -m)" = aarch64 ] || { echo 'This alpha installer targets aarch64 only' >&2; exit 1; }
 [ ! -f /jffs/addons/trusttunnel/config/enabled ] || { echo 'Explicitly disable the addon before replacing its binary' >&2; exit 1; }
@@ -23,6 +25,7 @@ exec 9>/tmp/trusttunnel/control.lock
 flock -w 20 9 || { echo 'Controller is busy' >&2; exit 1; }
 [ ! -f /jffs/addons/trusttunnel/config/enabled ] || { echo 'Addon became enabled; installation refused' >&2; exit 1; }
 [ ! -e /jffs/addons/trusttunnel/config/client-update-journal.json ] || { echo 'Client recovery is pending; installation refused' >&2; exit 1; }
+[ ! -e /jffs/addons/trusttunnel/config/transaction ] && [ ! -e /jffs/addons/trusttunnel/config/paused ] || { echo 'Pending VPN state; installation refused' >&2; exit 1; }
 mkdir -p /opt/trusttunnel/bin
 stage=$(mktemp /opt/trusttunnel/bin/.client.XXXXXX)
 trap 'rm -f "$stage"' EXIT HUP INT TERM

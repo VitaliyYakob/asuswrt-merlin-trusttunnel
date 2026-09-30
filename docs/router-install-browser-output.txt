@@ -1,9 +1,0 @@
-python3 tools/make-preview.py
-/Users/vyakob/Documents/Codex/MyProjects/VPN/ASUS-Trusttunnel-WEB/preview/index.html
-node tools/test-preview.js
-Browser: Chromium 151.0.7922.34; Playwright 1.62.1
-PASS: 1280px; manual/tt:// DNS-preserving downloads and validated domain/network exclusions, 7 backend validations, SSID-labelled 4-network/subset selection, device /32 and local exceptions, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, pending-transaction controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
-PASS: 390px; manual/tt:// DNS-preserving downloads and validated domain/network exclusions, 7 backend validations, SSID-labelled 4-network/subset selection, device /32 and local exceptions, immutable bridges, no routing DNS, IPv6 acknowledgement, invalid-input errors, pending-transaction controls, no horizontal overflow; 0 page/console errors; 0 HTTP requests
-PASS: empty inventory has no guessed networks; multiple SSIDs share one immutable bridge choice; SSID HTML is text and executes no script; unavailable network can be removed individually without resetting other selections and cannot be reselected
-node tools/test-browser-transport.js
-PASS: HTTPS browser file import → encrypted native events → acknowledged save; no plaintext credentials in form/status; successful save clears secrets; exclusions-only save and reload preserve credentials/DNS; stale revision preserves input and shows failure. Merlin HTTP/authentication NOT TESTED.

@@ -132,10 +132,16 @@ tt_update_status''')
 
     def test_installer_declares_update_verification_dependencies(self):
         installer=(ROOT/'tools/setup-router.sh').read_text()
-        for dependency in ('gpg:gnupg','timeout:coreutils-timeout','tar:tar'):
-            self.assertIn(dependency,installer)
-        for script in ('install.sh','tools/install-client.sh','tools/setup-router.sh'):
+        preparer=(ROOT/'tools/prepare-entware.sh').read_text()
+        self.assertIn('prepare-entware.sh',installer)
+        for dependency in ('gnupg','coreutils-timeout','tar'):
+            self.assertIn(dependency,preparer)
+        for utility in ('gpg','timeout','tar'):
+            self.assertIn(utility,installer.split('for utility in ',1)[1].split('; do',1)[0])
+        for script in ('install.sh','tools/install-client.sh','tools/router-platform.sh'):
             self.assertIn('client-update-journal.json',(ROOT/script).read_text())
+        self.assertIn('router-platform.sh',installer)
+        self.assertIn('tt_install_platform "$FROM_IPK"',installer)
 
     def test_candidate_token_channel_and_ttl_are_bound(self):
         now=int(__import__('time').time())

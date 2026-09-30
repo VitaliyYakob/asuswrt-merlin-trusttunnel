@@ -1,47 +1,46 @@
-# Temporary host testing environment
+# Временная среда тестирования на компьютере
 
-## Rebuilt on 2026-09-30 for alpha.7
+## Пересборка 30.09.2026 для alpha.7
 
-The old temporary runtime was missing. BusyBox 1.37.0 and flock 0.4.0 were rebuilt from the same pinned/verified archives below in `/private/tmp/ttm-alpha7-host`; load its `env.sh`. No global packages or router files were changed. BusyBox uses the documented Darwin linking/archiver changes with ASH and FEATURE_SH_MATH/FEATURE_SH_MATH_64/FEATURE_SH_MATH_BASE enabled. The initial minimal build omitted shell arithmetic and failed existing tests; it was corrected before the reported final runs.
+Прежняя временная среда отсутствовала. BusyBox 1.37.0 и flock 0.4.0 заново собраны из тех же закреплённых и проверенных архивов в `/private/tmp/ttm-alpha7-host`; окружение загружается из `env.sh`. Общие пакеты и файлы роутера не менялись. Для BusyBox применены описанные ниже изменения сборки Darwin; включены ASH и FEATURE_SH_MATH/FEATURE_SH_MATH_64/FEATURE_SH_MATH_BASE. В первой минимальной сборке отсутствовала арифметика оболочки, поэтому существующие тесты не прошли. Сборку исправили до итоговых прогонов.
 
-ShellCheck 0.10.0 was reused from its previously verified local installation. Bundled Playwright 1.62.1 and its exact Chromium Headless Shell 151.0.7922.34 (revision 1234) run against offline fixtures and the local HTTPS transport mock. GnuPG is absent on this host: new signature control flow uses explicit mocks; only the bundled public-key fingerprint is independently computed. Official release signatures and router update compatibility are not claimed as tested by these runs.
+ShellCheck 0.10.0 использован из ранее проверенной локальной установки. Playwright 1.62.1 и соответствующий Chromium Headless Shell 151.0.7922.34 (ревизия 1234) проверяют автономные примеры и локальную модель HTTPS-передачи. GnuPG на компьютере отсутствует: операции проверки подписи подменяются явно; независимо вычисляется только отпечаток включённого публичного ключа. Эти тесты не подтверждают настоящую подпись релиза или совместимость обновления на роутере.
 
+## Пересборка 20.09.2026 для версии 0.3
 
-## Rebuilt on 2026-09-20 for 0.3
+Прежний `/tmp/ttm-test-deps` отсутствовал. Те же закреплённые исходники BusyBox 1.37.0 и flock 0.4.0 проверены и собраны в `/private/tmp/ttm-host-tests.wJHyq1`. Для этой сессии использовался его `env.sh`. Общие установленные программы и сеть роутера не менялись.
 
-The previous `/tmp/ttm-test-deps` no longer existed. The same pinned BusyBox 1.37.0 and flock 0.4.0 sources were verified and rebuilt in `/private/tmp/ttm-host-tests.wJHyq1`. Load its `env.sh` for this session. No global installation or router network configuration was changed.
+BusyBox ash использует описанные ниже поправки сборки Darwin; проверялся `busybox_unstripped`. Браузер: Playwright 1.62.1, соответствующий Chromium Headless Shell 151.0.7922.34 скачан во временный каталог. Точная версия Playwright и целостность пакета проверены по официальному реестру npm перед подготовкой CI.
 
-BusyBox ash uses the same Darwin build adjustments described below; `busybox_unstripped` is the tested executable. Browser: bundled Playwright 1.62.1, downloaded Chromium Headless Shell 151.0.7922.34 in the temporary directory. The precise Playwright version and integrity were checked against the official npm registry before defining CI installation.
+ShellCheck 0.10.0 получен из официального релиза GitHub (`shellcheck-v0.10.0.darwin.aarch64.tar.xz`), SHA-256 архива `bbd2f14826328eee7679da7221f2bc3afb011f6a928b848c80c321f6046ddf81`. `make lint` проверяет ошибки и предупреждения в точках входа и подключаемых библиотеках. Информационные рекомендации не входят в эту проверку.
 
-ShellCheck 0.10.0 was obtained from its official GitHub release (`shellcheck-v0.10.0.darwin.aarch64.tar.xz`), archive SHA256 `bbd2f14826328eee7679da7221f2bc3afb011f6a928b848c80c321f6046ddf81`. `make lint` checks warning/error severity on entry points with their sourced libraries. Informational suggestions are not included in that gate.
+PATH выбирает `/usr/bin/openssl`, **LibreSSL 3.3.6**; настоящие тесты совместимости RSA-OAEP использовали эту реализацию. На компьютере есть и Homebrew OpenSSL 3.6.4, но его наличие не является проверкой Entware/OpenSSL на роутере. GnuPG не установлен: тесты последовательности проверки подписи используют подмену и не проверяют официальный релиз.
 
-The runtime PATH resolves the OpenSSL CLI to `/usr/bin/openssl`, **LibreSSL 3.3.6**; real RSA-OAEP interoperability tests used that implementation. Homebrew OpenSSL 3.6.4 also exists, but its presence is not reported as an Entware/OpenSSL router test. GnuPG was not installed: signature-verifier control-flow tests use a stub and do not verify an official release.
+## Историческая среда 14.09.2026
 
-## Historical 2026-09-14 environment
+Файлы проекта и общие исполняемые программы не менялись. Исходники, сборки и установленные программы размещались в отдельном временном каталоге `/tmp/ttm-test-deps`.
 
-No project files or global installed binaries were changed. Source archives, builds and installed binaries are in this directory.
+## Оболочка и блокировки
 
-## Shell checks and locking
+Перед `make test` окружение этой исторической среды загружалось из `/tmp/ttm-test-deps/env.sh`.
 
-Source `/tmp/ttm-test-deps/env.sh` before `make test`.
+- [Исходники BusyBox 1.37.0](https://busybox.net/downloads/busybox-1.37.0.tar.bz2).
+- SHA-256 проверен по официальному файлу .sha256: `3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4`.
+- Минимальный BusyBox с ash/sh собран Xcode Clang на Darwin arm64. `shell/ash.c` и исполняемый код не изменялись. Поправки сборки Darwin: обёртка архиватора записывает стандартный заголовок пустого ar; из `scripts/trylink` удалены GNU-параметры группировки и информации; `-Wno-error=implicit-function-declaration` разрешает компиляцию неиспользуемых Linux-библиотек; штатный `-Wl,-dead_strip` удаляет неиспользуемые функции. Собранный файл без strip установлен как `bin/busybox`, поскольку Darwin strip не принимает GNU-параметр `--remove-section`.
+- Это настоящая проверка синтаксиса и исполнения BusyBox ash на Darwin. Она не проверяет ядро, сеть, версию BusyBox или весь набор команд роутера.
+- [Исходники flock 0.4.0](https://github.com/discoteq/flock/releases/download/v0.4.0/flock-0.4.0.tar.xz).
+- SHA-256 проверен по Homebrew formula API: `01bbd497d168e9b7306f06794c57602da0f61ebd463a3210d63c1d8a0513c5cc`
+- Сборка: `./configure --prefix=/tmp/ttm-test-deps`, `make`, `make install`. Исходный код не менялся.
+- Пройдены функциональные проверки конкуренции эксклюзивной блокировки, освобождения lock, числового файлового дескриптора и параметра `-w`.
 
-- BusyBox 1.37.0 source: https://busybox.net/downloads/busybox-1.37.0.tar.bz2
-- SHA256 verified against upstream .sha256 file: `3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4`
-- Built a minimal BusyBox supporting ash/sh with Xcode Clang on Darwin arm64. `shell/ash.c` and runtime source remain unmodified. Darwin-specific build adjustments: an archiver wrapper writes the standard empty-ar header when there are no members; GNU linker grouping/info flags removed from `scripts/trylink`; `-Wno-error=implicit-function-declaration` allows unused Linux-only library members to compile; native `-Wl,-dead_strip` removes unused functions. The successfully linked unstripped executable is installed as `bin/busybox` because Darwin strip rejects GNU `--remove-section` flags.
-- This provides real BusyBox ash syntax/runtime on Darwin. It does not validate the router's kernel, networking, BusyBox version or full collection of applets.
-- flock 0.4.0 source: https://github.com/discoteq/flock/releases/download/v0.4.0/flock-0.4.0.tar.xz
-- SHA256 verified against the Homebrew formula API: `01bbd497d168e9b7306f06794c57602da0f61ebd463a3210d63c1d8a0513c5cc`
-- Built with `./configure --prefix=/tmp/ttm-test-deps`, `make`, `make install`. The source code is unchanged.
-- Functional checks passed for exclusive contention, lock release, numeric file descriptor invocation and `-w` syntax.
+## Браузер
 
-## Browser
+Playwright для Node.js: 1.62.1. Этим пакетом установлен Chrome Headless Shell 151.0.7922.34 (ревизия 1234), arm64 macOS.
 
-Bundled Node Playwright: 1.62.1. Browser installed using that exact Playwright package: Chrome Headless Shell 151.0.7922.34 (revision 1234), arm64 macOS.
+`NODE_PATH` и `PLAYWRIGHT_BROWSERS_PATH` задаются в env.sh. JavaScript использует `require('playwright')`, `chromium.launch({headless:true})` и `page.setContent(html)`.
 
-`NODE_PATH` and `PLAYWRIGHT_BROWSERS_PATH` are set by env.sh. JavaScript can call `require('playwright')`, `chromium.launch({headless:true})`, and `page.setContent(html)`.
+Автономная тестовая страница успешно отрисована. На этом компьютере запуск Chromium требует `require_escalated`, поскольку песочница блокирует MachPort IPC. Настройки настоящего роутера или других сетей не менялись. Python Playwright отсутствует; применяется JavaScript Playwright.
 
-An offline test page was rendered successfully. Chromium launch requires the tool execution's `require_escalated` on this machine because the sandbox blocks MachPort IPC. No live router or other network configuration was touched. Python Playwright is not installed; use bundled JavaScript Playwright.
+## Сохранённые результаты
 
-## Baseline
-
-`baseline-make-test.txt` contains the actual unedited make-test output. The test commands run on the host; network executor tests replace networking tools with project mocks, as required by AGENTS.md.
+Исторические сырые журналы оставлены вне текущей поставки и в прежних Git-коммитах. Фактические результаты приведены в [TEST-REPORT.md](TEST-REPORT.md). Сетевые команды в тестах компьютера заменены моделью, как требует AGENTS.md.

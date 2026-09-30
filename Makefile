@@ -1,7 +1,8 @@
-.PHONY: test preview package browser-test lint
+.PHONY: test preview package ipk browser-test lint screenshots
 
 lint:
-	shellcheck --severity=warning -x -P addon -P addon/lib addon/trusttunnel.sh tools/*.sh install.sh uninstall.sh addon/S99trusttunnel
+	shellcheck --severity=warning -x -P addon -P addon/lib -P tools addon/trusttunnel.sh tools/*.sh install.sh install-online.sh uninstall.sh build-ipk.sh addon/S99trusttunnel
+	shellcheck --severity=warning -x packaging/*.sh
 
 test:
 	sh tools/test-cidr-compat.sh
@@ -18,6 +19,12 @@ preview:
 
 package:
 	python3 tools/package.py
+
+ipk:
+	python3 tools/build-ipk.py --write-online
+
+screenshots: preview
+	node tools/capture-readme.js
 
 browser-test: preview
 	node tools/test-preview.js

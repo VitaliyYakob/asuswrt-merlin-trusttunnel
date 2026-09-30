@@ -1,6 +1,6 @@
 # Первичные источники
 
-Актуальное исследование для 0.2.0-alpha.1 находится в [RESEARCH.md](RESEARCH.md).
+Актуальное исследование и поставка 0.3.1-alpha.10 находится в [RESEARCH.md](RESEARCH.md).
 
 - [TrustTunnelClient v1.1.5](https://github.com/TrustTunnel/TrustTunnelClient/tree/v1.1.5): стабильная версия схемы клиента, исследованная 14.09.2026.
 - [Deep link specification v1.0.33](https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md): формат tt://, закреплённый зависимостью клиента v1.1.5.
