@@ -55,16 +55,23 @@ tt_acceleration_state''')
         r=self.execute('fc() { return 1; }; TT_ROOT=; tt_acceleration_state')
         self.assertEqual(r.stdout.strip(),'unknown')
     def test_missing_policy_reports_actionable_code_before_network_access(self):
+        # Older BusyBox ash rejects hyphens in function names. Use executable
+        # mocks, including the restore tools, and prepend them after common.sh.
+        fakebin=self.path/'fakebin'; fakebin.mkdir()
+        for name in ('ip','iptables','ip6tables','iptables-restore','ip6tables-restore','modprobe'):
+            mock=fakebin/name
+            mock.write_text('#!/bin/sh\nprintf "UNEXPECTED\\n" >&2\nexit 99\n')
+            mock.chmod(0o755)
         r=self.execute('''tt_live() { return 0; }
+PATH="$TT_ROOT/fakebin:$PATH"
+export PATH
 cp "$TT_BASE/../examples/endpoint.example.json" "$TT_ENDPOINT"
-ip() { echo UNEXPECTED >&2; return 99; }
-iptables() { return 99; }; ip6tables() { return 99; }
-iptables-restore() { return 99; }; ip6tables-restore() { return 99; }
-modprobe() { echo UNEXPECTED >&2; return 99; }
 tt_wire_dispatch ttm_do_0123456789abcdef_start''')
         self.assertNotEqual(r.returncode,0)
         self.assertNotIn('UNEXPECTED',r.stderr)
-        op=json.loads((self.path/'tmp/trusttunnel/operations/0123456789abcdef.json').read_text())
+        operation=self.path/'tmp/trusttunnel/operations/0123456789abcdef.json'
+        self.assertTrue(operation.is_file(),r.stderr)
+        op=json.loads(operation.read_text())
         self.assertEqual(op['code'],'policy_missing')
         self.assertFalse((self.path/'jffs/addons/trusttunnel/config/enabled').exists())
     def test_arbitrary_failure_text_cannot_be_published_as_code(self):
