@@ -20,4 +20,4 @@ Keep bind-mounted /opt executable realpath handling and close lock FD in the cli
 Policy edits while enabled must use the existing journalled trial/confirm/rollback migration. Never bypass it. Bridge-wide IPv6 blocking is intentionally disclosed and acknowledged, not device-scoped IPv6 protection.
 
 ## Deliverables
-Update VERSION, CHANGELOG, docs/STATUS.md and factual docs/TEST-REPORT.md. Maintain sources/attribution and no real credentials in fixtures. CI workflows here are definitions only until a remote CI run is observed.
+Update VERSION, CHANGELOG, docs/STATUS.md and factual docs/TEST-REPORT.md. Maintain sources/attribution and no real credentials in fixtures. Remote GitHub Actions CI has been observed passing; consult docs/TEST-REPORT.md for the exact commit and scope. Do not extend that result to later changes without a new run.
