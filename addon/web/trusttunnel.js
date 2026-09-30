@@ -21,6 +21,15 @@
         function number(s) { return ipv4(s).reduce(function (a,n) { return a*256+n; },0); }
         var parts=cidr.split('/'), start=number(parts[0]); return number(address)>=start && number(address)<start+Math.pow(2,32-Number(parts[1]));
     }
+    function clientsForSsid(clients, network, ssid) {
+        return (clients||[]).filter(function (client) {
+            if (!(network.sources||[]).some(function (source) { return contains(source,client.ip); })) return false;
+            if (!ssid) return true;
+            var associations=Array.isArray(client.wireless)?client.wireless:[];
+            var bindings=new Set(associations.map(function (w) { return JSON.stringify([w.lan_if,w.ssid]); }));
+            return bindings.size===1 && associations.some(function (w) { return w.lan_if===network.lan_if && w.ssid===ssid; });
+        });
+    }
     function policyFromNetworks(rows, acknowledge) {
         var total = 0, seen = [], networks = rows.filter(function (row) { return row.selected !== false; }).map(function (row) {
             var lan = row.lan_if.trim(), cidrs = Array.isArray(row.sources) ? row.sources : row.sources.trim().split(/[\s,;]+/).filter(Boolean);
@@ -47,7 +56,7 @@
         if (new TextEncoder().encode(serialized).length > 7600) throw new Error('Недостаточно места в хранилище аддонов. Используйте импорт политики по SSH.');
         return serialized;
     }
-    api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope; api.contains=contains;
+    api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope; api.contains=contains; api.clientsForSsid=clientsForSsid;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (!root.document) return;
     function el(id) { return document.getElementById(id); }
@@ -62,9 +71,14 @@
         initialized=false; dirty={}; editRevision=null; root.ttmClearConnection(); updateDirty(); refresh();
     };
     function text(id, value) { el(id).textContent = String(value); }
-    var startErrors={endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
+    function dateLabel(value, fallback) {
+        if (typeof value!=='number' || !Number.isFinite(value) || value<=0) return fallback;
+        var date=new Date(value*1000);
+        return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString('ru-RU');
+    }
+    var startErrors={update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
     function operationLabel(op) {
-        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика'};
+        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика',verify_traffic:'Проверка трафика',check_updates:'Поиск обновлений',update_client:'Обновление CLI',channel_stable:'Стабильный канал',channel_nightly:'Ночной канал'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
         var codes={confirmation_required:'нужно подтверждение',revision_conflict:'настройки изменены в другой вкладке',transaction_pending:'сначала завершите пробное применение',invalid_configuration:'некорректная конфигурация',apply_failed:'не удалось применить',action_failed:'не удалось выполнить'};
         return (actions[op.action]||'Операция')+' · '+(startErrors[op.code]||codes[op.code]||states[op.state]||'результат неизвестен');
@@ -77,10 +91,13 @@
         el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.transaction);
         el('ttm-save').disabled = el('ttm-export-policy').disabled = el('ttm-policy-fields').disabled;
         el('ttm-save-endpoint').disabled = !ok || pending || !!(latest && latest.transaction);
+        el('ttm-nightly').disabled=!ok || pending || !!latest.transaction;
+        var updates=(latest||{}).client_updates||{}, check=updates.check;
+        el('ttm-update-client').disabled=!ok || pending || !!latest.transaction || !updates.dependencies_ready || updates.recovery_pending || !check || check.state!=='available' || !check.candidate || check.channel!==updates.channel || (!root.TTM_PREVIEW && (Date.now()/1000-check.checked_at>3600 || check.checked_at>Date.now()/1000));
         el('ttm-save-exclusions').disabled = el('ttm-save-endpoint').disabled || !(latest && latest.endpoint && latest.endpoint.configured) || !!dirty.endpoint;
     }
     function networkTitle(network) {
-        if (Array.isArray(network.ssids) && network.ssids.length>1) return network.ssids.join(' / ');
+        if (Array.isArray(network.ssids) && network.ssids.length>1) return 'Общая подсеть · '+(network.sources||[]).join(', ');
         if (typeof network.display_name==='string' && network.display_name) return network.display_name;
         return Array.isArray(network.ssids) && network.ssids.length ? network.ssids.join(' / ') : 'Локальная сеть — SSID не определён';
     }
@@ -95,27 +112,43 @@
         caption.textContent = available ? networkTitle(network) : 'Сохранённая сеть недоступна';
         choice.appendChild(checkbox); choice.appendChild(caption); info.appendChild(choice);
         var hint = document.createElement('small'); hint.className = 'ttm-network-hint'; info.appendChild(hint);
-        var ssids=document.createElement('details'); ssids.className='ttm-network-ssids';
-        ssids.appendChild(document.createElement('summary')); ssids.appendChild(document.createElement('ul'));
-        info.appendChild(ssids); row.appendChild(info);
+        row.appendChild(info);
         var box = document.createElement('div'), name = document.createElement('label'), sources = document.createElement('textarea');
         sources.id = 'ttm-network-' + index + '-sources'; sources.className = 'ttm-cidrs'; sources.spellcheck = false;
         sources.value = (network.sources || []).join('\n'); sources.placeholder = '192.168.50.0/24';
         name.htmlFor = sources.id; name.textContent = 'Подсети / адреса IPv4'; box.appendChild(name); box.appendChild(sources); row.appendChild(box);
         // The firmware association is held in memory, never read from an editable DOM field.
         networkModels.set(row,{identity:Object.freeze({lan_if:network.lan_if,token:network.identity}),available:!!available});
-        var devices=document.createElement('select'); devices.className='ttm-device'; devices.setAttribute('aria-label','Добавить устройство по IPv4');
-        devices.add(new Option('Добавить устройство…',''));
-        var original=(latest.discovered_networks||[]).find(function (item) { return item.lan_if===network.lan_if; })||network;
-        (latest.clients||[]).filter(function (client) { return (original.sources||[]).some(function (source) { return contains(source,client.ip); }); }).forEach(function (client) {
-            devices.add(new Option(client.name+' · '+client.ip,client.ip+'/32'));
-        });
+        var devicesBox=document.createElement('div'); devicesBox.className='ttm-ssid-rows'; row.appendChild(devicesBox);
+        el('ttm-networks').appendChild(row); return row;
+    }
+    function addDevicePicker(box, row, clients, ssid) {
+        var devices=document.createElement('select'); devices.className='ttm-device'; devices.setAttribute('aria-label',ssid?'Добавить устройство из '+ssid:'Добавить устройство по IPv4');
+        devices.add(new Option(clients.length?'Добавить устройство…':'Нет подтверждённых устройств',''));
+        clients.forEach(function (client) { devices.add(new Option(client.name+' · '+client.ip,client.ip+'/32')); });
+        devices.disabled=!clients.length;
         devices.addEventListener('change',function () { if (!devices.value) return;
+            var sources=row.querySelector('.ttm-cidrs'), checkbox=row.querySelector('.ttm-selected');
             var list=sources.value.trim().split(/[\s,;]+/).filter(function (source) { return /\/32$/.test(source); });
             if (list.indexOf(devices.value)<0) list.push(devices.value);
             sources.value=list.join('\n'); checkbox.checked=true; devices.value=''; markDirty('policy'); updateCount();
         }); box.appendChild(devices);
-        el('ttm-networks').appendChild(row); return row;
+    }
+    function renderNetworkDevices(row, network, available) {
+        var model=networkModels.get(row), names=available?(network.ssids||[]):[];
+        var groups=names.length?names.map(function (ssid) { return {ssid:ssid,clients:clientsForSsid(latest.clients,network,ssid)}; }):[{ssid:null,clients:available?clientsForSsid(latest.clients,network,null):[]}];
+        var signature=JSON.stringify(groups.map(function (group) { return [group.ssid,group.clients.map(function (client) { return [client.ip,client.name]; })]; }));
+        if (model.devicesSignature===signature) return;
+        model.devicesSignature=signature;
+        row.querySelectorAll('.ttm-device').forEach(function (picker) { picker.remove(); });
+        var box=row.querySelector('.ttm-ssid-rows'); box.textContent=''; box.hidden=names.length<2;
+        groups.forEach(function (group) {
+            if (names.length<2) { addDevicePicker(row.children[1],row,group.clients,group.ssid); return; }
+            var card=document.createElement('div'); card.className='ttm-ssid-row';
+            var title=document.createElement('div'), name=document.createElement('strong'), hint=document.createElement('small');
+            name.textContent=group.ssid; hint.textContent=(network.sources||[]).join(', ')+' · общая адресация'; title.appendChild(name); title.appendChild(hint); card.appendChild(title);
+            var value=document.createElement('div'); addDevicePicker(value,row,group.clients,group.ssid); card.appendChild(value); box.appendChild(card);
+        });
     }
     function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей выбрано'); }
     function rows() { return Array.from(document.querySelectorAll('.ttm-network')).map(function (row) {
@@ -173,17 +206,28 @@
             row.querySelector('.ttm-selected').disabled=!model.available && !row.querySelector('.ttm-selected').checked;
             row.querySelector('.ttm-cidrs').disabled=!model.available;
             row.querySelector('.ttm-caption').textContent=model.available?networkTitle(network):'Сохранённая сеть недоступна';
-            var names=model.available && Array.isArray(network.ssids)?network.ssids:[], details=row.querySelector('.ttm-network-ssids');
-            details.hidden=names.length<2;
-            details.querySelector('summary').textContent='Wi-Fi в этой подсети ('+names.length+')';
-            var list=details.querySelector('ul'); list.textContent='';
-            names.forEach(function (ssid) { var item=document.createElement('li'); item.textContent=ssid; list.appendChild(item); });
             row.querySelector('.ttm-network-hint').textContent=!model.available?'Сеть исчезла или её состав изменился. Обновите данные перед сохранением.':
-                (Array.isArray(network.ssids)&&network.ssids.length>1?'Эти SSID используют одну сеть и выбираются вместе.':
+                (Array.isArray(network.ssids)&&network.ssids.length>1?'Ниже указаны общие IPv4-источники. Целая подсеть затронет оба SSID и проводных клиентов; выбор устройства добавляет только его /32.':
                 (network.ssids&&network.ssids.length?'Сетевое подключение определено роутером.':'Имя Wi-Fi получить не удалось. Сеть можно определить по её подсети.'));
+            renderNetworkDevices(row,network||{},model.available);
         });
         el('ttm-networks-empty').hidden=inventory.length>0;
         updateCount();
+    }
+    function inventoryOrEmpty(status) { return Array.isArray(status.discovered_networks)?status.discovered_networks:[]; }
+    function renderWifiInventory(inventory) {
+        var box=el('ttm-wifi-inventory'); box.textContent='';
+        inventory.forEach(function (network) {
+            var wireless=Array.isArray(network.wireless)?network.wireless:[], names=network.ssids||[];
+            names.forEach(function (name) {
+                var row=document.createElement('div'); row.className='ttm-wifi-row';
+                var title=document.createElement('strong'); title.textContent=name; row.appendChild(title);
+                var detail=document.createElement('span'); detail.textContent=(network.sources||[]).join(', ')+(names.length>1?' · общая подсеть с другими SSID':' · отдельный сегмент'); row.appendChild(detail);
+                var interfaces=document.createElement('small'); interfaces.textContent='Интерфейсы: '+(wireless.filter(function (w) {return w.ssid===name;}).map(function (w) {return w.nvif+' → '+w.ifname;}).join(', ')||'нет подробных данных')+' · '+network.lan_if; row.appendChild(interfaces);
+                box.appendChild(row);
+            });
+        });
+        if (!box.children.length) box.textContent='Имена Wi-Fi пока не определены.';
     }
     function render(status) {
         if (!status || typeof status.enabled !== 'boolean' || typeof status.timestamp !== 'number') throw new Error('Invalid status');
@@ -191,7 +235,7 @@
         if (!Object.keys(dirty).length && !pending) editRevision=status.revision||'0';
         if (!dirty.endpoint && !dirty.exclusions && !pending) fillExclusions((status.endpoint||{}).exclusions||[]);
         text('ttm-saved-connection',status.endpoint && status.endpoint.configured ? 'Подключение сохранено на роутере. Исключения можно менять отдельно; пароль и ссылка повторно не нужны.' : 'Подключение ещё не сохранено. Заполните параметры или импортируйте ссылку.');
-        var labels = {disabled:'Отключён',paused_protected:'Пауза; блокировка запрошена',blocked_or_start_failed:'Процесс остановлен / ошибка',tun_ready_unverified:'TUN создан; связь не проверена'};
+        var labels = {disabled:'Отключён',paused_protected:'Пауза; блокировка запрошена',blocked_or_start_failed:'Процесс остановлен / ошибка',tun_ready_unverified:'Клиент запущен'};
         text('ttm-state',labels[status.state] || 'Неизвестное состояние'); text('ttm-version',status.version);
         text('ttm-host',status.hostname || 'Подключение ещё не импортировано');
         text('ttm-process',status.process_running ? 'Запущен' : 'Не запущен'); text('ttm-tun',status.interface_up ? 'tt0' : 'Нет TUN');
@@ -203,8 +247,22 @@
         reconcileNetworks(status);
         text('ttm-network-warnings',(status.network_warnings||[]).join('\n'));
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
-        text('ttm-revision',status.revision||'0');
-        text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Правила присутствуют; прохождение пакетов не проверено',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
+        renderWifiInventory(inventoryOrEmpty(status));
+        text('ttm-tun-address',(status.tunnel_addresses||[]).join(', ')||'Не назначен');
+        var traffic=status.traffic_check;
+        var trafficLabels={traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'За 10 секунд двусторонний трафик не появился — откройте сайт и повторите',incomplete:'Не все правила или маршруты присутствуют',counters_reset:'Счётчики сброшены; повторите проверку'};
+        text('ttm-traffic-check',traffic ? (trafficLabels[traffic.state]||'Результат неизвестен') : 'Ещё не выполнялась / результат устарел');
+        var updates=status.client_updates||{}, check=updates.check;
+        text('ttm-client-version',(updates.installed||{}).version||(check||{}).installed_version||'Нажмите «Проверить обновления»');
+        text('ttm-client-installed-at',dateLabel((updates.installed||{}).installed_at,'Дата неизвестна'));
+        var history=updates.last_check||check;
+        text('ttm-client-checked-at',dateLabel((history||{}).checked_at,'Ещё не выполнялась')+(history&&history.channel!==updates.channel?' · '+history.channel:''));
+        el('ttm-nightly').checked=updates.channel==='nightly';
+        text('ttm-client-update',!check?(updates.installed?'После установки или смены канала повторите проверку':'Проверьте доступные сборки'):check.state==='not_published'?(updates.channel==='nightly'?'Официальная nightly для ARM64 не опубликована':'Подходящий официальный релиз не найден'):check.state==='current'?'Установлен актуальный релиз':check.candidate?check.candidate.tag+' · '+check.candidate.channel:'Результат неизвестен');
+        text('ttm-update-requirements',updates.recovery_pending?'Незавершённое обновление: требуется восстановление предыдущего клиента.':updates.dependencies_ready?'':'Для установки нужны curl, GnuPG, tar, timeout и od из Entware. Поиск обновлений требует curl.');
+        text('ttm-ipv6-help','Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже при выборе устройств /32.'+((status.diagnostics||{}).ipv6_service==='disabled'?' Сейчас IPv6 отключён в Merlin; правило защищает и после его включения.':''));
+        text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Блокировка настроена; тест обрыва ещё не выполнен',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
+        if (traffic && traffic.rules_checked) text('ttm-guard','Правила и маршрут проверены; тест обрыва ещё не выполнен');
         var startup=(status.diagnostics||{}).startup;
         text('ttm-startup',startup ? (startup.blockers||[]).map(function (code) { return startErrors[code]||code; }).concat((startup.notes||[]).includes('tun_load_on_start')?['TUN будет загружен автоматически при запуске.']:[]).join(' ') : '');
         el('ttm-startup').hidden=!el('ttm-startup').textContent;
@@ -254,7 +312,7 @@
         throw new Error('Подтверждение не получено. Результат неизвестен: обновите статус перед повторной операцией.');
     }
     async function waitOperation(id) {
-        var status=await poll('status',function (s) { return (s.operations||[]).some(function (op) { return op.id===id && op.state!=='running'; }); },90000);
+        var status=await poll('status',function (s) { return (s.operations||[]).some(function (op) { return op.id===id && op.state!=='running'; }); },360000);
         var op=status.operations.find(function (item) { return item.id===id; });
         if (op.state!=='succeeded') throw new Error(op.code==='revision_conflict'?'Настройки изменены в другой вкладке. Обновите данные перед сохранением.':startErrors[op.code]||'Операция завершилась ошибкой: '+op.code);
         message(op.code==='confirmation_required'?'Настройки применены временно. Проверьте доступ и подтвердите применение.':'Операция выполнена.',false); return op;
@@ -293,9 +351,16 @@
     root.ttmAction = async function (action) { try {
         if (action==='disable' && !root.confirm('Вернуть выбранные сети к обычной маршрутизации Merlin?')) return;
         if (action==='policy') { await save('policy',policy()); return; }
-        if (['start','pause','restart','disable','diagnostics'].indexOf(action)<0) throw new Error('Неизвестное действие');
+        if (['start','pause','restart','disable','diagnostics','check_updates','channel_stable','channel_nightly','verify_traffic'].indexOf(action)<0) throw new Error('Неизвестное действие');
         if (root.TTM_PREVIEW) { message('Демонстрация: команда не отправлена на роутер.',false); return; }
         await busy(async function () { var id=root.TTMTransfer.id(root.crypto); await wire('start_ttm_do_'+id+'_'+action); await waitOperation(id); });
+    } catch(e) { message(e.message,true); } };
+    root.ttmUpdateClient=async function () { try {
+        var update=(latest.client_updates||{}).check;
+        if (!update || update.state!=='available' || !update.candidate) throw new Error('Сначала проверьте обновления.');
+        if (!root.confirm('Установить '+update.candidate.tag+'? Работающий VPN будет перезапущен. При ошибке запуска аддон попытается вернуть предыдущий клиент; результат восстановления будет виден в статусе.')) return;
+        if (root.TTM_PREVIEW) { message('Демонстрация: обновление не устанавливается.',false); return; }
+        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); await wire('start_ttm_do_'+id+'_update_client_'+update.id); await waitOperation(id); });
     } catch(e) { message(e.message,true); } };
     root.ttmTransaction=async function (action) { try {
         if (['confirm','rollback'].indexOf(action)<0||!latest.transaction) return;

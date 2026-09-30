@@ -26,7 +26,7 @@ type nvram >/dev/null 2>&1 && nvram get rc_support | grep -qw am_addons || { ech
 [ "$(nvram get jffs2_scripts)" = 1 ] || { echo 'Enable JFFS custom scripts in Merlin first' >&2; exit 1; }
 type opkg >/dev/null 2>&1 && [ -d /opt/etc/init.d ] || { echo 'Working Entware is required' >&2; exit 1; }
 CONFIG=/jffs/addons/trusttunnel/config
-[ ! -e "$CONFIG/enabled" ] && [ ! -e "$CONFIG/transaction" ] || {
+[ ! -e "$CONFIG/enabled" ] && [ ! -e "$CONFIG/transaction" ] && [ ! -e "$CONFIG/client-update-journal.json" ] || {
     echo 'Disable the addon and finish pending recovery before installation' >&2; exit 1;
 }
 SRC=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -38,7 +38,7 @@ printf '%s\n' trusttunnel-merlin-staging-v1 >"$WORK/.trusttunnel-owned"
 printf 'Installation record: %s\n' "$WORK"
 opkg list-installed >"$WORK/packages.before"
 # Install only missing utilities. Do not run an Entware-wide upgrade.
-for dependency in jq:jq-full id:coreutils-id sha256sum:coreutils-sha256sum mktemp:coreutils-mktemp base64:coreutils-base64 od:coreutils-od stat:coreutils-stat flock:flock curl:curl openssl:openssl-util; do
+for dependency in jq:jq-full id:coreutils-id sha256sum:coreutils-sha256sum mktemp:coreutils-mktemp base64:coreutils-base64 od:coreutils-od stat:coreutils-stat flock:flock curl:curl openssl:openssl-util gpg:gnupg timeout:coreutils-timeout tar:tar; do
     utility=${dependency%%:*}; package=${dependency#*:}
     if ! type "$utility" >/dev/null 2>&1; then opkg install "$package"; fi
     type "$utility" >/dev/null 2>&1 || { echo "Missing utility after installation: $utility" >&2; exit 1; }

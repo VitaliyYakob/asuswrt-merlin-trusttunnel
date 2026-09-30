@@ -77,6 +77,7 @@ async function exercise(browser, viewport, screenshot) {
     try {
         await page.setContent(previewWithStatus(status => {
             status.discovered_networks = Object.keys(ssids).map(lan_if => ({lan_if, sources: [sources[lan_if]], ssids: [ssids[lan_if]]}));
+            status.clients.find(c=>c.ip==='192.168.50.20').wireless=[{lan_if:'br1',ssid:ssids.br1}];
         }), {waitUntil: 'load'});
         assert.equal(await page.locator('#ttm-state').innerText(), 'Отключён');
         assert.equal(await page.locator('.ttm-network').count(), 4);
@@ -157,6 +158,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('#ttm-upstreams').evaluate(field => field.readOnly), false);
 
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         const rows = await networkRows();
         assert.deepEqual(Object.keys(rows).sort(), Object.keys(sources).sort());
         for (const bridge of Object.keys(sources)) await rows[bridge].locator('.ttm-cidrs').fill(sources[bridge]);
@@ -165,6 +167,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.match(await page.locator('#ttm-network-count').innerText(), /^4 /);
         const exportPolicy = page.getByRole('button', {name: 'Скачать политику для SSH', exact: true});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         const savePolicy = page.getByRole('button', {name: 'Сохранить маршрутизацию', exact: true});
         await page.locator('#ttm-v6ack').uncheck();
         await expectError(savePolicy, '#ttm-message', /Подтвердите/);
@@ -178,7 +181,7 @@ async function exercise(browser, viewport, screenshot) {
 
         await rows.br1.locator('.ttm-device').selectOption('192.168.50.20/32');
         assert.equal(await rows.br1.locator('.ttm-cidrs').inputValue(),'192.168.50.20/32','device selection replaces the broad subnet');
-        await page.getByText('Доступ к локальным ресурсам',{exact:true}).click();
+        await page.getByText('Дополнительно: доступ к NAS и другим локальным сетям',{exact:true}).click();
         const localHome=page.locator('#ttm-local-access input').first();
         await localHome.check();
         const devices=await downloadJson(exportPolicy,'policy','trusttunnel-policy.json');
@@ -187,7 +190,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(devices.local_access[0].destination,sources.br0);
         assert.match(devices.local_access[0].identity,/^[0-9a-f]{64}$/);
         await localHome.uncheck();
-        await page.getByText('Доступ к локальным ресурсам',{exact:true}).click();
+        await page.getByText('Дополнительно: доступ к NAS и другим локальным сетям',{exact:true}).click();
 
         await page.getByRole('button', {name: 'Снять выбор', exact: true}).click();
         await expectError(exportPolicy, '#ttm-message', /Выберите/);
@@ -202,7 +205,7 @@ async function exercise(browser, viewport, screenshot) {
         await rows.br2.locator('.ttm-cidrs').fill(sources.br2);
 
         await page.evaluate(() => { Object.assign(window.TTM_PREVIEW, {enabled: true, process_running: true, interface_up: true, state: 'tun_ready_unverified'}); window.done_validating(); });
-        assert.equal(await page.locator('#ttm-state').innerText(), 'TUN создан; связь не проверена', 'process/TUN presence must not be presented as a verified VPN');
+        assert.equal(await page.locator('#ttm-state').innerText(), 'Клиент запущен', 'process presence must not be presented as a verified VPN');
         assert.equal(await savePolicy.isEnabled(), true, 'active edits use the transactional save path');
         await page.evaluate(() => { window.TTM_PREVIEW.transaction={id:'0123456789abcdef',phase:'trial',deadline:Math.floor(Date.now()/1000)+180}; window.done_validating(); });
         assert.equal(await savePolicy.isDisabled(), true, 'a pending transaction prevents another edit');
@@ -225,6 +228,7 @@ async function exercise(browser, viewport, screenshot) {
         await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
         await page.screenshot({path: path.join(root, 'preview', screenshot), fullPage: true});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         await page.screenshot({path:path.join(root,'preview',screenshot.replace('.png','-networks.png')),fullPage:true});
         assert.deepEqual(errors, [], 'no page or console errors');
         assert.deepEqual(httpRequests, [], 'offline preview must issue no HTTP requests');
@@ -234,6 +238,87 @@ async function exercise(browser, viewport, screenshot) {
         await context.close();
         fs.rmSync(temporary, {recursive: true, force: true});
     }
+}
+async function exerciseOverview(browser, width) {
+    const context = await browser.newContext({viewport:{width,height:1000},locale:'ru-RU',offline:true});
+    const page = await context.newPage(), errors=[], requests=[];
+    page.on('pageerror', error=>errors.push(String(error)));
+    page.on('request', request=>{if (/^https?:/i.test(request.url())) requests.push(request.url());});
+    await context.route('**/*',route=>route.abort());
+    try {
+        await page.setContent(previewWithStatus(status=>{
+            Object.assign(status,{enabled:true,process_running:true,interface_up:true,state:'tun_ready_unverified',tunnel_addresses:['172.16.219.2/32']});
+            status.traffic_check={state:'traffic_observed',rules_checked:true,leak_test_verified:false};
+            status.client_updates.check={id:'0123456789abcdef',channel:'stable',checked_at:Math.floor(Date.now()/1000),state:'available',candidate:{tag:'v1.1.7',channel:'stable'}};
+            status.discovered_networks=[{lan_if:'br0',sources:['192.168.10.0/24'],ssids:['Home','Legacy'],wireless:[{ssid:'Home',nvif:'wl0',ifname:'eth6'},{ssid:'Legacy',nvif:'wl0.2',ifname:'wl0.2'}]}];
+            status.clients=[{ip:'192.168.10.10',name:'Home fixture',wireless:[{lan_if:'br0',ssid:'Home'}]},{ip:'192.168.10.20',name:'Legacy fixture',wireless:[{lan_if:'br0',ssid:'Legacy'}]},{ip:'192.168.10.30',name:'Unknown fixture'}];
+            status.policy=null;
+        }),{waitUntil:'load'});
+        assert.equal(await page.locator('#ttm-tun-address').innerText(),'172.16.219.2/32');
+        assert.match(await page.locator('#ttm-traffic-check').innerText(),/в обе стороны/);
+        assert.match(await page.locator('#ttm-guard').innerText(),/тест обрыва ещё не выполнен/);
+        assert.equal(await page.getByText('Ревизия настроек',{exact:true}).count(),0);
+        assert.match(await page.locator('#ttm-client-installed-at').innerText(),/2026/);
+        assert.match(await page.locator('#ttm-client-checked-at').innerText(),/2026/);
+        assert.equal(await page.locator('#ttm-update-client').isEnabled(),true);
+        await page.getByRole('button',{name:'Проверить обновления',exact:true}).click();
+        assert.match(await page.locator('#ttm-message').innerText(),/Демонстрация/);
+        await page.evaluate(()=>{ window.TTM_PREVIEW.client_updates.dependencies_ready=false; window.done_validating(); });
+        assert.equal(await page.locator('#ttm-update-client').isDisabled(),true);
+        assert.match(await page.locator('#ttm-update-requirements').innerText(),/GnuPG/);
+        await page.evaluate(()=>{ const u=window.TTM_PREVIEW.client_updates; u.dependencies_ready=true; u.channel='nightly'; u.check={channel:'nightly',state:'not_published'}; window.done_validating(); });
+        assert.equal(await page.locator('#ttm-nightly').isChecked(),true);
+        assert.match(await page.locator('#ttm-client-update').innerText(),/nightly.*не опубликована/);
+        assert.equal(await page.locator('#ttm-update-client').isDisabled(),true);
+        await page.evaluate(()=>{ const u=window.TTM_PREVIEW.client_updates; u.check={id:'0123456789abcdef',channel:'nightly',state:'available',candidate:{tag:'v1.1.8-nightly.1',channel:'nightly'}}; u.recovery_pending=true; window.done_validating(); });
+        assert.equal(await page.locator('#ttm-update-client').isDisabled(),true);
+        await page.evaluate(()=>{ window.TTM_PREVIEW.client_updates.recovery_pending=false; window.TTM_PREVIEW.transaction={id:'0123456789abcdef',phase:'trial',deadline:Math.floor(Date.now()/1000)+180}; window.done_validating(); });
+        assert.equal(await page.locator('#ttm-update-client').isDisabled(),true);
+        await page.evaluate(()=>{
+            window.TTM_PREVIEW.transaction=null;
+            const u=window.TTM_PREVIEW.client_updates; u.channel='stable';
+            u.check={id:'0123456789abcdef',channel:'stable',checked_at:Math.floor(Date.now()/1000),state:'available',candidate:{tag:'v1.1.7',channel:'stable'}};
+            window.done_validating();
+        });
+        await page.screenshot({path:path.join(root,'preview',width===390?'screenshot-mobile-overview.png':'screenshot-overview.png'),fullPage:true});
+        await page.getByRole('tab',{name:'Сети',exact:true}).click();
+        await page.getByText('Дополнительно: интерфейсы и подсети Wi-Fi',{exact:true}).click();
+        assert.equal(await page.locator('#ttm-wifi-inventory .ttm-wifi-row').count(),2);
+        assert.match(await page.locator('#ttm-wifi-inventory').innerText(),/Home.*eth6/s);
+        assert.match(await page.locator('#ttm-wifi-inventory').innerText(),/Legacy.*wl0.2/s);
+        assert.equal(await page.getByRole('checkbox',{name:'Общая подсеть · 192.168.10.0/24',exact:true}).count(),1);
+        assert.equal(await page.getByRole('checkbox',{name:'Home',exact:true}).count(),0,'shared SSIDs cannot pretend to be independent subnets');
+        assert.deepEqual(await page.locator('.ttm-ssid-row strong').allTextContents(),['Home','Legacy']);
+        const home=page.getByRole('combobox',{name:'Добавить устройство из Home',exact:true});
+        const legacy=page.getByRole('combobox',{name:'Добавить устройство из Legacy',exact:true});
+        assert.deepEqual(await home.locator('option').allTextContents(),['Добавить устройство…','Home fixture · 192.168.10.10']);
+        assert.deepEqual(await legacy.locator('option').allTextContents(),['Добавить устройство…','Legacy fixture · 192.168.10.20']);
+        await home.selectOption('192.168.10.10/32');
+        await legacy.selectOption('192.168.10.20/32');
+        assert.equal(await page.locator('.ttm-cidrs').inputValue(),'192.168.10.10/32\n192.168.10.20/32');
+        await page.evaluate(()=>{window.TTM_PREVIEW.clients[0].wireless=[{lan_if:'br0',ssid:'Legacy'}];window.done_validating();});
+        assert.equal(await home.isDisabled(),true,'roamed clients disappear from the previous SSID');
+        assert.equal(await page.locator('.ttm-cidrs').inputValue(),'192.168.10.10/32\n192.168.10.20/32','refresh keeps draft IP routing');
+        assert.equal(await page.locator('#ttm-export-policy').isVisible(),false,'SSH fallback stays in advanced details');
+        assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+        await page.screenshot({path:path.join(root,'preview',width===390?'screenshot-mobile-topology.png':'screenshot-topology.png'),fullPage:true});
+        assert.deepEqual(errors,[]); assert.deepEqual(requests,[]);
+        console.log('PASS: '+width+'px overview/update dates, nightly absence, dependencies/recovery/transaction guards, TUN address, passive proof scope, distinct SSID device rows, association-scoped clients and roaming with draft preserved, shared routing scope, hidden SSH fallback; no HTTP');
+    } finally { await context.close(); }
+}
+async function exerciseMissingInitialStatus(browser) {
+    const context=await browser.newContext({offline:true});
+    const page=await context.newPage(), errors=[];
+    page.on('pageerror',error=>errors.push(String(error)));
+    try {
+        const html=previewWithStatus(()=>{}).replace(';</script>',';window.TTM_PREVIEW=null;window.XMLHttpRequest=function(){this.open=function(){};this.send=function(){this.onerror();};};</script>');
+        await page.setContent(html,{waitUntil:'load'});
+        assert.deepEqual(errors,[],'failure before the first status must not throw in controls');
+        assert.match(await page.locator('#ttm-message').innerText(),/Нет актуального статуса/);
+        assert.equal(await page.locator('#ttm-update-client').isDisabled(),true);
+        assert.equal(await page.locator('#ttm-nightly').isDisabled(),true);
+        console.log('PASS: missing initial status disables updater without a JavaScript exception');
+    } finally { await context.close(); }
 }
 async function exerciseInventory(browser) {
     const context = await browser.newContext({viewport: {width: 1280, height: 1000}, locale: 'ru-RU', offline: true, acceptDownloads: true});
@@ -245,6 +330,7 @@ async function exerciseInventory(browser) {
     try {
         await page.setContent(previewWithStatus(status => { status.policy = null; status.discovered_networks = []; }), {waitUntil: 'load'});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         assert.equal(await page.locator('.ttm-network').count(), 0, 'an empty inventory must not invent br0–br3');
         assert.equal(await page.locator('.ttm-selected').count(), 0);
         await page.getByRole('button', {name: 'Скачать политику для SSH', exact: true}).click();
@@ -259,12 +345,11 @@ async function exerciseInventory(browser) {
             ];
         }), {waitUntil: 'load'});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         assert.equal(await page.locator('.ttm-network').count(), 2, 'several SSIDs on one bridge must remain one routing choice');
-        await page.getByRole('checkbox', {name: 'Home 2.4 / Home 5 / 0123456789ABCDEF0123456789ABCDEF', exact: true}).check();
-        const ssidDetails=page.locator('.ttm-network-ssids').first();
-        assert.equal(await ssidDetails.locator('li').first().isVisible(),false);
-        await ssidDetails.locator('summary').click();
-        assert.deepEqual(await ssidDetails.locator('li').allTextContents(), ['Home 2.4','Home 5','0123456789ABCDEF0123456789ABCDEF']);
+        await page.getByRole('checkbox', {name: 'Общая подсеть · 192.168.10.0/24', exact: true}).check();
+        assert.deepEqual(await page.locator('.ttm-ssid-row strong').allTextContents(), ['Home 2.4','Home 5','0123456789ABCDEF0123456789ABCDEF']);
+        assert.equal(await page.locator('.ttm-ssid-row strong').first().isVisible(),true);
         assert.equal(await page.getByRole('checkbox', {name: untrustedSsid, exact: true}).count(), 1, 'SSID markup must be preserved as visible text');
         assert.equal(await page.locator('.ttm-network script, .ttm-network img').count(), 0);
         assert.equal(await page.evaluate(() => window.ssidExecuted), undefined);
@@ -292,6 +377,7 @@ async function exerciseInventory(browser) {
             ];
         }), {waitUntil: 'load'});
         await page.getByRole('tab', {name:'Сети',exact:true}).click();
+        await page.locator('#ttm-export-policy').evaluate(e=>e.closest('details').open=true);
         await page.getByRole('checkbox', {name: 'Home', exact: true}).check();
         await page.getByRole('checkbox', {name: 'Guest 1', exact: true}).check();
         const homeRow = page.locator('.ttm-network').first();
@@ -335,5 +421,8 @@ async function exerciseInventory(browser) {
         await exercise(browser, {width: 1280, height: 1000}, 'screenshot.png');
         await exercise(browser, {width: 390, height: 844}, 'screenshot-mobile.png');
         await exerciseInventory(browser);
+        await exerciseOverview(browser,1280);
+        await exerciseOverview(browser,390);
+        await exerciseMissingInitialStatus(browser);
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

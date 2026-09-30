@@ -1,5 +1,12 @@
 # Temporary host testing environment
 
+## Rebuilt on 2026-09-30 for alpha.7
+
+The old temporary runtime was missing. BusyBox 1.37.0 and flock 0.4.0 were rebuilt from the same pinned/verified archives below in `/private/tmp/ttm-alpha7-host`; load its `env.sh`. No global packages or router files were changed. BusyBox uses the documented Darwin linking/archiver changes with ASH and FEATURE_SH_MATH/FEATURE_SH_MATH_64/FEATURE_SH_MATH_BASE enabled. The initial minimal build omitted shell arithmetic and failed existing tests; it was corrected before the reported final runs.
+
+ShellCheck 0.10.0 was reused from its previously verified local installation. Bundled Playwright 1.62.1 and its exact Chromium Headless Shell 151.0.7922.34 (revision 1234) run against offline fixtures and the local HTTPS transport mock. GnuPG is absent on this host: new signature control flow uses explicit mocks; only the bundled public-key fingerprint is independently computed. Official release signatures and router update compatibility are not claimed as tested by these runs.
+
+
 ## Rebuilt on 2026-09-20 for 0.3
 
 The previous `/tmp/ttm-test-deps` no longer existed. The same pinned BusyBox 1.37.0 and flock 0.4.0 sources were verified and rebuilt in `/private/tmp/ttm-host-tests.wJHyq1`. Load its `env.sh` for this session. No global installation or router network configuration was changed.

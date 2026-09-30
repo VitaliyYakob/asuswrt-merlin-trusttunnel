@@ -63,6 +63,13 @@ cru() { return 0; }
         (self.base/'config/transaction').mkdir()
         r=self.run_body('tt_disable() { echo BAD; }; tt_uninstall purge')
         self.assertNotEqual(r.returncode,0); self.assertNotIn('BAD',r.stdout); self.assertTrue(self.binary.exists())
+    def test_pending_client_recovery_preserves_backup_and_configuration(self):
+        (self.base/'config/client-update-journal.json').write_text('{}')
+        r=self.run_body('tt_disable() { echo BAD; }; tt_uninstall purge')
+        self.assertNotEqual(r.returncode,0)
+        self.assertNotIn('BAD',r.stdout)
+        self.assertTrue(self.binary.exists())
+        self.assertTrue((self.base/'config/endpoint.json').exists())
     def test_changed_binary_and_unknown_init_refused_before_disable(self):
         for which in ('binary','init'):
             with self.subTest(which=which):

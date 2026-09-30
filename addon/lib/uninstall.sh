@@ -101,6 +101,7 @@ tt_uninstall_audit() {
     for TT_U_ASSET in status.json transfer.json trusttunnel.js connection.js transfer.js trusttunnel.css; do
         [ ! -e "$TT_PUBLIC/$TT_U_ASSET" ] || return 1
     done
+    [ -z "$(tt_ui_css_assets)" ] || return 1
     tt_uninstall_no_marker "$TT_CUSTOM" 'ttm_policy ' || return 1
     [ ! -e "$TT_U_INIT" ]
 }
@@ -108,6 +109,7 @@ tt_uninstall() {
     TT_U_MODE=$1
     tt_uninstall_paths || return 1
     [ ! -e "$TT_CONFIG/transaction" ] || { tt_error 'confirm or roll back the pending transaction first'; return 1; }
+    [ ! -e "$TT_CONFIG/client-update-journal.json" ] || { tt_error 'recover the interrupted client update first'; return 1; }
     TT_U_INIT="$TT_ROOT/opt/etc/init.d/S99trusttunnel"
     if [ -e "$TT_U_INIT" ] || [ -L "$TT_U_INIT" ]; then
         [ ! -L "$TT_U_INIT" ] && grep -qx 'CTL=/jffs/addons/trusttunnel/trusttunnel.sh' "$TT_U_INIT" || {

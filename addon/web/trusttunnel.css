@@ -1,3 +1,4 @@
+/* trusttunnel-merlin-css-v1 */
 /* Match Merlin's classic forms. Rules are scoped; the firmware owns navigation. */
 .ttm-layout > tbody > tr > td { vertical-align: top; }
 .ttm-layout .ttm-sidebar { width: 202px; }
@@ -112,6 +113,13 @@
   .ttm-network > div:first-child label { min-height: 24px; align-items: center; }
   .ttm-network > div:first-child input { margin-top: 0; }
 }
-.ttm-network-ssids { margin-top: 10px; font-size: 12px; }
-.ttm-network-ssids ul { padding-left: 18px; margin: 8px 0; }
-.ttm-network-ssids li { overflow-wrap: anywhere; margin: 5px 0; }
+.ttm-wifi-row { display:grid; gap:5px; padding:12px; border-bottom:1px solid #26383e; }
+.ttm-wifi-row small { color:#c8d6da; overflow-wrap:anywhere; }
+.ttm-grid dd small { display:block; margin-top:5px; color:#c8d6da; font-size:12px; }
+.ttm-network > .ttm-ssid-rows { grid-column:1 / -1; order:-1; padding:0; }
+.ttm-ssid-row { display:grid; grid-template-columns:35% minmax(0,1fr); border-bottom:1px solid #263337; }
+.ttm-ssid-row > div { min-width:0; padding:10px; }
+.ttm-ssid-row > div:first-child { background:#2f3b3f; border-right:1px solid #263337; }
+.ttm-ssid-row strong { overflow-wrap:anywhere; }
+.ttm-ssid-row small { margin-top:5px; }
+@media(max-width:760px) { .ttm-ssid-row { grid-template-columns:minmax(0,1fr); } .ttm-ssid-row > div:first-child { border-right:0; } }

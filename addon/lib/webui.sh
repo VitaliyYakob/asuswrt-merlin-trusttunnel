@@ -71,6 +71,24 @@ tt_menu() {
     fi
     flock -u 8
 }
+tt_ui_css_assets() {
+    for TT_UI_CSS in "$TT_PUBLIC"/trusttunnel.*.css; do
+        [ -f "$TT_UI_CSS" ] && [ ! -L "$TT_UI_CSS" ] || continue
+        printf '%s\n' "${TT_UI_CSS##*/}" | grep -Eq '^trusttunnel\.[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+)?\.css$' || continue
+        [ "$(head -n 1 "$TT_UI_CSS")" = '/* trusttunnel-merlin-css-v1 */' ] || continue
+        printf '%s\n' "$TT_UI_CSS"
+    done
+}
+tt_publish_ui_assets() {
+    mkdir -p "$TT_PUBLIC" && chmod 755 "$TT_PUBLIC" || return 1
+    cp "$TT_BASE/web/trusttunnel.js" "$TT_BASE/web/connection.js" "$TT_BASE/web/transfer.js" "$TT_BASE/web/trusttunnel.css" "$TT_PUBLIC/" || return 1
+    chmod 644 "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css" || return 1
+    # Merlin httpd rejects query strings on custom .css paths. A version in the
+    # filename bypasses the browser cache while retaining the native CSS handler.
+    TT_UI_CSS="$TT_PUBLIC/trusttunnel.$TT_VERSION.css"
+    [ ! -L "$TT_UI_CSS" ] || return 1
+    cp "$TT_BASE/web/trusttunnel.css" "$TT_UI_CSS" && chmod 644 "$TT_UI_CSS"
+}
 tt_mount_ui() {
     [ -f /usr/sbin/helper.sh ] || return 1
     # shellcheck disable=SC1091
@@ -88,11 +106,9 @@ tt_mount_ui() {
         TT_PAGE=$am_webui_page
     fi
     printf '%s' "$TT_PAGE" | grep -Eq '^user[0-9]+\.asp$' || { tt_error 'no available WebUI slot'; return 1; }
+    tt_publish_ui_assets || return 1
     cp "$TT_BASE/trusttunnel_page.asp" "/www/user/$TT_PAGE" || return 1
     chmod 644 "/www/user/$TT_PAGE"
-    mkdir -p "$TT_PUBLIC" && chmod 755 "$TT_PUBLIC" || return 1
-    cp "$TT_BASE/web/trusttunnel.js" "$TT_BASE/web/connection.js" "$TT_BASE/web/transfer.js" "$TT_BASE/web/trusttunnel.css" "$TT_PUBLIC/" || return 1
-    chmod 644 "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css"
     tt_menu install "$TT_PAGE" || return 1
     printf '%s\n' "$TT_PAGE" >"$TT_RUN/page"
     tt_publish_status
@@ -106,6 +122,9 @@ tt_unmount_ui() {
             rm -f "$TT_CANDIDATE" || return 1
         fi
     done
+    tt_ui_css_assets | while IFS= read -r TT_UI_CSS; do
+        rm -f "$TT_UI_CSS" || exit 1
+    done || return 1
     rm -f "$TT_PUBLIC/status.json" "$TT_PUBLIC/transfer.json" "$TT_PUBLIC/trusttunnel.js" "$TT_PUBLIC/connection.js" "$TT_PUBLIC/transfer.js" "$TT_PUBLIC/trusttunnel.css" || return 1
     rmdir "$TT_PUBLIC" 2>/dev/null || :
 }

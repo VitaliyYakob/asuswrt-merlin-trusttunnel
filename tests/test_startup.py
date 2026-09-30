@@ -98,3 +98,14 @@ tt_ensure_tun; result=$?; printf '%s' "$TT_FAILURE_CODE"; exit "$result"
                 (net/'ip6_tables_targets').write_text(v6+'\n')
                 r=self.execute('fc() { return 99; }; TT_ROOT=; tt_selective_offload_supported')
                 self.assertEqual(r.returncode,expected,r.stderr)
+
+    def test_refresh_restores_guards_before_failed_client_recovery(self):
+        r=self.execute('''touch "$TT_ENABLED"
+tt_live() { return 0; }; tt_validate() { return 0; }
+tt_claim_resources() { return 0; }; tt_rpf_loose() { return 0; }
+tt_run_plan() { printf 'guard\n' >>"$TT_RUN/effects"; }
+tt_update_recover() { printf 'recover\n' >>"$TT_RUN/effects"; return 1; }
+tt_retry_client() { printf 'spawn\n' >>"$TT_RUN/effects"; }
+tt_refresh''')
+        self.assertNotEqual(r.returncode,0)
+        self.assertEqual((self.path/'tmp/trusttunnel/effects').read_text(),'guard\nrecover\n')

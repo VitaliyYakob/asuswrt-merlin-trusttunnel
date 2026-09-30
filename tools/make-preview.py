@@ -14,8 +14,9 @@ fixture = {
     "process_running": False, "interface_up": False, "enabled": False, "connection_verified": False,
     "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed",
     "endpoint":{"configured":True,"exclusions":[]},
+    "tunnel_addresses":[],"traffic_check":None,"client_updates":{"channel":"stable","installed":{"version":"1.1.5","installed_at":1790776800},"last_check":{"checked_at":1790777400,"channel":"stable"},"dependencies_ready":True,"recovery_pending":False,"check":None},
     "revision":"0123456789abcdef", "operations":[], "transaction":None,
-    "clients":[{"ip":"192.168.51.10","name":"Ноутбук"},{"ip":"192.168.50.20","name":"Телефон"}],
+    "clients":[{"ip":"192.168.51.10","name":"Ноутбук","wireless":[{"lan_if":"br1","ssid":"Guest 1"}]},{"ip":"192.168.50.20","name":"Телефон","wireless":[{"lan_if":"br0","ssid":"Home"}]}],
     "diagnostics":{"model":"RT-AX86U","firmware":"Не проверена","guard":"unverified","client_version_target":"1.1.5","packet_path_verified":False},
     "discovered_networks": [{"lan_if": f"br{i}", "identity":str(i)*64,"sources": [f"192.168.{50+i}.0/24"], "ssids": [["Home"],["Guest 1"],["Guest 2"],["Guest 3"]][i]} for i in range(4)],
     "policy": {"schema":3,"networks":[{"lan_if":"br1","sources":["192.168.51.0/24"]}],"block_ipv6_bridge":True,"table":871,"priority":17100}, "hardware_tested": False

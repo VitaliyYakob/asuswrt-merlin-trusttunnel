@@ -10,6 +10,23 @@ const policy = (rows = [row()], acknowledge = true) => api.policyFromNetworks(ro
 const legacy = () => ({schema: 1, lan_if: 'br1', sources: ['192.168.50.0/24', '10.0.0.1/32'], dns_ipv4: '1.1.1.1', block_ipv6_bridge: true, table: 871, priority: 17100});
 const decode = p => JSON.parse(atob(JSON.parse(api.makeEnvelope({}, p)).ttm_policy));
 
+test('SSID clients use actual association, not shared subnet alone', () => {
+    const network={lan_if:'br0',sources:['192.168.50.0/24']};
+    const wireless=(lan_if,ssid)=>({lan_if,ssid});
+    const clients=[
+        {ip:'192.168.50.10',wireless:[wireless('br0','Home')]},
+        {ip:'192.168.50.20',wireless:[wireless('br0','Legacy')]},
+        {ip:'192.168.50.30'},
+        {ip:'192.168.50.40',wireless:[wireless('br1','Home')]},
+        {ip:'192.168.51.10',wireless:[wireless('br0','Home')]},
+        {ip:'192.168.50.50',wireless:[wireless('br0','Home'),wireless('br0','Legacy')]}
+    ];
+    assert.deepEqual(api.clientsForSsid(clients,network,'Home').map(c=>c.ip),['192.168.50.10']);
+    assert.deepEqual(api.clientsForSsid(clients,network,'Legacy').map(c=>c.ip),['192.168.50.20']);
+    assert.equal(api.clientsForSsid(clients,network,null).length,5);
+    assert.equal(api.clientsForSsid([{ip:'192.168.50.10',wireless:[wireless('br0','Home'),wireless('br0','Home')]}],network,'Home').length,1);
+});
+
 test('legacy one-network policy upgrades without retaining a DNS override', () => {
     const p = decode(legacy());
     assert.equal(p.schema, 3);

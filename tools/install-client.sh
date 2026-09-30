@@ -7,6 +7,7 @@ export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 [ "$(uname -m)" = aarch64 ] || { echo 'This alpha installer targets aarch64 only' >&2; exit 1; }
 [ ! -f /jffs/addons/trusttunnel/config/enabled ] || { echo 'Explicitly disable the addon before replacing its binary' >&2; exit 1; }
 [ ! -d /jffs/addons/trusttunnel/config/transaction ] || { echo 'Recover the pending transaction first' >&2; exit 1; }
+[ ! -e /jffs/addons/trusttunnel/config/client-update-journal.json ] || { echo 'Recover the interrupted client update first' >&2; exit 1; }
 [ -f "$1" ] && [ ! -L "$1" ] || { echo 'A regular binary file is required' >&2; exit 1; }
 printf '%s' "$2" | grep -Eq '^[0-9a-fA-F]{64}$' || { echo 'Invalid SHA-256 format' >&2; exit 1; }
 actual=$(sha256sum "$1" | awk '{print $1}')
@@ -21,6 +22,7 @@ mkdir -p /tmp/trusttunnel
 exec 9>/tmp/trusttunnel/control.lock
 flock -w 20 9 || { echo 'Controller is busy' >&2; exit 1; }
 [ ! -f /jffs/addons/trusttunnel/config/enabled ] || { echo 'Addon became enabled; installation refused' >&2; exit 1; }
+[ ! -e /jffs/addons/trusttunnel/config/client-update-journal.json ] || { echo 'Client recovery is pending; installation refused' >&2; exit 1; }
 mkdir -p /opt/trusttunnel/bin
 stage=$(mktemp /opt/trusttunnel/bin/.client.XXXXXX)
 trap 'rm -f "$stage"' EXIT HUP INT TERM

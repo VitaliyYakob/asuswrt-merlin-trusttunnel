@@ -29,6 +29,39 @@ tt_discover_networks''')
         self.assertNotIn("HOST-NETWORK-CALL", result.stderr)
         self.assertNotIn("HOST-NVRAM-CALL", result.stderr)
 
+    def test_associations_in_sandbox_never_call_wireless_driver(self):
+        result=self.execute('wl() { echo HOST_DRIVER >&2; }; tt_wifi_associations "[]"')
+        self.assertEqual(self.parsed(result),[])
+        self.assertNotIn('HOST_DRIVER',result.stderr)
+
+    def test_associations_use_each_discovered_bss_and_validate_driver_macs(self):
+        inventory=[{'lan_if':'br0','wireless':[
+            {'ssid':'Home fixture','nvif':'wl0','ifname':'eth6'},
+            {'ssid':'Legacy fixture','nvif':'wl0.2','ifname':'wl0.2'},
+            {'ssid':'Invalid fixture','nvif':'wl0.3','ifname':'wl0.3;reboot'}]}]
+        (self.path/'assoc-inventory.json').write_text(json.dumps(inventory))
+        result=self.execute('''TT_FIXTURE=$TT_ROOT
+timeout() { [ "$1" = 3 ] || return 99; shift; "$@"; }
+wl() { [ "$1" = -i ] && [ "$3" = assoclist ] || return 99
+case "$2" in
+eth6) printf 'assoclist AA:BB:CC:DD:EE:01\nassoclist AA:BB:CC:DD:EE:01\nother AA:BB:CC:DD:EE:02\nassoclist malformed\n';;
+wl0.2) printf 'assoclist AA:BB:CC:DD:EE:02\n';;
+*) echo UNEXPECTED_INTERFACE >&2; return 99;; esac
+}
+TT_ROOT=
+tt_wifi_associations "$(cat "$TT_FIXTURE/assoc-inventory.json")"''')
+        rows=self.parsed(result)
+        self.assertEqual(len(rows),2)
+        self.assertEqual({r['ssid']:r['mac'] for r in rows},{'Home fixture':'aa:bb:cc:dd:ee:01','Legacy fixture':'aa:bb:cc:dd:ee:02'})
+        self.assertNotIn('UNEXPECTED_INTERFACE',result.stderr)
+
+    def test_driver_failure_does_not_guess_from_dhcp_or_partial_output(self):
+        result=self.execute('''timeout() { shift; "$@"; }
+wl() { printf 'assoclist AA:BB:CC:DD:EE:01\n'; return 1; }
+TT_ROOT=
+tt_wifi_associations '[{"lan_if":"br0","wireless":[{"ssid":"Home","nvif":"wl0","ifname":"eth6"}]}]' ''')
+        self.assertEqual(self.parsed(result),[])
+
     def bridge(self, name, members=()):
         path = self.path / f"sys/class/net/{name}"
         (path / "bridge").mkdir(parents=True)
@@ -73,9 +106,9 @@ tt_discover_networks''')
         for network in discovered:
             self.assertRegex(network.pop('identity'), r'^[0-9a-f]{64}$')
         self.assertEqual(discovered, [
-            {"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
-            {"lan_if": "br2", "sources": ["172.16.96.0/20"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
-            {"lan_if": "br9.12", "sources": ["10.0.0.0/8"], "ssids": [], "display_name": "Локальная сеть (SSID не определён)"},
+            {"lan_if": "br0", "sources": ["192.168.50.0/24"], "ssids": [], "wireless": [], "shared_subnet": False, "display_name": "Локальная сеть (SSID не определён)"},
+            {"lan_if": "br2", "sources": ["172.16.96.0/20"], "ssids": [], "wireless": [], "shared_subnet": False, "display_name": "Локальная сеть (SSID не определён)"},
+            {"lan_if": "br9.12", "sources": ["10.0.0.0/8"], "ssids": [], "wireless": [], "shared_subnet": False, "display_name": "Локальная сеть (SSID не определён)"},
         ])
 
     def test_ssids_match_actual_bridge_members_instead_of_bridge_number(self):
@@ -90,7 +123,7 @@ tt_discover_networks''')
             "wl0.2_ssid": "Отключённая сеть", "wl0.3_ssid": "IoT",
         }))
         self.assertEqual([row["ssids"] for row in rows], [["Дом 2.4 GHz", "Дом 5 GHz"], ["IoT"], ["Гости"]])
-        self.assertEqual(rows[0]["display_name"], "Дом 2.4 GHz")
+        self.assertEqual(rows[0]["display_name"], "Общая локальная подсеть")
         self.assertEqual(rows[2]["display_name"], "Гости")
         keys = (self.path / "nvram-keys").read_text().splitlines()
         self.assertNotIn("wl0.2_ssid", keys)
@@ -103,8 +136,27 @@ tt_discover_networks''')
             'wl0.2_ssid':'Old device', 'wl0.3_ssid':'Disabled', 'wl0.3_bss_enabled':'0',
             'wl0.4_ssid':'0123456789ABCDEF0123456789ABCDEF', 'wl0.4_bss_enabled':'1'
         }))[0]
-        self.assertEqual(row['display_name'], 'Home')
+        self.assertEqual(row['display_name'], 'Общая локальная подсеть')
         self.assertEqual(row['ssids'], ['Home', 'Old device'])
+
+    def test_separate_ssids_keep_interfaces_on_same_actual_subnet(self):
+        self.bridge('br0', ['eth6', 'eth7', 'wl0.2', 'wl0.4'])
+        self.bridge('br1', ['wl0.1'])
+        rows = self.parsed(self.discover({
+            'wl0_ifname':'eth6', 'wl1_ifname':'eth7',
+            'wl0_ssid':'Main fixture', 'wl1_ssid':'Main fixture',
+            'wl0.2_ssid':'Legacy fixture', 'wl0.1_ssid':'Isolated fixture',
+            'wl0.4_ssid':'firmware-service-fixture'
+        }))
+        main, guest = rows
+        self.assertTrue(main['shared_subnet'])
+        self.assertEqual(main['ssids'], ['Main fixture', 'Legacy fixture'])
+        self.assertEqual([(w['ssid'],w['nvif'],w['ifname']) for w in main['wireless']],
+            [('Main fixture','wl0','eth6'),('Legacy fixture','wl0.2','wl0.2'),('Main fixture','wl1','eth7')])
+        self.assertEqual(guest['wireless'][0]['nvif'], 'wl0.1')
+        self.assertFalse(guest['shared_subnet'])
+        self.assertEqual([n['lan_if'] for n in rows], ['br0','br1'])
+        self.assertNotIn('firmware-service-fixture', json.dumps(rows))
 
     def test_service_alias_is_filtered_without_reading_its_ssid(self):
         self.bridge('br0', ['eth6.4'])

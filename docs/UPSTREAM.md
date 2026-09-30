@@ -16,3 +16,11 @@ Upstream custom_sni поддерживается стабильным кодом
 
 - [Merlin 3004.388.12_2 xt_SKIPLOG.c](https://github.com/RMerl/asuswrt-merlin.ng/blob/3004.388.12_2/release/src-rt-5.02L.07p2axhnd/kernel/linux-4.1/net/netfilter/xt_SKIPLOG.c): target вызывает blog_skip для совпавшего пакета, возвращает XT_CONTINUE, family NFPROTO_UNSPEC. На AX86U target есть в IPv4 и IPv6; встроенная справка fc подтверждает flush --if. Это основание выборочной изоляции, но не замена аппаратной проверке утечек/действующих потоков.
 - [Merlin amvpn_routing.c](https://github.com/RMerl/asuswrt-merlin.ng/blob/3004.388.12_2/release/src/router/libovpn/amvpn_routing.c): штатная source-policy маршрутизация VPN; универсальное требование отключить ускорение всего роутера отсюда не следует. Marks сторонних VPN не копируются и не занимаются аддоном.
+
+- Штатный Broadcom `wl -i IFNAME assoclist`: 30.09.2026 проверен read-only на AX86U для eth6/eth7/wl0.1/wl0.2. Возвращает ассоциации конкретного BSS по MAC; alpha.8 сопоставляет их с DHCP leases. DHCP-адрес сам по себе не является доказательством принадлежности к SSID. Результаты/ограничения — [TEST-REPORT.md](TEST-REPORT.md).
+
+## Обновление CLI, проверено 30.09.2026
+
+- [Официальные releases](https://github.com/TrustTunnel/TrustTunnelClient/releases) и [GitHub API](https://api.github.com/repos/TrustTunnel/TrustTunnelClient/releases): stable v1.1.7, beta v1.3.0-beta.1; публичной nightly ARM64 не обнаружено. Выбор stable по числовой версии, nightly только по явной метке nightly и дате публикации, без beta fallback.
+- [VERIFY_RELEASES.md](https://github.com/TrustTunnel/TrustTunnelClient/blob/master/VERIFY_RELEASES.md): подпись бинарника находится в архиве; первичный fingerprint `28645AC9776EC4C00BCE2AFC0FE641E7235E2EC6`. Публичный ключ сохранён в addon/share/client-release-key.asc из [keys.openpgp.org](https://keys.openpgp.org/vks/v1/by-fingerprint/28645AC9776EC4C00BCE2AFC0FE641E7235E2EC6); fingerprint независимо сверяется регрессией. Это публичный ключ upstream, не учётные данные клиента.
+- [publish-snapshot.yml](https://github.com/TrustTunnel/TrustTunnelClient/blob/master/.github/workflows/publish-snapshot.yml): snapshot Conan/Artifactory и синхронизация исходников не являются публичным downloadable Linux nightly. Произвольный CI artifact, URL из формы или альтернативное зеркало не принимаются.

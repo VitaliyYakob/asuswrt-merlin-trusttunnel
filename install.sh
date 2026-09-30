@@ -15,6 +15,7 @@ SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 DST=/jffs/addons/trusttunnel
 [ ! -f "$DST/config/enabled" ] || { echo 'Disable the existing addon before upgrade' >&2; exit 1; }
 [ ! -e "$DST/config/transaction" ] || { echo 'Recover the pending transaction before upgrade' >&2; exit 1; }
+[ ! -e "$DST/config/client-update-journal.json" ] || { echo 'Recover the interrupted client update before upgrade' >&2; exit 1; }
 [ ! -L "$DST" ] || { echo 'Refusing symlinked installation directory' >&2; exit 1; }
 [ ! -L "$DST/config" ] || { echo 'Refusing symlinked configuration directory' >&2; exit 1; }
 umask 077

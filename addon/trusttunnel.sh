@@ -17,6 +17,10 @@ TT_BASE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
 . "$TT_BASE/lib/transfer.sh"
 # shellcheck source=lib/diagnostics.sh
 . "$TT_BASE/lib/diagnostics.sh"
+# shellcheck source=lib/client-update.sh
+. "$TT_BASE/lib/client-update.sh"
+# shellcheck source=lib/traffic-check.sh
+. "$TT_BASE/lib/traffic-check.sh"
 # shellcheck source=lib/uninstall.sh
 . "$TT_BASE/lib/uninstall.sh"
 
@@ -25,7 +29,7 @@ TT_ACTION=${1:-help}
 case "$TT_ACTION" in
     help|--help)
         cat <<'HELP'
-TrustTunnel Merlin 0.3.1-alpha.6
+TrustTunnel Merlin 0.3.1-alpha.9
 Offline (never changes networking):
   validate endpoint|policy FILE
   render ENDPOINT_JSON           # contains credentials; protect redirected output
@@ -38,6 +42,8 @@ Configuration (TT_ROOT supported for a sandbox):
   import-endpoint FILE
   import-policy FILE             # changes require explicit disable first
 Router laboratory only:
+  check-updates | update-client CANDIDATE_ID | recover-client
+  verify-traffic                 # observe LAN counters; no probes or rule changes
   start | restart | pause        # pause retains requested protection
   disable                        # intentionally releases traffic to normal routing
   refresh | wan | shutdown
@@ -87,6 +93,15 @@ HELP
             wan-event) exec "$TT_BASE/trusttunnel.sh" wan;;
             *) exit 1;;
         esac;;
+    check-updates|update-client|recover-client|verify-traffic)
+        tt_live && tt_lock || exit 1
+        case "$TT_ACTION" in
+            check-updates) [ "$#" -eq 0 ] && tt_update_check;;
+            update-client) [ "$#" -eq 1 ] && tt_update_install "$1";;
+            recover-client) [ "$#" -eq 0 ] && tt_update_recover;;
+            verify-traffic) [ "$#" -eq 0 ] && tt_verify_traffic;;
+        esac
+        TT_RESULT=$?; tt_lock || exit 1; tt_publish_status || :; exit "$TT_RESULT";;
     import-endpoint|import-policy)
         [ "$#" -eq 1 ] || tt_die 'a local JSON path is required'
         tt_lock || exit 1

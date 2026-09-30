@@ -42,7 +42,9 @@ tt_wire_dispatch() {
                 jq -e --arg id "$TT_WIRE_ID" '.id==$id' "$TT_CONFIG/transaction/manifest.json" >/dev/null && tt_transaction_rollback;;
         ttm_do_*)
             TT_WIRE=${TT_WIRE#ttm_do_}; TT_WIRE_ID=${TT_WIRE%%_*}; TT_WIRE_ACTION=${TT_WIRE#*_}
-            case "$TT_WIRE_ACTION" in start|pause|restart|disable|diagnostics) :;; *) return 1;; esac
+            case "$TT_WIRE_ACTION" in start|pause|restart|disable|diagnostics|check_updates|channel_stable|channel_nightly|verify_traffic|update_client_*) :;; *) return 1;; esac
+            TT_WIRE_CANDIDATE=
+            case "$TT_WIRE_ACTION" in update_client_*) TT_WIRE_CANDIDATE=${TT_WIRE_ACTION#update_client_}; tt_id_valid "$TT_WIRE_CANDIDATE" || return 1; TT_WIRE_ACTION=update_client;; esac
             tt_operation_begin "$TT_WIRE_ID" "$TT_WIRE_ACTION"; TT_WIRE_RESULT=$?
             [ "$TT_WIRE_RESULT" -ne 2 ] || return 0
             [ "$TT_WIRE_RESULT" -eq 0 ] || return 1
@@ -55,13 +57,19 @@ tt_wire_dispatch() {
                 pause) tt_pause || TT_WIRE_RESULT=$?;;
                 restart) tt_stop_process && tt_start || TT_WIRE_RESULT=$?;;
                 disable) tt_disable || TT_WIRE_RESULT=$?;;
+                check_updates) tt_update_check || TT_WIRE_RESULT=$?;;
+                channel_stable) tt_update_channel stable || TT_WIRE_RESULT=$?;;
+                channel_nightly) tt_update_channel nightly || TT_WIRE_RESULT=$?;;
+                verify_traffic) tt_verify_traffic || TT_WIRE_RESULT=$?;;
+                update_client) tt_update_install "$TT_WIRE_CANDIDATE" || TT_WIRE_RESULT=$?;;
                 diagnostics) tt_diagnostics >"$TT_RUN/diagnostics.json" || TT_WIRE_RESULT=$?;;
             esac
+            case "$TT_WIRE_ACTION" in check_updates|update_client) tt_lock || return 1;; esac
             if [ "$TT_WIRE_RESULT" -eq 0 ]; then tt_operation_write succeeded completed
             else
                 case "$TT_FAILURE_CODE" in
-                    endpoint_missing|policy_missing|client_missing|forwarding_disabled|dns_missing|dns_conflict|network_changed|offload_unavailable|offload_flush_failed|tun_unavailable|missing_dependency) TT_WIRE_CODE=$TT_FAILURE_CODE;;
-                    *) TT_WIRE_CODE=action_failed;;
+                    check_not_running|endpoint_missing|policy_missing|client_missing|forwarding_disabled|dns_missing|dns_conflict|network_changed|offload_unavailable|offload_flush_failed|tun_unavailable|missing_dependency) TT_WIRE_CODE=$TT_FAILURE_CODE;;
+                    *) case "$TT_WIRE_ACTION" in update_client) TT_WIRE_CODE=update_failed;; check_updates) TT_WIRE_CODE=update_check_failed;; *) TT_WIRE_CODE=action_failed;; esac;;
                 esac
                 tt_operation_write failed "$TT_WIRE_CODE"
             fi

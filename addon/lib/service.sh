@@ -99,6 +99,7 @@ tt_spawn() {
     return 1
 }
 tt_start() {
+    if type tt_update_recover >/dev/null 2>&1; then tt_update_recover || return 1; fi
     rm -f "$TT_RUN/retry.json"
     tt_preflight && tt_claim_resources || return 1
     # Remember intent before constructing rules. A failed start is not a silent disable.
@@ -124,6 +125,7 @@ tt_refresh() {
     if type tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
     tt_validate policy "$TT_POLICY" && tt_claim_resources &&
         tt_run_plan guard "$TT_RUNTIME_POLICY" && tt_rpf_loose || return 1
+    if type tt_update_recover >/dev/null 2>&1; then tt_update_recover || return 1; fi
     if [ -f "$TT_PAUSED" ]; then tt_stop_process; else tt_retry_client; fi
     TT_REFRESH_RESULT=$?
     if type tt_transaction_reconcile >/dev/null 2>&1; then tt_transaction_reconcile || return 1; fi
@@ -188,14 +190,18 @@ tt_status() {
     TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
     if type tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
     if type tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
-    jq -n --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
+    TT_TUN_ADDRESSES='[]'; TT_STATUS_UPDATES='{}'; TT_STATUS_TRAFFIC=null
+    if type tt_tunnel_addresses >/dev/null 2>&1; then TT_TUN_ADDRESSES=$(tt_tunnel_addresses) || TT_TUN_ADDRESSES='[]'; fi
+    if type tt_update_status >/dev/null 2>&1; then TT_STATUS_UPDATES=$(tt_update_status) || TT_STATUS_UPDATES='{}'; fi
+    if type tt_traffic_check_status >/dev/null 2>&1; then TT_STATUS_TRAFFIC=$(tt_traffic_check_status) || TT_STATUS_TRAFFIC=null; fi
+    jq -n --argjson tunnel_addresses "$TT_TUN_ADDRESSES" --argjson client_updates "$TT_STATUS_UPDATES" --argjson traffic_check "$TT_STATUS_TRAFFIC" --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
         --arg last_result "$TT_LAST" --argjson process_running "$TT_PROCESS" --argjson interface_up "$TT_TUN" \
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
         --argjson policy "$TT_PUBLIC_POLICY" --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson timestamp "$(date +%s)" \
         --arg revision "$(tt_revision)" --argjson operations "$TT_STATUS_OPS" --argjson transaction "$TT_STATUS_TX" \
         --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" --argjson endpoint "$TT_PUBLIC_ENDPOINT" --argjson network_warnings "$TT_NETWORK_WARNINGS" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
-          interface_up:$interface_up,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
+          interface_up:$interface_up,tunnel_addresses:$tunnel_addresses,client_updates:$client_updates,traffic_check:$traffic_check,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
           policy:$policy,discovered_networks:$discovered_networks,network_warnings:$network_warnings,timestamp:$timestamp,last_result:$last_result,hardware_tested:false,
           revision:$revision,operations:$operations,transaction:$transaction,clients:$clients,diagnostics:$diagnostics}'
 }
