@@ -156,6 +156,39 @@ tt_limit_log() {
         rm -f "$TT_RUN/log.tail"
     fi
 }
+tt_status_details() {
+    TT_DETAILS_READY=true; TT_DETAILS_ERROR=
+    TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || {
+        TT_DISCOVERED_NETWORKS='[]'; TT_DETAILS_READY=false; TT_DETAILS_ERROR=inventory_unavailable;
+    }
+    TT_NETWORK_WARNINGS=$(tt_network_warnings) || TT_NETWORK_WARNINGS='[]'
+    TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
+    if type tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
+    if type tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
+    TT_TUN_ADDRESSES='[]'; TT_STATUS_UPDATES='{}'; TT_STATUS_TRAFFIC=null
+    if type tt_tunnel_addresses >/dev/null 2>&1; then TT_TUN_ADDRESSES=$(tt_tunnel_addresses) || TT_TUN_ADDRESSES='[]'; fi
+    if type tt_update_status >/dev/null 2>&1; then TT_STATUS_UPDATES=$(tt_update_status) || TT_STATUS_UPDATES='{}'; fi
+    if type tt_traffic_check_status >/dev/null 2>&1; then TT_STATUS_TRAFFIC=$(tt_traffic_check_status) || TT_STATUS_TRAFFIC=null; fi
+    if [ -f "$TT_RUN/nvram-failed" ]; then TT_DETAILS_READY=false; TT_DETAILS_ERROR=nvram_unavailable; fi
+    jq -n --argjson available "$TT_DETAILS_READY" --arg error "$TT_DETAILS_ERROR" \
+        --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson network_warnings "$TT_NETWORK_WARNINGS" \
+        --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" \
+        --argjson tunnel_addresses "$TT_TUN_ADDRESSES" --argjson client_updates "$TT_STATUS_UPDATES" --argjson traffic_check "$TT_STATUS_TRAFFIC" \
+        '{available:$available,error:$error,discovered_networks:$discovered_networks,network_warnings:$network_warnings,
+          clients:$clients,diagnostics:$diagnostics,tunnel_addresses:$tunnel_addresses,client_updates:$client_updates,traffic_check:$traffic_check}'
+}
+tt_read_status_details() (
+    # Only read-only collection runs in this process group. A timeout must never
+    # kill a configuration transaction, client process or firewall operation.
+    exec 9>&-
+    type timeout >/dev/null 2>&1 || return 1
+    umask 077
+    output=$(mktemp "$TT_RUN/.status-details.XXXXXX") || return 1
+    trap 'rm -f "$output"' EXIT
+    # A timed-out descendant must not keep a command-substitution pipe open.
+    timeout -k 1 15 "$TT_BASE/trusttunnel.sh" status-details >"$output" 2>/dev/null || return 1
+    cat "$output"
+)
 tt_status() {
     TT_PROCESS=false; TT_TUN=false; TT_STATE=disabled
     tt_pid_matches && TT_PROCESS=true
@@ -182,28 +215,26 @@ tt_status() {
     [ ! -f "$TT_ENABLED" ] || TT_ENABLED_JSON=true
     TT_LAST=none
     [ ! -f "$TT_RUN/last-result" ] || TT_LAST=$(cat "$TT_RUN/last-result")
-    TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || TT_DISCOVERED_NETWORKS='[]'
-    TT_NETWORK_WARNINGS=$(tt_network_warnings) || TT_NETWORK_WARNINGS='[]'
     TT_STATUS_OPS=$(tt_operations_json) || TT_STATUS_OPS='[]'
     TT_STATUS_TX=null
     if type tt_transaction_state >/dev/null 2>&1; then TT_STATUS_TX=$(tt_transaction_state) || TT_STATUS_TX=null; fi
-    TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
-    if type tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
-    if type tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
-    TT_TUN_ADDRESSES='[]'; TT_STATUS_UPDATES='{}'; TT_STATUS_TRAFFIC=null
-    if type tt_tunnel_addresses >/dev/null 2>&1; then TT_TUN_ADDRESSES=$(tt_tunnel_addresses) || TT_TUN_ADDRESSES='[]'; fi
-    if type tt_update_status >/dev/null 2>&1; then TT_STATUS_UPDATES=$(tt_update_status) || TT_STATUS_UPDATES='{}'; fi
-    if type tt_traffic_check_status >/dev/null 2>&1; then TT_STATUS_TRAFFIC=$(tt_traffic_check_status) || TT_STATUS_TRAFFIC=null; fi
-    jq -n --argjson tunnel_addresses "$TT_TUN_ADDRESSES" --argjson client_updates "$TT_STATUS_UPDATES" --argjson traffic_check "$TT_STATUS_TRAFFIC" --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
+    TT_STATUS_DETAILS=$(tt_read_status_details) || TT_STATUS_DETAILS='{"available":false,"error":"details_unavailable"}'
+    if ! printf '%s' "$TT_STATUS_DETAILS" | jq -e 'type=="object" and (.available|type=="boolean")' >/dev/null 2>&1; then
+        TT_STATUS_DETAILS='{"available":false,"error":"details_unavailable"}'
+    fi
+    jq -n --argjson details "$TT_STATUS_DETAILS" --arg version "$TT_VERSION" --arg state "$TT_STATE" --arg hostname "$TT_HOST" \
         --arg last_result "$TT_LAST" --argjson process_running "$TT_PROCESS" --argjson interface_up "$TT_TUN" \
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
-        --argjson policy "$TT_PUBLIC_POLICY" --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson timestamp "$(date +%s)" \
+        --argjson policy "$TT_PUBLIC_POLICY" --argjson timestamp "$(date +%s)" \
         --arg revision "$(tt_revision)" --argjson operations "$TT_STATUS_OPS" --argjson transaction "$TT_STATUS_TX" \
-        --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" --argjson endpoint "$TT_PUBLIC_ENDPOINT" --argjson network_warnings "$TT_NETWORK_WARNINGS" \
+        --argjson endpoint "$TT_PUBLIC_ENDPOINT" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
-          interface_up:$interface_up,tunnel_addresses:$tunnel_addresses,client_updates:$client_updates,traffic_check:$traffic_check,connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
-          policy:$policy,discovered_networks:$discovered_networks,network_warnings:$network_warnings,timestamp:$timestamp,last_result:$last_result,hardware_tested:false,
-          revision:$revision,operations:$operations,transaction:$transaction,clients:$clients,diagnostics:$diagnostics}'
+          interface_up:$interface_up,tunnel_addresses:($details.tunnel_addresses//[]),client_updates:($details.client_updates//{}),
+          traffic_check:($details.traffic_check//null),connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
+          policy:$policy,discovered_networks:($details.discovered_networks//[]),network_warnings:($details.network_warnings//[]),
+          timestamp:$timestamp,last_result:$last_result,hardware_tested:false,revision:$revision,operations:$operations,
+          transaction:$transaction,clients:($details.clients//[]),diagnostics:($details.diagnostics//{}),
+          health:{details_ready:$details.available,error:($details.error//"")}}'
 }
 tt_publish_status() {
     if type tt_transfer_expire >/dev/null 2>&1; then tt_transfer_expire || :; fi

@@ -42,17 +42,18 @@ tt_wire_dispatch() {
                 jq -e --arg id "$TT_WIRE_ID" '.id==$id' "$TT_CONFIG/transaction/manifest.json" >/dev/null && tt_transaction_rollback;;
         ttm_do_*)
             TT_WIRE=${TT_WIRE#ttm_do_}; TT_WIRE_ID=${TT_WIRE%%_*}; TT_WIRE_ACTION=${TT_WIRE#*_}
-            case "$TT_WIRE_ACTION" in start|pause|restart|disable|diagnostics|check_updates|channel_stable|channel_nightly|verify_traffic|update_client_*) :;; *) return 1;; esac
+            case "$TT_WIRE_ACTION" in status|start|pause|restart|disable|diagnostics|check_updates|channel_stable|channel_nightly|verify_traffic|update_client_*) :;; *) return 1;; esac
             TT_WIRE_CANDIDATE=
             case "$TT_WIRE_ACTION" in update_client_*) TT_WIRE_CANDIDATE=${TT_WIRE_ACTION#update_client_}; tt_id_valid "$TT_WIRE_CANDIDATE" || return 1; TT_WIRE_ACTION=update_client;; esac
             tt_operation_begin "$TT_WIRE_ID" "$TT_WIRE_ACTION"; TT_WIRE_RESULT=$?
             [ "$TT_WIRE_RESULT" -ne 2 ] || return 0
             [ "$TT_WIRE_RESULT" -eq 0 ] || return 1
             TT_WIRE_RESULT=0; TT_FAILURE_CODE=
-            if [ -f "$TT_CONFIG/transaction/manifest.json" ] && [ "$TT_WIRE_ACTION" != diagnostics ]; then
+            if [ -f "$TT_CONFIG/transaction/manifest.json" ] && [ "$TT_WIRE_ACTION" != diagnostics ] && [ "$TT_WIRE_ACTION" != status ]; then
                 tt_operation_write failed transaction_pending; return 1
             fi
             case "$TT_WIRE_ACTION" in
+                status) :;;
                 start) tt_start || TT_WIRE_RESULT=$?;;
                 pause) tt_pause || TT_WIRE_RESULT=$?;;
                 restart) tt_stop_process && tt_start || TT_WIRE_RESULT=$?;;

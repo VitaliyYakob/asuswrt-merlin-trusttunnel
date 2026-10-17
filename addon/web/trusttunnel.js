@@ -1,7 +1,7 @@
 /* Native Merlin control. Secrets leave memory only on explicit encrypted save/export. */
 (function (root) {
     'use strict';
-    var api = {}, latest = null, initialized = false, lastSeen = 0, rowIndex = 0, pending = false;
+    var api = {}, latest = null, initialized = false, lastSeen = 0, rowIndex = 0, pending = false, statusNotice = false;
     var networkModels = new WeakMap(), importedDns = null, dirty = {}, editRevision = null;
     function ipv4(s) {
         if (typeof s !== 'string' || !/^(0|[1-9]\d{0,2})(\.(0|[1-9]\d{0,2})){3}$/.test(s)) return null;
@@ -66,9 +66,20 @@
         document.querySelectorAll('[data-view]').forEach(function (section) { section.hidden=section.dataset.view!==name; });
         document.querySelectorAll('[data-view-button]').forEach(function (button) { button.setAttribute('aria-selected',String(button.dataset.viewButton===name)); button.tabIndex=button.dataset.viewButton===name?0:-1; });
     };
-    root.ttmReload=function () {
+    root.ttmReload=async function () {
+        if (pending) return;
         if (Object.keys(dirty).length && !root.confirm('Сбросить несохранённые изменения?')) return;
-        initialized=false; dirty={}; editRevision=null; root.ttmClearConnection(); updateDirty(); refresh();
+        initialized=false; dirty={}; editRevision=null; root.ttmClearConnection(); updateDirty();
+        if (root.TTM_PREVIEW) { refresh(); return; }
+        pending=true; controls(false);
+        try {
+            var id=root.TTMTransfer.id(root.crypto);
+            message('Запрашивается новый статус контроллера…',false);
+            await wire('start_ttm_do_'+id+'_status');
+            await waitOperation(id);
+            statusNotice=false; message('Статус обновлён.',false);
+        } catch(e) { message(e.message,true); }
+        finally { pending=false; controls(true); refresh(); }
     };
     function text(id, value) { el(id).textContent = String(value); }
     function dateLabel(value, fallback) {
@@ -78,7 +89,7 @@
     }
     var startErrors={update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
     function operationLabel(op) {
-        var actions={start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика',verify_traffic:'Проверка трафика',check_updates:'Поиск обновлений',update_client:'Обновление CLI',channel_stable:'Стабильный канал',channel_nightly:'Ночной канал'};
+        var actions={status:'Обновление статуса',start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',diagnostics:'Диагностика',verify_traffic:'Проверка трафика',check_updates:'Поиск обновлений',update_client:'Обновление CLI',channel_stable:'Стабильный канал',channel_nightly:'Ночной канал'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
         var codes={confirmation_required:'нужно подтверждение',revision_conflict:'настройки изменены в другой вкладке',transaction_pending:'сначала завершите пробное применение',invalid_configuration:'некорректная конфигурация',apply_failed:'не удалось применить',action_failed:'не удалось выполнить'};
         return (actions[op.action]||'Операция')+' · '+(startErrors[op.code]||codes[op.code]||states[op.state]||'результат неизвестен');
@@ -88,7 +99,7 @@
         ok=ok && !!latest && (!!root.TTM_PREVIEW || Math.abs(Date.now()/1000-latest.timestamp)<150);
         document.querySelectorAll('[data-runtime]').forEach(function (button) { button.disabled = !ok || pending || !!latest.transaction; });
         document.querySelectorAll('[data-view="connection"] input,[data-view="connection"] textarea,[data-view="connection"] select,[data-view="connection"] button').forEach(function (field) { field.disabled=pending; });
-        el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.transaction);
+        el('ttm-policy-fields').disabled = !ok || pending || !!(latest && latest.transaction) || !!(latest && latest.health && !latest.health.details_ready);
         el('ttm-save').disabled = el('ttm-export-policy').disabled = el('ttm-policy-fields').disabled;
         el('ttm-save-endpoint').disabled = !ok || pending || !!(latest && latest.transaction);
         el('ttm-nightly').disabled=!ok || pending || !!latest.transaction;
@@ -240,10 +251,16 @@
         text('ttm-host',status.hostname || 'Подключение ещё не импортировано');
         text('ttm-process',status.process_running ? 'Запущен' : 'Не запущен'); text('ttm-tun',status.interface_up ? 'tt0' : 'Нет TUN');
         text('ttm-counter',(status.rx_bytes/1048576).toFixed(2) + ' / ' + (status.tx_bytes/1048576).toFixed(2) + ' MiB');
-        text('ttm-age',new Date(status.timestamp*1000).toLocaleTimeString()); text('ttm-last',(status.operations||[]).length?operationLabel(status.operations[0]):'Нет записей');
+        text('ttm-age',dateLabel(status.timestamp,'Дата неизвестна')); text('ttm-last',(status.operations||[]).length?operationLabel(status.operations[0]):'Нет записей');
         var fresh = !!root.TTM_PREVIEW || Math.abs(Date.now()/1000-status.timestamp) < 150;
         controls(fresh);
-        if (!fresh) message('Статус устарел. Управление заблокировано до обновления контроллера.',true);
+        if (!fresh) {
+            message('Статус не обновляется. Последнее обновление: '+dateLabel(status.timestamp,'дата неизвестна')+'. Нажмите «Обновить данные», чтобы запросить новый статус контроллера.',true);
+            statusNotice=true;
+        } else if (status.health && !status.health.details_ready) {
+            message(status.health.error==='nvram_unavailable'?'Не удалось получить сведения о Wi-Fi от роутера. Состояние клиента обновлено; редактирование маршрутизации временно недоступно.':'Сбор сведений о сетях не завершился вовремя. Состояние клиента обновлено; редактирование маршрутизации временно недоступно.',true);
+            statusNotice=true;
+        } else if (statusNotice && !pending) { message('Статус обновлён.',false); statusNotice=false; }
         reconcileNetworks(status);
         text('ttm-network-warnings',(status.network_warnings||[]).join('\n'));
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;

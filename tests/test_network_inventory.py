@@ -17,7 +17,7 @@ class NetworkInventoryTests(unittest.TestCase):
         self.env = os.environ | {"TT_ROOT": str(self.path), "TT_BASE": str(ROOT / "addon")}
 
     def execute(self, body):
-        script = '. "$TT_BASE/lib/common.sh"\n. "$TT_BASE/lib/service.sh"\n. "$TT_BASE/lib/inventory.sh"\n' + body
+        script = '. "$TT_BASE/lib/common.sh"\n. "$TT_BASE/lib/service.sh"\n. "$TT_BASE/lib/inventory.sh"\ntt_nvram_get() { nvram get \"$1\"; }\n' + body
         return subprocess.run(["sh", "-c", script], env=self.env, text=True, capture_output=True)
 
     def test_sandbox_does_not_run_ip_or_nvram(self):
@@ -41,7 +41,7 @@ tt_discover_networks''')
             {'ssid':'Invalid fixture','nvif':'wl0.3','ifname':'wl0.3;reboot'}]}]
         (self.path/'assoc-inventory.json').write_text(json.dumps(inventory))
         result=self.execute('''TT_FIXTURE=$TT_ROOT
-timeout() { [ "$1" = 3 ] || return 99; shift; "$@"; }
+timeout() { [ "$1" = -k ] && [ "$2" = 1 ] && [ "$3" = 3 ] || return 99; shift 3; "$@"; }
 wl() { [ "$1" = -i ] && [ "$3" = assoclist ] || return 99
 case "$2" in
 eth6) printf 'assoclist AA:BB:CC:DD:EE:01\nassoclist AA:BB:CC:DD:EE:01\nother AA:BB:CC:DD:EE:02\nassoclist malformed\n';;
@@ -56,7 +56,7 @@ tt_wifi_associations "$(cat "$TT_FIXTURE/assoc-inventory.json")"''')
         self.assertNotIn('UNEXPECTED_INTERFACE',result.stderr)
 
     def test_driver_failure_does_not_guess_from_dhcp_or_partial_output(self):
-        result=self.execute('''timeout() { shift; "$@"; }
+        result=self.execute('''timeout() { shift 3; "$@"; }
 wl() { printf 'assoclist AA:BB:CC:DD:EE:01\n'; return 1; }
 TT_ROOT=
 tt_wifi_associations '[{"lan_if":"br0","wireless":[{"ssid":"Home","nvif":"wl0","ifname":"eth6"}]}]' ''')
@@ -245,7 +245,7 @@ tt_discover_networks'''))
 
     def test_status_falls_back_to_empty_inventory_on_ip_failure(self):
         (self.path / "sys/class/net/br0/bridge").mkdir(parents=True)
-        result = self.execute('ip() { return 99; }\nnvram() { return 99; }\nTT_ROOT=\ntt_status')
+        result = self.execute('ip() { return 99; }\nnvram() { return 99; }\ntt_read_status_details() { tt_status_details; }\nTT_ROOT=\ntt_status')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["discovered_networks"], [])
 

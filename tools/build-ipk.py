@@ -42,7 +42,7 @@ def tar_gzip(entries: dict[str, tuple[bytes, int]]) -> bytes:
             item = tarfile.TarInfo('./' + name)
             item.size, item.mode, item.mtime = len(data), mode, 0
             archive.addfile(item, io.BytesIO(data))
-    compressed = bytearray(gzip.compress(stream.getvalue(), mtime=0))
+    compressed = bytearray(gzip.compress(stream.getvalue(), compresslevel=9, mtime=0))
     # Python 3.11/3.12 can let zlib encode a host-specific OS byte at mtime=0.
     compressed[9] = 255
     return bytes(compressed)

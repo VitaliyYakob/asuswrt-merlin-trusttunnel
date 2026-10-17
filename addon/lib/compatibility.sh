@@ -11,7 +11,7 @@ tt_acceleration_state() (
             printf 'disabled\n'
         else printf 'unknown\n'; fi
     elif type nvram >/dev/null 2>&1; then
-        case "$(nvram get ctf_disable)" in 1) printf 'disabled\n';; 0) printf 'enabled\n';; *) printf 'unknown\n';; esac
+        case "$(tt_nvram_get ctf_disable)" in 1) printf 'disabled\n';; 0) printf 'enabled\n';; *) printf 'unknown\n';; esac
     else printf 'unknown\n'; fi
 )
 tt_selective_offload_supported() {

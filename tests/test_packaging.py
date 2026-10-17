@@ -10,6 +10,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build_ipk', ROOT / 'tools/build-ipk.py')
@@ -63,6 +64,16 @@ class PackageTests(unittest.TestCase):
         self.assertIn('IPK=' + self.ipk.name, online)
         self.assertEqual((ROOT / 'install-online.sh').read_text(), online)
         self.assertNotIn('@PLATFORM@', online)
+
+    def test_ipk_does_not_depend_on_python_default_compression_level(self):
+        native_compress = BUILDER.gzip.compress
+        packages = []
+        for default in (6, 9):
+            def compress(data, compresslevel=default, *, mtime=0):
+                return native_compress(data, compresslevel=compresslevel, mtime=mtime)
+            with patch.object(BUILDER.gzip, 'compress', compress):
+                packages.append(BUILDER.build(ROOT, self.work / str(default)).read_bytes())
+        self.assertEqual(packages[0], packages[1])
 
     def test_all_maintainer_scripts_do_nothing_for_offline_root(self):
         for name in ('preinst', 'postinst', 'prerm'):

@@ -25,7 +25,7 @@ tt_operation_write() {
 }
 tt_operation_begin() {
     tt_id_valid "$1" || return 1
-    case "$2" in start|pause|restart|disable|check_updates|update_client|channel_stable|channel_nightly|verify_traffic|endpoint|policy|exclusions|diagnostics|restore-endpoint|restore-policy) :;; *) return 1;; esac
+    case "$2" in status|start|pause|restart|disable|check_updates|update_client|channel_stable|channel_nightly|verify_traffic|endpoint|policy|exclusions|diagnostics|restore-endpoint|restore-policy) :;; *) return 1;; esac
     TT_OP_ID=$1; TT_OP_ACTION=$2
     mkdir -p "$TT_RUN/operations" && chmod 700 "$TT_RUN/operations" || return 1
     # Never rerun even a failed ID; a retry is a new explicit operation.

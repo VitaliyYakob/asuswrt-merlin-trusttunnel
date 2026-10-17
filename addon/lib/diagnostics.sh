@@ -47,10 +47,10 @@ $(jq -nc --arg name "$TT_DIAG_TOOL" --argjson available "$TT_DIAG_OK" '{name:$na
         TT_DIAG_RULES=$(ip -4 rule show 2>/dev/null) &&
             TT_DIAG_EARLIER=$(printf '%s\n' "$TT_DIAG_RULES" | awk -F: '$1>0 && $1<17100 {n++} END {print n+0}')
         if type nvram >/dev/null 2>&1; then
-            TT_DIAG_IPV6=$(nvram get ipv6_service)
-            TT_DIAG_MODEL=$(nvram get productid)
-            TT_DIAG_FW="$(nvram get firmver).$(nvram get buildno)_$(nvram get extendno)"
-            TT_DIAG_ACCEL=$(nvram get ctf_disable)
+            TT_DIAG_IPV6=$(tt_nvram_get ipv6_service)
+            TT_DIAG_MODEL=$(tt_nvram_get productid)
+            TT_DIAG_FW="$(tt_nvram_get firmver).$(tt_nvram_get buildno)_$(tt_nvram_get extendno)"
+            TT_DIAG_ACCEL=$(tt_nvram_get ctf_disable)
         fi
     fi
     TT_DIAG_READINESS=$(tt_start_readiness) || TT_DIAG_READINESS=null

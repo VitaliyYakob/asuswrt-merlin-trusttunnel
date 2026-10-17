@@ -4,7 +4,7 @@
 
 ## Проверки на компьютере
 
-Требуются Python 3.11+, Node.js, jq с регулярными выражениями, BusyBox ash, flock, OpenSSL и ShellCheck 0.10.0. На Ubuntu: `jq busybox util-linux openssl shellcheck`. Для браузерных проверок нужен Playwright 1.62.1 и его Chromium; `NODE_PATH` может указывать на отдельную установку Playwright.
+Требуются Python 3.11+, Node.js, jq с регулярными выражениями, BusyBox ash, flock, GNU timeout, OpenSSL и ShellCheck 0.10.0. На Ubuntu: `jq busybox util-linux openssl shellcheck`. Для браузерных проверок нужен Playwright 1.62.1 и его Chromium; `NODE_PATH` может указывать на отдельную установку Playwright.
 
 ```sh
 make test

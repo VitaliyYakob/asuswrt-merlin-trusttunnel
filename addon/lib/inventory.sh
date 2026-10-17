@@ -7,7 +7,7 @@ tt_user_wireless() {
     # Merlin 388 state.js exposes three guest slots per radio except BRT-AC828.
     # Other BSS interfaces may be firmware service networks, not user SSIDs.
     printf '%s' "$1" | grep -Eq '^wl[0-3](\.[1-3])?$' && return 0
-    [ "$(nvram get productid 2>/dev/null)" = BRT-AC828 ] &&
+    [ "$(tt_nvram_get productid 2>/dev/null)" = BRT-AC828 ] &&
         printf '%s' "$1" | grep -Eq '^wl[0-3]\.[0-9]+$'
 }
 tt_wireless_ifnames() (
@@ -19,16 +19,16 @@ tt_wireless_ifnames() (
     # without dumping NVRAM or relying on wl_ifnames ordering.
     for TT_WIFI_UNIT in 0 1 2 3; do
         TT_WIFI_PREFIX="wl$TT_WIFI_UNIT"
-        TT_WIFI_OS=$(nvram get "${TT_WIFI_PREFIX}_ifname" 2>/dev/null) || TT_WIFI_OS=
+        TT_WIFI_OS=$(tt_nvram_get "${TT_WIFI_PREFIX}_ifname" 2>/dev/null) || TT_WIFI_OS=
         if printf '%s' "$TT_WIFI_OS" | grep -Eq '^[a-zA-Z0-9_.:-]{1,15}$'; then
             TT_WIFI_MAP="$TT_WIFI_MAP
 $(jq -nc --arg ifname "$TT_WIFI_OS" --arg nvif "$TT_WIFI_PREFIX" '{ifname:$ifname,nvif:$nvif}')"
         fi
-        TT_WIFI_VIFS=$(nvram get "${TT_WIFI_PREFIX}_vifnames" 2>/dev/null) || TT_WIFI_VIFS=
+        TT_WIFI_VIFS=$(tt_nvram_get "${TT_WIFI_PREFIX}_vifnames" 2>/dev/null) || TT_WIFI_VIFS=
         for TT_WIFI_VIF in $TT_WIFI_VIFS; do
             printf '%s' "$TT_WIFI_VIF" | grep -Eq "^wl${TT_WIFI_UNIT}\\.[0-9]+$" || continue
             tt_user_wireless "$TT_WIFI_VIF" || continue
-            TT_WIFI_OS=$(nvram get "${TT_WIFI_VIF}_ifname" 2>/dev/null) || TT_WIFI_OS=
+            TT_WIFI_OS=$(tt_nvram_get "${TT_WIFI_VIF}_ifname" 2>/dev/null) || TT_WIFI_OS=
             [ -n "$TT_WIFI_OS" ] || TT_WIFI_OS=$TT_WIFI_VIF
             printf '%s' "$TT_WIFI_OS" | grep -Eq '^[a-zA-Z0-9_.:-]{1,15}$' || continue
             TT_WIFI_MAP="$TT_WIFI_MAP
@@ -52,16 +52,16 @@ tt_bridge_wireless() (
             # An actual wlN.M member carries its NVRAM identity even when the
             # optional vifnames list is empty. Respect a conflicting OS alias.
             printf '%s' "$TT_MEMBER" | grep -Eq '^wl[0-3](\.[0-9]+)?$' || continue
-            TT_MEMBER_ALIAS=$(nvram get "${TT_MEMBER}_ifname" 2>/dev/null) || TT_MEMBER_ALIAS=
+            TT_MEMBER_ALIAS=$(tt_nvram_get "${TT_MEMBER}_ifname" 2>/dev/null) || TT_MEMBER_ALIAS=
             [ -z "$TT_MEMBER_ALIAS" ] || [ "$TT_MEMBER_ALIAS" = "$TT_MEMBER" ] || continue
             TT_MEMBER_NVIFS=$TT_MEMBER
         fi
         tt_user_wireless "$TT_MEMBER_NVIFS" || continue
         # jq reads raw SSID bytes through stdin; quotes, Unicode and newlines
-        [ "$(nvram get "${TT_MEMBER_NVIFS}_bss_enabled" 2>/dev/null)" != 0 ] || continue
+        [ "$(tt_nvram_get "${TT_MEMBER_NVIFS}_bss_enabled" 2>/dev/null)" != 0 ] || continue
         # remain data. Remove only the newline added by nvram get.
         # The sentinel preserves trailing newlines across shell substitution.
-        TT_MEMBER_SSID_RAW=$(nvram get "${TT_MEMBER_NVIFS}_ssid" 2>/dev/null && printf '.') || continue
+        TT_MEMBER_SSID_RAW=$(tt_nvram_get "${TT_MEMBER_NVIFS}_ssid" 2>/dev/null && printf '.') || continue
         TT_MEMBER_SSID=$(printf '%s' "${TT_MEMBER_SSID_RAW%.}" |
             jq -Rs --arg nvif "$TT_MEMBER_NVIFS" --arg ifname "$TT_MEMBER" '{ssid:sub("\n$";""),nvif:$nvif,ifname:$ifname,primary:($nvif|test("^wl[0-3]$"))}|select(.ssid|length>0)') || return 1
         TT_BRIDGE_SSIDS="$TT_BRIDGE_SSIDS
@@ -82,7 +82,7 @@ tt_wifi_associations() (
     while IFS= read -r TT_ASSOC_INTERFACE; do
         [ -n "$TT_ASSOC_INTERFACE" ] || continue
         TT_ASSOC_IFNAME=$(printf '%s' "$TT_ASSOC_INTERFACE" | jq -er '.ifname|select(test("^[a-zA-Z0-9_.:-]{1,15}$"))') || continue
-        TT_ASSOC_RAW=$(timeout 3 wl -i "$TT_ASSOC_IFNAME" assoclist 2>/dev/null) || continue
+        TT_ASSOC_RAW=$(timeout -k 1 3 wl -i "$TT_ASSOC_IFNAME" assoclist 2>/dev/null) || continue
         TT_ASSOC_ITEMS=$(printf '%s\n' "$TT_ASSOC_RAW" | awk '$1=="assoclist" && NF==2 {print $2}' |
             jq -Rn --argjson interface "$TT_ASSOC_INTERFACE" '[inputs|ascii_downcase|select(test("^([a-f0-9]{2}:){5}[a-f0-9]{2}$"))|$interface+{mac:.}][]') || return 1
         TT_ASSOC_RESULT="$TT_ASSOC_RESULT

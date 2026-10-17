@@ -30,3 +30,4 @@ browser-test: preview
 	node tools/test-preview.js
 	node tools/test-browser-transport.js
 	node tools/test-browser-assets.js
+	node tools/test-browser-status.js

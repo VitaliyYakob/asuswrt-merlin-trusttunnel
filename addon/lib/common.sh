@@ -1,7 +1,7 @@
 #!/bin/sh
 # Filesystem overrides are for offline development, never for live networking.
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-TT_VERSION=0.3.1-alpha.10
+TT_VERSION=0.3.1-alpha.11
 TT_ROOT=${TT_ROOT:-}
 TT_CONFIG="$TT_ROOT/jffs/addons/trusttunnel/config"
 TT_RUN="$TT_ROOT/tmp/trusttunnel"
@@ -40,10 +40,43 @@ tt_live() {
     [ -z "$TT_ROOT" ] || { tt_error 'live actions are prohibited with TT_ROOT'; return 1; }
     [ "$(id -u)" = 0 ] || { tt_error 'root is required'; return 1; }
     [ -f "$TT_ACK" ] || { tt_error 'experimental live actions are locked; see README'; return 1; }
-    type nvram >/dev/null 2>&1 && nvram get rc_support | grep -qw am_addons || {
+    # The native read-only helper is a direct Addons API capability check.
+    # Do not make every action depend on a responsive NVRAM daemon.
+    if [ -f /usr/sbin/helper.sh ] && grep -Eq '^am_get_webui_page\(\)[[:space:]]*\{' /usr/sbin/helper.sh; then return 0; fi
+    type nvram >/dev/null 2>&1 && tt_nvram_get rc_support | grep -qw am_addons || {
         tt_error 'Merlin Addons API was not detected'; return 1;
     }
 }
+tt_nvram_get() (
+    # Read-only, bounded firmware access. A hung reader cannot inherit the
+    # controller lock. Discard partial output and briefly suppress repeat calls.
+    exec 9>&-
+    [ -z "$TT_ROOT" ] || return 1
+    [ -d "$TT_RUN" ] && [ ! -L "$TT_RUN" ] || return 1
+    umask 077
+    now=$(date +%s)
+    if [ -f "$TT_RUN/nvram-failed" ] && [ ! -L "$TT_RUN/nvram-failed" ]; then
+        failed=$(cat "$TT_RUN/nvram-failed")
+        case "$failed" in ''|*[!0-9]*) :;; *)
+            if [ "${#failed}" -le 12 ] && [ "$now" -ge "$failed" ] && [ "$((now-failed))" -lt 30 ]; then return 1; fi;;
+        esac
+    fi
+    output=$(mktemp "$TT_RUN/.nvram-read.XXXXXX") || return 1
+    trap 'rm -f "$output"' EXIT
+    if type timeout >/dev/null 2>&1 && type nvram >/dev/null 2>&1 &&
+        timeout -k 1 2 nvram get "$1" >"$output" 2>/dev/null; then
+        rm -f "$TT_RUN/nvram-failed"
+        cat "$output"
+        return $?
+    fi
+    if [ -d "$TT_RUN" ] && [ ! -L "$TT_RUN" ]; then
+        failure=$(mktemp "$TT_RUN/.nvram-failed.XXXXXX") || return 1
+        chmod 600 "$failure" && printf '%s\n' "$now" >"$failure" && mv -f "$failure" "$TT_RUN/nvram-failed" || {
+            rm -f "$failure"; return 1;
+        }
+    fi
+    return 1
+)
 tt_atomic_json() {
     # Input is already validated. Temp file is on the destination filesystem.
     TT_AJ_TMP=$(mktemp "${2}.XXXXXX") || return 1

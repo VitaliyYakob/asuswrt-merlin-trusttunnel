@@ -1,6 +1,8 @@
-# Состояние 0.3.1-alpha.10
+# Состояние 0.3.1-alpha.11
 
-Имя проекта: **asuswrt-merlin-trusttunnel**. Публичный [репозиторий](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel), опубликованный [предварительный релиз alpha.10 с файлами установки](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.10). На действующем RT-AX86U установлена **alpha.10 через IPK / официальный CLI 1.1.7**, выбранный гостевой VPN включён. Конфигурация и история CLI сохранены побайтово; после установки проверены реальные пакеты через tt0 и ожидаемые правила.
+Исправление alpha.11 применено на RT-AX86U как точечное обновление runtime/payload без остановки клиента. Статус снова публикуется по расписанию; изолированный тест зависания на firmware ash/GNU timeout прошёл. PID/starttime клиента, приватная конфигурация и main routes сохранены; cron восстановил отсутствовавшее собственное правило 17100 из прежней политики. Проверены 257 Python tests, JavaScript, ShellCheck и браузерные сценарии; финальный пассивный аппаратный тест подтвердил ожидаемые правила и 8/7 пакетов через TUN; подробности — [TEST-REPORT.md](TEST-REPORT.md). Регистрация opkg остаётся alpha.10-1; новый IPK alpha.11 собран локально. Публичный релиз alpha.10 и его файлы не изменены.
+
+Имя проекта: **asuswrt-merlin-trusttunnel**. Публичный [репозиторий](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel), опубликованный [предварительный релиз alpha.10 с файлами установки](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.10). На действующем RT-AX86U работают **runtime alpha.11 (hotfix поверх IPK alpha.10) / официальный CLI 1.1.7**, выбранный гостевой VPN включён. Конфигурация и история CLI сохранены побайтово; после установки проверены реальные пакеты через tt0 и ожидаемые правила.
 
 ## Готово
 
