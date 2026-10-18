@@ -91,7 +91,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         assert.equal(await page.locator('#ttm-password').inputValue(),endpoint.password);
         assert.equal(await page.locator('#ttm-message').getAttribute('class'),'ttm-error');
         await page.getByRole('tab',{name:'Обзор',exact:true}).click();
-        await page.getByRole('button',{name:'Запустить',exact:true}).click();
+        await page.getByRole('button',{name:'Подключить',exact:true}).click();
         await page.waitForFunction(()=>document.getElementById('ttm-message').textContent.includes('Выберите сети'),{},{timeout:30000});
         assert.equal(await page.locator('#ttm-message').getAttribute('class'),'ttm-error');
         assert.deepEqual(errors,[]);

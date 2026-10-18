@@ -32,19 +32,19 @@ const document = html.replace(/window\.TTM_PREVIEW=.*?;<\/script>/s, '</script>'
     try {
         await page.goto('https://router.test/user1.asp');
         await page.waitForFunction(() => document.getElementById('ttm-message').textContent.includes('Статус не обновляется'));
-        assert.ok(await page.getByRole('button',{name:'Пауза с блокировкой',exact:true}).isDisabled());
+        assert.ok(await page.locator('#ttm-toggle').isDisabled());
         assert.match(await page.locator('#ttm-age').innerText(), /\d{2}\.\d{2}\.\d{4}/);
         assert.ok(!(await page.locator('#ttm-message').innerText()).includes('обновления контроллера'));
         await page.getByRole('button',{name:'Обновить данные',exact:true}).click();
         await page.waitForFunction(() => document.getElementById('ttm-message').textContent === 'Статус обновлён.');
         assert.equal(commands.length, 1);
-        assert.equal(await page.getByRole('button',{name:'Пауза с блокировкой',exact:true}).isDisabled(), false);
+        assert.equal(await page.locator('#ttm-toggle').isDisabled(), false);
         state.health = {details_ready:false,error:'nvram_unavailable'};
         await page.evaluate(() => window.done_validating());
         await page.waitForFunction(() => document.getElementById('ttm-message').textContent.includes('сведения о Wi-Fi'));
         assert.equal(await page.locator('#ttm-policy-fields').evaluate(fieldset => fieldset.disabled), true);
         assert.equal(await page.locator('#ttm-save').isDisabled(), true);
-        assert.equal(await page.getByRole('button',{name:'Пауза с блокировкой',exact:true}).isDisabled(), false);
+        assert.equal(await page.locator('#ttm-toggle').isDisabled(), false);
         state.health = {details_ready:true,error:''};
         await page.evaluate(() => window.done_validating());
         await page.waitForFunction(() => document.getElementById('ttm-message').textContent === 'Статус обновлён.');

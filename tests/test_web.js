@@ -10,6 +10,16 @@ const policy = (rows = [row()], acknowledge = true) => api.policyFromNetworks(ro
 const legacy = () => ({schema: 1, lan_if: 'br1', sources: ['192.168.50.0/24', '10.0.0.1/32'], dns_ipv4: '1.1.1.1', block_ipv6_bridge: true, table: 871, priority: 17100});
 const decode = p => JSON.parse(atob(JSON.parse(api.makeEnvelope({}, p)).ttm_policy));
 
+test('primary action follows process state without treating TUN as verified connectivity', () => {
+    assert.equal(api.connectionAction(null), 'start');
+    for (const state of ['disabled', 'paused_protected', 'blocked_or_start_failed']) {
+        assert.equal(api.connectionAction({state, enabled:state!=='disabled', process_running:false, interface_up:true}), 'start');
+    }
+    assert.equal(api.connectionAction({enabled:true, process_running:true, interface_up:true}), 'disable');
+    assert.equal(api.connectionAction({enabled:true, process_running:true, interface_up:false}), 'disable');
+    assert.equal(api.connectionAction({enabled:false, process_running:true}), 'disable');
+});
+
 test('SSID clients use actual association, not shared subnet alone', () => {
     const network={lan_if:'br0',sources:['192.168.50.0/24']};
     const wireless=(lan_if,ssid)=>({lan_if,ssid});

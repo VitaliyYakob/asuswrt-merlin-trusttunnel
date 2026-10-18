@@ -87,7 +87,7 @@ async function exercise(browser, viewport, screenshot) {
         assert.equal(await page.locator('input.ttm-bridge, textarea.ttm-bridge, select.ttm-bridge').count(), 0, 'bridge must not be user-editable');
         assert.equal(await page.getByRole('button', {name: 'Добавить сеть', exact: true}).count(), 0);
         assert.equal(await page.locator('.ttm-remove').count(), 0);
-        await page.getByRole('button', {name: 'Запустить', exact: true}).click();
+        await page.getByRole('button', {name: 'Подключить', exact: true}).click();
         assert.match(await page.locator('#ttm-message').innerText(), /Демонстрация/);
         await page.getByRole('tab', {name:'Подключение',exact:true}).click();
 

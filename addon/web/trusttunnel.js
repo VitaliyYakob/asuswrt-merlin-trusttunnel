@@ -56,6 +56,8 @@
         if (new TextEncoder().encode(serialized).length > 7600) throw new Error('Недостаточно места в хранилище аддонов. Используйте импорт политики по SSH.');
         return serialized;
     }
+    function connectionAction(status) { return status && status.process_running ? 'disable' : 'start'; }
+    api.connectionAction = connectionAction;
     api.policyFromNetworks = policyFromNetworks; api.makeEnvelope = makeEnvelope; api.contains=contains; api.clientsForSsid=clientsForSsid;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (!root.document) return;
@@ -96,6 +98,12 @@
     }
     function message(value, error, target) { target = target || 'ttm-message'; text(target,value); el(target).className = error ? 'ttm-error' : 'ttm-note'; }
     function controls(ok) {
+        var disconnect=connectionAction(latest)==='disable';
+        text('ttm-toggle',disconnect?'Отключить':'Подключить');
+        el('ttm-toggle').classList.toggle('ttm-release',disconnect);
+        // A paused or failed client can resume without releasing its guards.
+        // Explicit release remains reachable under advanced actions.
+        el('ttm-release-guards').hidden=!(latest && latest.enabled && !latest.process_running);
         ok=ok && !!latest && (!!root.TTM_PREVIEW || Math.abs(Date.now()/1000-latest.timestamp)<150);
         document.querySelectorAll('[data-runtime]').forEach(function (button) { button.disabled = !ok || pending || !!latest.transaction; });
         document.querySelectorAll('[data-view="connection"] input,[data-view="connection"] textarea,[data-view="connection"] select,[data-view="connection"] button').forEach(function (field) { field.disabled=pending; });
@@ -365,6 +373,10 @@
         await save('exclusions',{exclusions:root.TTMConnection.exclusionsFromFields([el('ttm-exclusion-domains').value,el('ttm-exclusion-networks').value].join('\n'))});
     } catch(e) { message(e.message,true); } };
     root.ttmSaveEndpoint=async function () { try { await save('endpoint',readEndpoint()); } catch(e) { message(e.message,true); } };
+    root.ttmToggle = function () {
+        if (!latest || el('ttm-toggle').disabled) return;
+        return root.ttmAction(connectionAction(latest));
+    };
     root.ttmAction = async function (action) { try {
         if (action==='disable' && !root.confirm('Вернуть выбранные сети к обычной маршрутизации Merlin?')) return;
         if (action==='policy') { await save('policy',policy()); return; }
