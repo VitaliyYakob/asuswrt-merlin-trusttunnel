@@ -16,7 +16,7 @@ ARCH = 'aarch64-3.10'
 PREFIX = f'opt/share/{NAME}'
 DEPENDENCIES = ('jq-full', 'flock', 'curl', 'ca-bundle', 'openssl-util', 'gnupg',
                 'coreutils-id', 'coreutils-sha256sum', 'coreutils-mktemp',
-                'coreutils-base64', 'coreutils-od', 'coreutils-stat', 'coreutils-timeout', 'tar')
+                'coreutils-base64', 'coreutils-od', 'coreutils-stat', 'coreutils-timeout', 'coreutils-mkfifo', 'tar')
 TOOLS = ('setup-router.sh', 'prepare-entware.sh', 'router-platform.sh',
          'install-client.sh', 'verify-client.sh')
 

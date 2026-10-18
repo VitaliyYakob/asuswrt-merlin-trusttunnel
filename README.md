@@ -48,7 +48,7 @@
 | --- | --- |
 | `jq-full`, `flock` | Проверка конфигураций и блокировка параллельных операций. Минимальный `jq` без регулярных выражений не подходит. |
 | `curl`, `ca-bundle`, `openssl-util`, `gnupg` | HTTPS-загрузка, доверенные сертификаты, сохранение подключения и проверка подписи CLI. |
-| `coreutils-id`, `coreutils-sha256sum`, `coreutils-mktemp`, `coreutils-base64`, `coreutils-od`, `coreutils-stat`, `coreutils-timeout`, `tar` | Файлы, контрольные суммы, формат бинарника и ограниченные по времени операции. |
+| `coreutils-id`, `coreutils-sha256sum`, `coreutils-mktemp`, `coreutils-base64`, `coreutils-od`, `coreutils-stat`, `coreutils-timeout`, `coreutils-mkfifo`, `tar` | Файлы, контрольные суммы, формат бинарника, ограниченные по времени операции и канал ограниченного журнала. |
 | Штатные `ip`, `iptables`, `ip6tables`, TUN, `nvram`, `cru`, Merlin Addons API | Интерфейс и маршрутизация. Для HND нужны штатные `fc` и `SKIPLOG`; готовность проверяется перед запуском. |
 
 Пакет объявляет зависимости Entware. Установщик по ссылке подготавливает их и безопасно заменяет минимальный `jq`, предварительно сохранив пакеты для восстановления. Общего `opkg upgrade` нет. Существующие общие зависимости не удаляются вместе с аддоном.

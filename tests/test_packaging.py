@@ -55,6 +55,12 @@ class PackageTests(unittest.TestCase):
                              ('client.toml', 'endpoint.json', 'Template/', 'node_modules', 'install-online.sh')))
         self.assertFalse(any(Path(name).name == 'trusttunnel_client' for name in files))
 
+    def test_fifo_dependency_is_declared_for_firmware_without_mkfifo(self):
+        control = self.members(self.metadata)['./control'][0].decode()
+        dependencies = next(line.removeprefix('Depends: ') for line in control.splitlines()
+                            if line.startswith('Depends: ')).split(', ')
+        self.assertIn('coreutils-mkfifo', dependencies)
+
     def test_reproducible_and_online_hash_matches(self):
         digest = hashlib.sha256(self.ipk.read_bytes()).hexdigest()
         second = BUILDER.build(ROOT, self.work / 'second')
@@ -184,6 +190,28 @@ class InstallerTests(unittest.TestCase):
         self.assertNotIn('opkg:', self.calls())
         self.assertNotIn('curl:', self.calls())
         self.assertIn('native-disabled-install', self.calls())
+
+    def test_missing_mkfifo_is_refused_before_client_or_native_install(self):
+        script = self.source / 'tools/setup-router.sh'
+        script.write_text(script.read_text().replace('set -eu\n',
+                          'set -eu\ntype() { [ "$1" != mkfifo ]; }\n', 1))
+        result = self.run_script(script, '--lab-only', '--from-ipk')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Missing utility: mkfifo', result.stderr)
+        self.assertNotIn('native-disabled-install', self.calls())
+        self.assertNotIn('curl:', self.calls())
+        self.assertFalse((self.root / 'opt/trusttunnel/bin/trusttunnel_client').exists())
+
+    def test_dependency_preparation_installs_mkfifo_without_global_upgrade(self):
+        self.shim('opkg', '''case "$1" in
+print-architecture) echo 'arch aarch64-3.10 160';;
+list-installed|update) :;;
+install) case " $* " in *' coreutils-mkfifo '*) :;; *) exit 89;; esac;;
+*) exit 98;; esac''')
+        result = self.run_script(self.source / 'tools/prepare-entware.sh', '--lab-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('coreutils-mkfifo', self.calls())
+        self.assertNotIn('opkg:upgrade', self.calls())
 
     def test_corrupt_existing_client_is_not_overwritten(self):
         binary = self.bin.parent / 'trusttunnel/bin/trusttunnel_client'

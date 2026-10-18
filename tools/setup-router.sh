@@ -26,7 +26,7 @@ tt_install_platform "$FROM_IPK"
 [ -f "$SRC/install.sh" ] && [ -f "$SRC/tools/install-client.sh" ] || exit 1
 if [ "$FROM_IPK" != --from-ipk ]; then sh "$SRC/tools/prepare-entware.sh" --lab-only; fi
 # In maintainer context, only validate dependencies; never acquire opkg's lock.
-for utility in jq id sha256sum mktemp base64 od stat flock curl openssl gpg timeout tar; do
+for utility in jq id sha256sum mktemp base64 od stat flock curl openssl gpg timeout mkfifo tar; do
     type "$utility" >/dev/null 2>&1 || { echo "Missing utility: $utility" >&2; exit 1; }
 done
 jq -en '"merlin" | test("^merlin$")' >/dev/null

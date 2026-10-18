@@ -6,7 +6,7 @@ export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 . "$SRC/tools/router-platform.sh"
 tt_install_platform --from-ipk
-for tool in jq flock ip sha256sum cru mktemp base64 od stat openssl; do type "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }; done
+for tool in jq flock ip sha256sum cru mktemp base64 od stat openssl mkfifo; do type "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }; done
 jq -en '"merlin" | test("^merlin$")' >/dev/null 2>&1 || {
     echo 'jq with regex support is required (Entware jq-full)' >&2; exit 1;
 }

@@ -5,7 +5,7 @@ set -eu
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 VERSION=0.3.1-alpha.13
 IPK=asuswrt-merlin-trusttunnel_0.3.1-alpha.13-1_aarch64-3.10.ipk
-IPK_SHA256=9760242506760427c75c4167a6f1e51fc824efacc78fe6aded07b7a483958f3e
+IPK_SHA256=07c45c17e4f54a6036ff0430f5e1b71dc4ad8e0705270a04404971eb23b68922
 [ "${1:-}" = --lab-only ] && [ "$#" -eq 1 ] || {
     echo 'Usage: install-online.sh --lab-only (experimental; installs disabled)' >&2; exit 2;
 }

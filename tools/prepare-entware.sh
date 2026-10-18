@@ -31,7 +31,7 @@ if opkg list-installed | awk '$1=="jq" {found=1} END {exit !found}'; then
     fi
 fi
 opkg install jq-full flock curl ca-bundle openssl-util gnupg coreutils-id coreutils-sha256sum \
-    coreutils-mktemp coreutils-base64 coreutils-od coreutils-stat coreutils-timeout tar
+    coreutils-mktemp coreutils-base64 coreutils-od coreutils-stat coreutils-timeout coreutils-mkfifo tar
 jq -en '"merlin" | test("^merlin$")' >/dev/null
 (exec 9>"$WORK/flock-test"; flock -w 1 9)
 opkg list-installed >"$WORK/packages.after"
