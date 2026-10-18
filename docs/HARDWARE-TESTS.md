@@ -94,12 +94,12 @@ command -v jq ip iptables ip6tables iptables-restore ip6tables-restore flock
 | H37 | IPv4, CIDR, IPv4:порт и `*:порт` | Совпавшие назначения/порты выходят напрямую, остальные остаются в TUN; внешний IP проверен раздельно, включая TCP/UDP где применимо. |
 | H38 | DNS, сбой TT и широкое исключение | Для домена установлено фактическое DNS-поведение; при падении клиента разрешены только ожидаемые исключения; `0.0.0.0/0` проверен как осознанный полный обход и затем удалён. |
 
-## Alpha.13 — NOT RUN, кроме отдельного anonymous GET на alpha.12
+## Alpha.13 — частичная приёмка 18.10.2026
 
-- Две настоящие вкладки: чистая форма следует новой политике, dirty draft не перезаписывает её; потеря ответа после применения сверяет прежний ID.
-- Изменение protocol/MTU/anti_dpi сохраняет прежние DNS/credentials/certificate; действуют trial/confirm/rollback.
-- CLI trial с гостевым устройством: запуск/TUN без подтверждения не принимается; deadline/new boot возвращают прежний binary; явный rollback после принятия сохраняет guards и pause intent.
-- IPK/hotfix → IPK при выключенном VPN; ошибка stage/move/UI и повторное configure; сверка code/config/init/hook/menu и opkg version.
+- **NOT RUN:** две настоящие вкладки: чистая форма следует новой политике, dirty draft не перезаписывает её; потеря ответа после применения сверяет прежний ID.
+- **NOT RUN:** изменение protocol/MTU/anti_dpi сохраняет прежние DNS/credentials/certificate; действуют trial/confirm/rollback.
+- **NOT RUN:** CLI trial с гостевым устройством: запуск/TUN без подтверждения не принимается; deadline/new boot возвращают прежний binary; явный rollback после принятия сохраняет guards и pause intent.
+- **PASS в указанном объёме:** IPK alpha.10 / runtime alpha.12 → IPK alpha.13; совпадение версий, config/CLI/routes/rules/cron, файлов runtime/payload/init и ресурсов UI; ограниченное наблюдение пакетов. Реальный внешний возврат после отсутствующего mkfifo выполнен. Ошибки внутренних stage/move/UI и повторное configure остаются **NOT RUN**.
 - Измерить CPU/RSS/FIFO burst на AX86U; убедиться в отсутствии глобального отключения HND и деградации основной сети при установленном выключенном аддоне.
 - Anonymous GET, expired/foreign cookies, другой Origin/CSRF и WAN: никаких private JSON/управляющих действий. Optional read-only checker требует доверенного сертификата, не выполняет POST.
 - Физические USB/питание и раннюю загрузку выполнять только при доступном пользователе и подготовленном локальном восстановлении.
