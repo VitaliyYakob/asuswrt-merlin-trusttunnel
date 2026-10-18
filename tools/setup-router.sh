@@ -21,6 +21,7 @@ if [ "${1:-}" = --verify-archive ] && [ "$#" -eq 2 ]; then verify_archive "$2"; 
 SRC=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 . "$SRC/tools/router-platform.sh"
 FROM_IPK=${2:-}
+[ "$FROM_IPK" = --from-ipk ] || tt_install_bootstrap_timeout
 tt_install_platform "$FROM_IPK"
 [ -f "$SRC/install.sh" ] && [ -f "$SRC/tools/install-client.sh" ] || exit 1
 if [ "$FROM_IPK" != --from-ipk ]; then sh "$SRC/tools/prepare-entware.sh" --lab-only; fi

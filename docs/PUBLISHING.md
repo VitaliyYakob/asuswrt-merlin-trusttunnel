@@ -1,6 +1,6 @@
 # Подготовка и публикация на GitHub
 
-Имя: `VitaliyYakob/asuswrt-merlin-trusttunnel`, основная ветка: `main`. Локальная рабочая ветка — `codex/recommended-improvements`. Документ описывает подготовку и публикацию новых версий; workflow создаёт черновик релиза, а его публичный выпуск выполняется по разрешению автора.
+Имя: `VitaliyYakob/asuswrt-merlin-trusttunnel`, основная ветка: `main`. Рабочие ветки имеют префикс `codex/`; конкретную ветку проверяйте перед публикацией. Документ описывает подготовку и публикацию новых версий; workflow создаёт черновик релиза, а его публичный выпуск выполняется по разрешению автора.
 
 Первый публичный выпуск — [v0.3.1-alpha.10](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.10). Обе проверки GitHub Actions, состав архивов, контрольные суммы и анонимное скачивание подтверждены в [TEST-REPORT.md](TEST-REPORT.md). Issues и защита main настроены; опубликованный тег не перезаписывать.
 
@@ -26,3 +26,18 @@
 - Снимки без рабочего сервера, SSID, адресации и имён устройств автора.
 - Официальный CLI не включён в репозиторий; его первоначальная загрузка проверяется по закреплённым хешам и GPG-подписи.
 - В релизе IPK и соответствующие ему исходники/SHA256SUMS; сборочные и rollback-каталоги не опубликованы.
+
+## Свидетельство происхождения alpha.13
+
+Сборка создаёт manifest.json: версия, архитектура, commit (если доступен Git), признак изменённого дерева, digest исходного содержимого и хеши/размеры трёх файлов поставки. SHA256SUMS также включает manifest. Локальный manifest не подписан.
+
+Запускать workflow с ref того же тега (например gh workflow run release.yml --ref v0.3.1-alpha.13 -f release_tag=v0.3.1-alpha.13). SHA контекста workflow обязан совпадать с checkout; изменённое дерево и несовпадающий manifest отклоняются. Release workflow требует завершённый успешный полный ci.yml именно коммита тега, повторяет browser tests, затем закреплённый actions/attest создаёт подпись GitHub/Sigstore. В черновик добавляется attestation.bundle.json. На компьютере с GitHub CLI:
+
+```sh
+gh attestation verify asuswrt-merlin-trusttunnel_0.3.1-alpha.13-1_aarch64-3.10.ipk \
+  --repo VitaliyYakob/asuswrt-merlin-trusttunnel \
+  --signer-workflow VitaliyYakob/asuswrt-merlin-trusttunnel/.github/workflows/release.yml \
+  --bundle attestation.bundle.json
+```
+
+Проверить source commit в manifest и результате provenance против согласованного тега. На роутере GitHub CLI не требуется: при ручной установке переносится уже проверенный пакет. Workflow/attestation этой версии ещё не выполнялись удалённо, поэтому наличие YAML не считается готовой подписью или PASS. Для online bootstrap остаётся прежняя модель доверия HTTPS + закреплённый SHA-256.

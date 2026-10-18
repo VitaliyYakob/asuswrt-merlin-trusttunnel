@@ -31,6 +31,9 @@ class ClientUpdateTests(unittest.TestCase):
         self.digest = hashlib.sha256(self.bin.read_bytes()).hexdigest()
         Path(str(self.bin)+'.sha256').write_text(self.digest)
         self.run = self.path/'tmp/trusttunnel'; self.run.mkdir(parents=True)
+        (self.path/'proc/sys/kernel/random').mkdir(parents=True)
+        (self.path/'proc/sys/kernel/random/boot_id').write_text('synthetic-boot-1')
+        (self.path/'proc/uptime').write_text('1000.0 0.0\n')
         self.config = self.path/'jffs/addons/trusttunnel/config'; self.config.mkdir(parents=True)
         self.stage = self.bin.parent/'stage'; self.stage.write_bytes(b'new verified fixture'); self.stage.chmod(0o755)
         self.metadata = self.path/'installed.json'; self.metadata.write_text('{"version":"1.1.7"}')
@@ -67,6 +70,11 @@ tt_spawn() { printf 'spawn\n' >>"$TT_RUN/effects"; }
             with self.subTest(field=field):
                 r=release(); r['assets'][0][field]=value
                 self.assertIsNone(self.select([r],'stable'))
+
+    def test_unknown_version_has_one_explicit_relation_instead_of_empty_json(self):
+        r=subprocess.run(['jq','-n','-L',str(ROOT/'addon/share'),'include "versions"; "v1.1.7"|version_relation("unknown")'],capture_output=True,text=True)
+        self.assertEqual(r.returncode,0,r.stderr)
+        self.assertEqual(json.loads(r.stdout),'unknown')
 
     def test_offline_commands_never_fetch_or_execute(self):
         for command in ['tt_update_check','tt_update_install 0123456789abcdef']:
@@ -159,9 +167,61 @@ tt_update_status''')
         self.assertEqual(Path(str(self.bin)+'.previous').read_bytes(),b'old verified fixture')
         self.assertTrue((self.config/'enabled').exists())
         self.assertEqual((self.run/'effects').read_text(),'stop\nspawn\n')
-        self.assertFalse((self.config/'client-update-journal.json').exists())
+        self.assertEqual(json.loads((self.config/'client-update-journal.json').read_text())['phase'],'trial')
         installed=json.loads((self.config/'client-release.json').read_text())
         self.assertGreater(installed['installed_at'],0)
+
+    def test_trial_survives_refresh_then_expires_on_monotonic_clock(self):
+        (self.config/'enabled').touch()
+        result=self.shell('''tt_update_replace "${TT_BIN%/*}/stage" "$TT_ROOT/installed.json" && tt_update_recover
+printf '1500.0 0' >"$TT_PROC/uptime"
+tt_update_recover''')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.bin.read_bytes(),b'old verified fixture')
+        self.assertFalse((self.config/'client-update-journal.json').exists())
+
+    def test_trial_confirm_requires_explicit_confirmation_and_bound_binary(self):
+        (self.config/'enabled').touch()
+        result=self.shell('''tt_live() { return 0; }; tt_pid_matches() { return 0; }; ip() { return 0; }
+tt_update_replace "${TT_BIN%/*}/stage" "$TT_ROOT/installed.json" && tt_update_confirm''')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.bin.read_bytes(),b'new verified fixture')
+        self.assertFalse((self.config/'client-update-journal.json').exists())
+        self.assertTrue(Path(str(self.bin)+'.previous').exists())
+
+    def test_trial_reverts_conservatively_after_new_boot(self):
+        (self.config/'enabled').touch()
+        result=self.shell('''tt_update_replace "${TT_BIN%/*}/stage" "$TT_ROOT/installed.json" || exit 1
+printf other-boot >"$TT_PROC/sys/kernel/random/boot_id"
+tt_update_recover''')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.bin.read_bytes(),b'old verified fixture')
+
+    def test_older_signed_candidate_requires_downgrade_mode(self):
+        (self.path/'releases.json').write_text(json.dumps([release('v1.1.5')]))
+        result=self.shell('''tt_live() { return 0; }; tt_update_version() { printf 1.1.7; }
+tt_update_fetch() { cp "$TT_ROOT/releases.json" "$2"; }
+tt_lock && tt_update_check && tt_lock || exit 1
+id=$(jq -r .id "$TT_RUN/client-candidate.json")
+! tt_update_candidate_valid "$id" && tt_update_candidate_valid "$id" downgrade''')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads((self.run/'client-candidate.json').read_text())['state'],'older')
+
+    def test_explicit_rollback_after_acceptance_preserves_guards_and_resumes(self):
+        (self.config/'enabled').touch()
+        result=self.shell('''tt_live() { return 0; }; tt_pid_matches() { return 0; }; ip() { return 0; }; tt_preflight() { return 0; }
+tt_update_replace "${TT_BIN%/*}/stage" "$TT_ROOT/installed.json" && tt_update_confirm && tt_update_rollback''')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.bin.read_bytes(),b'old verified fixture')
+        self.assertTrue((self.config/'enabled').exists())
+        self.assertEqual((self.run/'effects').read_text(),'stop\nspawn\nstop\nspawn\n')
+
+    def test_direct_import_refuses_an_unconfirmed_client_trial(self):
+        (self.config/'client-update-journal.json').write_text('{}')
+        r=self.shell('tt_import endpoint "$TT_BASE/../examples/endpoint.example.json"')
+        self.assertNotEqual(r.returncode,0)
+        self.assertIn('finish or recover',r.stderr)
+        self.assertFalse((self.config/'endpoint.json').exists())
 
     def test_paused_replace_never_resumes_traffic(self):
         (self.config/'enabled').touch(); (self.config/'paused').touch()

@@ -26,11 +26,14 @@ class MerlinShellTests(unittest.TestCase):
                 for prefix in ('/opt/', '/jffs/', '/proc/', '/tmp/trusttunnel'):
                     text = text.replace(prefix, str(sandbox / 'router') + prefix)
                 (sandbox / relative).write_text(text)
+            fakebin=sandbox/'router/opt/bin'; fakebin.mkdir()
+            nvram=fakebin/'nvram'
+            nvram.write_text('#!/bin/sh\ncase "$2" in rc_support) echo am_addons;; jffs2_scripts) echo 1;; firmver) echo 3.0.0.4;; buildno) echo 388.12;; esac\n')
+            nvram.chmod(0o755)
             before = sorted(str(p.relative_to(sandbox)) for p in sandbox.rglob('*'))
             result = subprocess.run(['busybox', 'ash', '-c', '''
 id() { echo 0; }
 uname() { case "$1" in -s) echo Linux;; -m) echo aarch64;; esac; }
-nvram() { case "$2" in rc_support) echo am_addons;; jffs2_scripts) echo 1;; firmver) echo 3.0.0.4;; buildno) echo 388.12;; esac; }
 opkg() { return 0; }
 jq() { return 5; }
 cru() { return 0; }

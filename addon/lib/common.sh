@@ -1,7 +1,7 @@
 #!/bin/sh
 # Filesystem overrides are for offline development, never for live networking.
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-TT_VERSION=0.3.1-alpha.12
+TT_VERSION=0.3.1-alpha.13
 TT_ROOT=${TT_ROOT:-}
 TT_CONFIG="$TT_ROOT/jffs/addons/trusttunnel/config"
 TT_RUN="$TT_ROOT/tmp/trusttunnel"
@@ -77,6 +77,22 @@ tt_nvram_get() (
     fi
     return 1
 )
+# Monotonic deadlines are scoped to one boot. Old journals without this clock
+# expire conservatively; changing calendar time cannot extend a trial.
+tt_uptime() { awk '{if ($1~/^[0-9]+(\.[0-9]+)?$/) {print int($1); ok=1} exit} END {exit !ok}' "$TT_PROC/uptime"; }
+tt_boot_id() { cat "$TT_PROC/sys/kernel/random/boot_id"; }
+tt_timer() {
+    TT_TIMER_BOOT=$(tt_boot_id) && TT_TIMER_UP=$(tt_uptime) || return 1
+    [ -n "$TT_TIMER_BOOT" ] || return 1
+    jq -n --arg boot "$TT_TIMER_BOOT" --argjson started "$TT_TIMER_UP" --argjson duration "$1" \
+        '{boot_id:$boot,started:$started,deadline:($started+$duration)}'
+}
+tt_timer_remaining() {
+    TT_TIMER_BOOT=$(tt_boot_id) && TT_TIMER_UP=$(tt_uptime) || { printf '0\n'; return; }
+    jq -r --arg boot "$TT_TIMER_BOOT" --argjson now "$TT_TIMER_UP" '.timer |
+        if .boot_id==$boot and (.started|type)=="number" and (.deadline|type)=="number" and
+            .started<=$now and .deadline>$now then (.deadline-$now|floor) else 0 end' "$1"
+}
 tt_atomic_json() {
     # Input is already validated. Temp file is on the destination filesystem.
     TT_AJ_TMP=$(mktemp "${2}.XXXXXX") || return 1

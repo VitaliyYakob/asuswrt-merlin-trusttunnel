@@ -29,7 +29,7 @@ TT_ACTION=${1:-help}
 case "$TT_ACTION" in
     help|--help)
         cat <<'HELP'
-TrustTunnel Merlin 0.3.1-alpha.12
+TrustTunnel Merlin 0.3.1-alpha.13
 Offline (never changes networking):
   validate endpoint|policy FILE
   render ENDPOINT_JSON           # contains credentials; protect redirected output
@@ -77,14 +77,8 @@ HELP
             start:ttm_begin_*|start:ttm_part_*|start:ttm_commit_*|start:ttm_do_*|start:ttm_confirm_*|start:ttm_rollback_*|start:ttm_abort_*)
                 "$TT_BASE/trusttunnel.sh" transfer-event "$2" >/dev/null 2>&1 &
                 exit 0;;
-            start:ttm_start) TT_DISPATCH=start;;
-            start:ttm_pause) TT_DISPATCH=pause;;
-            start:ttm_restart) TT_DISPATCH=restart;;
-            start:ttm_disable) TT_DISPATCH=disable;;
-            start:ttm_policy) TT_DISPATCH=apply-web-policy;;
             *) exit 0;;
         esac
-        "$TT_BASE/trusttunnel.sh" "$TT_DISPATCH" >/dev/null 2>&1 &
         exit 0;;
     hook)
         [ "$#" -eq 1 ] || exit 1
@@ -99,7 +93,7 @@ HELP
         case "$TT_ACTION" in
             check-updates) [ "$#" -eq 0 ] && tt_update_check;;
             update-client) [ "$#" -eq 1 ] && tt_update_install "$1";;
-            recover-client) [ "$#" -eq 0 ] && tt_update_recover;;
+            recover-client) [ "$#" -eq 0 ] && tt_update_recover force;;
             verify-traffic) [ "$#" -eq 0 ] && tt_verify_traffic;;
         esac
         TT_RESULT=$?; tt_lock || exit 1; tt_publish_status || :; exit "$TT_RESULT";;

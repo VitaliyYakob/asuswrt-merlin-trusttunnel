@@ -3,7 +3,7 @@
 # until explicit confirmation. Incomplete rollback keeps the quarantine owned.
 tt_transaction_state() {
     if [ -f "$TT_CONFIG/transaction/manifest.json" ]; then
-        jq '{id,kind,phase,deadline}' "$TT_CONFIG/transaction/manifest.json"
+        jq --argjson remaining "$(tt_timer_remaining "$TT_CONFIG/transaction/manifest.json")" '{id,kind,phase,deadline,remaining_seconds:$remaining}' "$TT_CONFIG/transaction/manifest.json"
     else printf 'null\n'; fi
 }
 tt_transaction_manifest() {
@@ -59,8 +59,9 @@ tt_transaction_apply() {
         ! cp -p "$TT_ENDPOINT" "$TT_CONFIG/transaction/new-endpoint.json" ||
         ! cp "$2" "$TT_CONFIG/transaction/new-$1.json"; then tt_transaction_cleanup; return 1; fi
     TT_TX_PAUSED=false; [ ! -f "$TT_PAUSED" ] || TT_TX_PAUSED=true
-    jq -n --arg id "${TT_OP_ID:-local}" --arg kind "$1" --argjson paused "$TT_TX_PAUSED" --argjson deadline "$(($(date +%s)+180))" \
-        '{id:$id,kind:$kind,paused:$paused,phase:"prepared",deadline:$deadline}' >"$TT_CONFIG/transaction/manifest.json" || return 1
+    TT_TX_TIMER=$(tt_timer 180) || return 1
+    jq -n --argjson timer "$TT_TX_TIMER" --arg id "${TT_OP_ID:-local}" --arg kind "$1" --argjson paused "$TT_TX_PAUSED" --argjson deadline "$(($(date +%s)+180))" \
+        '{id:$id,kind:$kind,paused:$paused,phase:"prepared",deadline:$deadline,timer:$timer}' >"$TT_CONFIG/transaction/manifest.json" || return 1
     : >"$TT_CONFIG/transaction/quarantine-owned"
     : >"$TT_RUN/transaction-owned"
     if tt_transaction_guard block && tt_transaction_manifest applying &&
@@ -101,12 +102,13 @@ tt_transaction_rollback() {
 }
 tt_transaction_confirm() {
     [ -f "$TT_CONFIG/transaction/manifest.json" ] || return 1
-    jq -e --arg id "$1" --argjson now "$(date +%s)" '.id==$id and .phase=="trial" and .deadline>$now' "$TT_CONFIG/transaction/manifest.json" >/dev/null || return 1
+    [ "$(tt_timer_remaining "$TT_CONFIG/transaction/manifest.json")" -gt 0 ] || return 1
+    jq -e --arg id "$1" '.id==$id and .phase=="trial"' "$TT_CONFIG/transaction/manifest.json" >/dev/null || return 1
     tt_rpf_prune && tt_transaction_guard remove && tt_transaction_cleanup
 }
 tt_transaction_reconcile() {
     [ -f "$TT_CONFIG/transaction/manifest.json" ] || return 0
-    if jq -e --argjson now "$(date +%s)" '.phase=="trial" and .deadline>$now' "$TT_CONFIG/transaction/manifest.json" >/dev/null; then
+    if [ "$(tt_timer_remaining "$TT_CONFIG/transaction/manifest.json")" -gt 0 ] && jq -e '.phase=="trial"' "$TT_CONFIG/transaction/manifest.json" >/dev/null; then
         tt_transaction_guard trial
     else tt_transaction_rollback; fi
 }

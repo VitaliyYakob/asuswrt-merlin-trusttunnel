@@ -53,7 +53,7 @@ TT_OP_ID=0123456789abcdef
 
     def test_expiry_reconciles_to_old_policy(self):
         r = self.run_case('''tt_transaction_apply policy "$TT_RUN/candidate.json" || exit 1
-jq '.deadline=0' "$TT_CONFIG/transaction/manifest.json" >"$TT_RUN/expired"
+jq '.timer.deadline=0' "$TT_CONFIG/transaction/manifest.json" >"$TT_RUN/expired"
 mv "$TT_RUN/expired" "$TT_CONFIG/transaction/manifest.json"
 tt_transaction_reconcile''')
         self.assertEqual(r.returncode, 0, r.stderr)

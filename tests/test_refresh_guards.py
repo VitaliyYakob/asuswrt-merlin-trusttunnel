@@ -56,7 +56,7 @@ tt_spawn() { : >"$TT_RUN/spawn-called"; return 0; }
 tt_live() { return 0; }
 tt_preflight() { echo unexpected >&2; return 99; }
 : >"$TT_ENABLED"
-jq -n --argjson next "$(($(date +%s)+900))" '{failures:5,next_attempt:$next}' >"$TT_RUN/retry.json"
+jq -n --argjson timer "$(tt_timer 900)" '{failures:5,timer:$timer}' >"$TT_RUN/retry.json"
 tt_refresh''')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('unexpected', result.stderr)

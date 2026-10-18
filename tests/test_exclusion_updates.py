@@ -22,8 +22,8 @@ class ExclusionUpdateTests(unittest.TestCase):
         self.original = self.dest.read_bytes()
         self.request = self.path/'request.json'
 
-    def execute(self, data, before='', revision='0'):
-        self.request.write_text(json.dumps(dict(version=1, kind='exclusions', revision=revision, data=data)))
+    def execute(self, data, before='', revision='0', kind='exclusions'):
+        self.request.write_text(json.dumps(dict(version=1, kind=kind, revision=revision, data=data)))
         script = '''. "$TT_BASE/lib/common.sh"
 . "$TT_BASE/lib/config.sh"
 . "$TT_BASE/lib/service.sh"
@@ -90,10 +90,26 @@ tt_transaction_apply() { printf '%s' "$1" >"$TT_RUN/transaction-kind"; cp "$2" "
         self.assertEqual(json.loads((self.path/'tmp/trusttunnel/transaction-data').read_text()),self.endpoint|{'exclusions':['example.com']})
         self.assertEqual(self.dest.read_bytes(),self.original)
 
+    def test_partial_settings_preserve_dns_credentials_and_certificate(self):
+        patch=dict(protocol='http3',mtu=1400,anti_dpi=True)
+        result=self.execute(patch,kind='endpoint_settings')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads(self.dest.read_text()),self.endpoint|patch)
+        self.assertEqual((self.config/'endpoint.json.previous').read_bytes(),self.original)
+
+    def test_partial_settings_cannot_modify_credentials_dns_or_unknown_fields(self):
+        for patch in (dict(protocol='http3',mtu=1400,anti_dpi=True,password='injected'),
+                      dict(protocol='http3',mtu=1400,anti_dpi=True,dns_upstreams=[]),
+                      dict(protocol='http3',mtu=500,anti_dpi=True), {}):
+            with self.subTest(patch=patch):
+                (self.path/'tmp/trusttunnel/operations/0123456789abcdef.json').unlink(missing_ok=True)
+                self.assertNotEqual(self.execute(patch,kind='endpoint_settings').returncode,0)
+                self.assertEqual(self.dest.read_bytes(),self.original)
+
     def test_status_returns_only_exclusions_and_configured_flag(self):
         result = self.execute({'exclusions':['example.com']}, '''tt_status >"$TT_RUN/status-test.json"''')
         self.assertEqual(result.returncode,0,result.stderr)
         raw = (self.path/'tmp/trusttunnel/status-test.json').read_text()
-        self.assertEqual(json.loads(raw)['endpoint'],dict(configured=True,exclusions=[]))
+        self.assertEqual(json.loads(raw)['endpoint'],dict(configured=True,exclusions=[],settings={key:self.endpoint[key] for key in ('protocol','mtu','anti_dpi')}))
         for secret in ('SYNTHETIC-secret','SYNTHETIC-user','BEGIN CERTIFICATE','tls://1.1.1.1'):
             self.assertNotIn(secret,raw)

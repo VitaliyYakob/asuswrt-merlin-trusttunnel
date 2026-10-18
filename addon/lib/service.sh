@@ -41,7 +41,7 @@ tt_check_dns_transit() {
 tt_preflight() {
     TT_FAILURE_CODE=
     tt_live || return 1
-    for TT_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock sha256sum; do
+    for TT_TOOL in jq ip iptables ip6tables iptables-restore ip6tables-restore flock sha256sum mkfifo; do
         type "$TT_TOOL" >/dev/null 2>&1 || { tt_start_failure missing_dependency 'required runtime tool missing'; return 1; }
     done
     tt_validate endpoint "$TT_ENDPOINT" || { tt_start_failure endpoint_missing 'save a valid connection first'; return 1; }
@@ -79,8 +79,13 @@ tt_spawn() {
     tt_render_runtime || return 1
     : >"$TT_RUN/client.log"
     chmod 600 "$TT_RUN/client.log"
-    # Close the controller lock FD in the child. Retaining it would deadlock future actions.
-    "$TT_BIN" --config "$TT_RUN/client.toml" >>"$TT_RUN/client.log" 2>&1 9>&- &
+    # A bounded consumer keeps logs in RAM below 1 MiB even if refresh stalls.
+    # Both children close the control FD; EOF cleans the unique owned FIFO.
+    type mkfifo >/dev/null 2>&1 || { tt_error 'mkfifo is required'; return 1; }
+    TT_LOG_DIR=$(mktemp -d "$TT_RUN/.log.XXXXXX") || return 1
+    if ! mkfifo -m 600 "$TT_LOG_DIR/pipe"; then rmdir "$TT_LOG_DIR"; return 1; fi
+    /bin/sh "$TT_BASE/lib/log-writer.sh" "$TT_LOG_DIR" "$TT_RUN/client.log" </dev/null >/dev/null 2>&1 9>&- &
+    "$TT_BIN" --config "$TT_RUN/client.toml" >"$TT_LOG_DIR/pipe" 2>&1 9>&- &
     TT_NEW_PID=$!
     printf '%s\n' "$TT_NEW_PID" >"$TT_RUN/client.pid"
     [ -r "$TT_PROC/$TT_NEW_PID/stat" ] || { tt_error 'client exited before PID registration'; return 1; }
@@ -136,15 +141,16 @@ tt_retry_client() {
     TT_RETRY_COUNT=0
     if [ -f "$TT_RUN/retry.json" ]; then
         TT_RETRY_COUNT=$(jq -r '.failures' "$TT_RUN/retry.json") || return 1
-        if jq -e --argjson now "$(date +%s)" '.next_attempt>$now' "$TT_RUN/retry.json" >/dev/null; then return 1; fi
+        if [ "$(tt_timer_remaining "$TT_RUN/retry.json")" -gt 0 ]; then return 1; fi
     fi
     if tt_preflight && tt_spawn; then rm -f "$TT_RUN/retry.json"; return 0; fi
     TT_RETRY_COUNT=$((TT_RETRY_COUNT+1)); [ "$TT_RETRY_COUNT" -le 5 ] || TT_RETRY_COUNT=5
     TT_RETRY_DELAY=60; TT_RETRY_I=1
     while [ "$TT_RETRY_I" -lt "$TT_RETRY_COUNT" ]; do TT_RETRY_DELAY=$((TT_RETRY_DELAY*2)); TT_RETRY_I=$((TT_RETRY_I+1)); done
     [ "$TT_RETRY_DELAY" -le 900 ] || TT_RETRY_DELAY=900
-    jq -n --argjson failures "$TT_RETRY_COUNT" --argjson next "$(($(date +%s)+TT_RETRY_DELAY))" \
-        '{failures:$failures,next_attempt:$next}' >"$TT_RUN/retry.json"
+    TT_RETRY_TIMER=$(tt_timer "$TT_RETRY_DELAY") || return 1
+    jq -n --argjson timer "$TT_RETRY_TIMER" --argjson failures "$TT_RETRY_COUNT" --argjson next "$(($(date +%s)+TT_RETRY_DELAY))" \
+        '{failures:$failures,next_attempt:$next,timer:$timer}' >"$TT_RUN/retry.json"
     return 1
 }
 tt_limit_log() {
@@ -156,6 +162,19 @@ tt_limit_log() {
         rm -f "$TT_RUN/log.tail"
     fi
 }
+tt_process_metrics() (
+    tt_pid_matches || { printf 'null\n'; return; }
+    [ -r "$TT_PROC/$TT_PID/status" ] && [ -r "$TT_PROC/$TT_PID/stat" ] && [ -r "$TT_PROC/stat" ] || { printf 'null\n'; return; }
+    # /proc entries can disappear between the identity check and the read.
+    # Optional metrics must never prevent core status publication after a crash.
+    if ! { rss=$(awk '$1=="VmRSS:" {print $2; found=1; exit} END {if(!found)print 0}' "$TT_PROC/$TT_PID/status" 2>/dev/null) &&
+        ticks=$(awk '{printf "%.0f\n",$14+$15}' "$TT_PROC/$TT_PID/stat" 2>/dev/null) &&
+        system=$(awk '$1=="cpu" {for(i=2;i<=9;i++)total+=$i; printf "%.0f\n",total; exit}' "$TT_PROC/stat" 2>/dev/null) &&
+        cores=$(awk '/^cpu[0-9]+ / {n++} END {print n+0}' "$TT_PROC/stat" 2>/dev/null); }; then printf 'null\n'; return; fi
+    case "$rss:$ticks:$system:$cores" in *[!0-9:]*|:*|*::*) printf 'null\n'; return;; esac
+    jq -n --arg start "$TT_START" --argjson rss "$rss" --argjson ticks "$ticks" --argjson system "$system" --argjson cores "$cores" \
+        '{process_start:$start,rss_kib:$rss,cpu_ticks:$ticks,system_ticks:$system,cpu_count:$cores}'
+)
 tt_status_details() {
     TT_DETAILS_READY=true; TT_DETAILS_ERROR=
     TT_DISCOVERED_NETWORKS=$(tt_discover_networks) || {
@@ -207,7 +226,7 @@ tt_status() {
     [ ! -f "$TT_ENDPOINT" ] || TT_HOST=$(jq -r '.hostname // ""' "$TT_ENDPOINT" 2>/dev/null)
     TT_PUBLIC_ENDPOINT='{"configured":false,"exclusions":[]}'
     if [ -f "$TT_ENDPOINT" ] && [ ! -L "$TT_ENDPOINT" ]; then
-        TT_PUBLIC_ENDPOINT=$(jq -c '{configured:true,exclusions:(.exclusions//[])}' "$TT_ENDPOINT" 2>/dev/null) || TT_PUBLIC_ENDPOINT='{"configured":false,"exclusions":[]}'
+        TT_PUBLIC_ENDPOINT=$(jq -c '{configured:true,exclusions:(.exclusions//[]),settings:{protocol,mtu,anti_dpi}}' "$TT_ENDPOINT" 2>/dev/null) || TT_PUBLIC_ENDPOINT='{"configured":false,"exclusions":[]}'
     fi
     TT_PUBLIC_POLICY=null
     [ ! -f "$TT_POLICY" ] || TT_PUBLIC_POLICY=$(jq -c . "$TT_POLICY" 2>/dev/null)
@@ -227,10 +246,10 @@ tt_status() {
         --argjson enabled "$TT_ENABLED_JSON" --argjson rx "$TT_RX" --argjson tx "$TT_TX" \
         --argjson policy "$TT_PUBLIC_POLICY" --argjson timestamp "$(date +%s)" \
         --arg revision "$(tt_revision)" --argjson operations "$TT_STATUS_OPS" --argjson transaction "$TT_STATUS_TX" \
-        --argjson endpoint "$TT_PUBLIC_ENDPOINT" \
+        --argjson endpoint "$TT_PUBLIC_ENDPOINT" --argjson metrics "$(tt_process_metrics)" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
           interface_up:$interface_up,tunnel_addresses:($details.tunnel_addresses//[]),client_updates:($details.client_updates//{}),
-          traffic_check:($details.traffic_check//null),connection_verified:false,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
+          traffic_check:($details.traffic_check//null),connection_verified:false,metrics:$metrics,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
           policy:$policy,discovered_networks:($details.discovered_networks//[]),network_warnings:($details.network_warnings//[]),
           timestamp:$timestamp,last_result:$last_result,hardware_tested:false,revision:$revision,operations:$operations,
           transaction:$transaction,clients:($details.clients//[]),diagnostics:($details.diagnostics//{}),

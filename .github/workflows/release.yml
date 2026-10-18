@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      actions: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -24,16 +27,41 @@ jobs:
         run: |
           printf '%s\n' "$RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+)?$'
           test "$RELEASE_TAG" = "v$(cat VERSION)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Проверка полного CI для точного коммита тега
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=20" --jq '.workflow_runs | sort_by(.created_at) | last | select(.conclusion=="success") | .id' > "$RUNNER_TEMP/ttm-ci-id"
+          test -s "$RUNNER_TEMP/ttm-ci-id"
       - name: Зависимости для автономных тестов
         run: sudo apt-get update && sudo apt-get install -y jq busybox util-linux openssl shellcheck
+      - name: Закреплённые браузерные инструменты
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ttm-browser" --no-save --ignore-scripts playwright@1.62.1
+          node "$RUNNER_TEMP/ttm-browser/node_modules/playwright/cli.js" install --with-deps chromium --only-shell
+          echo "NODE_PATH=$RUNNER_TEMP/ttm-browser/node_modules" >> "$GITHUB_ENV"
       - name: Проверки и сборка закреплённого IPK
         run: |
-          make test lint preview package
-          git diff --exit-code -- install-online.sh
+          make test lint browser-test package
+          git diff --exit-code
+          jq -e '.source.dirty==false and .source.commit==env.GITHUB_SHA' dist/manifest.json >/dev/null
+      - name: Подпись происхождения пакетов и манифеста
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/SHA256SUMS
+          create-storage-record: false
+      - name: Сохранение подписанного свидетельства
+        env:
+          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" dist/attestation.bundle.json
       - name: Создание черновика предварительного релиза с файлами
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --title "Предварительный релиз $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md dist/*.ipk dist/*.zip dist/*.tar.gz dist/SHA256SUMS
+          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --title "Предварительный релиз $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md dist/*.ipk dist/*.zip dist/*.tar.gz dist/SHA256SUMS dist/manifest.json dist/attestation.bundle.json

@@ -43,9 +43,9 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
                 const request=JSON.parse(Buffer.concat(plain).toString());
                 if(stale) state.operations=[{id:match[1],state:'failed',code:'revision_conflict',action:request.kind,revision:'other'}];
                 else { assert.equal(request.revision,state.revision);
-                    if(request.kind==='exclusions') { assert.deepEqual(Object.keys(request.data),['exclusions']); saved={...saved,...request.data}; }
+                    if(request.kind==='exclusions' || request.kind==='endpoint_settings') { assert.deepEqual(Object.keys(request.data).sort(),request.kind==='exclusions'?['exclusions']:['anti_dpi','mtu','protocol']); saved={...saved,...request.data}; }
                     else saved=request.data;
-                    state.endpoint={configured:true,exclusions:saved.exclusions||[]}; state.revision=state.revision==='0'?'abcdef0123456789':'fedcba9876543210'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
+                    state.endpoint={configured:true,exclusions:saved.exclusions||[],settings:{protocol:saved.protocol,mtu:saved.mtu,anti_dpi:saved.anti_dpi}}; state.revision=state.revision==='0'?'abcdef0123456789':'fedcba9876543210'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
                 transfer={state:'idle'};
             } else if((match=command.match(/^start_ttm_do_([a-f0-9]{16})_start$/))) {
                 state.operations=[{id:match[1],state:'failed',code:'policy_missing',action:'start',revision:state.revision}];
@@ -59,6 +59,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
     try {
         await page.goto('https://router.test/user1.asp');
         await page.getByRole('tab',{name:'Подключение',exact:true}).click();
+        await page.locator('#ttm-replace-connection').evaluate(panel=>panel.open=true);
         await page.locator('#ttm-file').setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(endpoint))});
         await page.waitForFunction(()=>document.getElementById('ttm-password').value.length>0);
         await page.locator('#ttm-save-endpoint').click();
@@ -67,6 +68,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         assert.ok(commands.length>3); assert.deepEqual(errors,[]);
         await page.reload();
         await page.getByRole('tab',{name:'Подключение',exact:true}).click();
+        await page.locator('#ttm-replace-connection').evaluate(panel=>panel.open=true);
         assert.equal(await page.locator('#ttm-password').inputValue(),'');
         await page.locator('#ttm-exclusion-domains').fill('example.org');
         await page.locator('#ttm-exclusion-networks').fill('198.51.100.0/24');
@@ -78,9 +80,18 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         assert.equal(await page.locator('#ttm-password').inputValue(),'');
         await page.reload();
         await page.getByRole('tab',{name:'Подключение',exact:true}).click();
+        await page.locator('#ttm-replace-connection').evaluate(panel=>panel.open=true);
         await page.waitForFunction(()=>document.getElementById('ttm-exclusion-domains').value==='example.org');
         assert.equal(await page.locator('#ttm-exclusion-networks').inputValue(),'198.51.100.0/24');
         assert.equal(await page.locator('#ttm-username').inputValue(),'');
+        await page.locator('#ttm-profile-editor > summary').click();
+        await page.locator('#ttm-setting-protocol').selectOption('http3');
+        await page.locator('#ttm-setting-mtu').fill('1400');
+        await page.locator('#ttm-setting-anti-dpi').check();
+        await page.locator('#ttm-save-settings').click();
+        await page.waitForFunction(()=>document.getElementById('ttm-message').textContent==='Операция выполнена.',{},{timeout:60000});
+        assert.deepEqual(saved,{...endpoint,exclusions:['example.org','198.51.100.0/24'],protocol:'http3',mtu:1400,anti_dpi:true});
+        assert.equal(await page.locator('#ttm-password').inputValue(),'');
         // A second browser revision conflict leaves user input intact and reports failure.
         stale=true;
         await page.locator('#ttm-file').setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(endpoint))});

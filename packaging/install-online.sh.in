@@ -10,6 +10,7 @@ IPK_SHA256=@SHA256@
     echo 'Usage: install-online.sh --lab-only (experimental; installs disabled)' >&2; exit 2;
 }
 @PLATFORM@
+tt_install_bootstrap_timeout
 tt_install_platform ''
 # Only bootstrap verification tools when missing; dependencies use configured Entware feeds.
 if ! type sha256sum >/dev/null 2>&1 || ! type curl >/dev/null 2>&1 || ! type tar >/dev/null 2>&1; then

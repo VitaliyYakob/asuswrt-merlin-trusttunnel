@@ -1,5 +1,17 @@
 #!/bin/sh
 # Shared preflight only. No downloads, package changes or networking mutations.
+tt_install_nvram() (
+    # This path runs before runtime exists, including opkg preinst. Never hold
+    # the controller lock in a firmware reader or accept partial timed-out data.
+    exec 9>&-
+    type timeout >/dev/null 2>&1 || { echo 'Install Entware coreutils-timeout before setup' >&2; return 1; }
+    umask 077
+    output=$(mktemp /tmp/ttm-install-nvram.XXXXXX) || return 1
+    trap 'rm -f "$output"' EXIT
+    trap 'exit 1' HUP INT TERM
+    if timeout -k 1 2 nvram get "$1" >"$output" 2>/dev/null; then cat "$output"
+    else echo 'Firmware settings read timed out or failed; installation cancelled' >&2; return 1; fi
+)
 tt_install_firmware_supported() {
     # Support floor, not a claim that every newer model/branch has been tested.
     case "$1" in 3.0.0.4|3.0.0.6) ;; *) return 1;; esac
@@ -22,18 +34,30 @@ tt_install_disabled() {
         echo 'Existing VPN resources must be released with explicit disable first' >&2; return 1;
     }
 }
+tt_install_bootstrap_timeout() {
+    # Called only by an explicit online/manual setup, never by opkg scripts.
+    [ -z "${TT_ROOT:-}" ] || { echo 'Installation is prohibited with TT_ROOT' >&2; return 1; }
+    type timeout >/dev/null 2>&1 && return 0
+    [ "$(uname -s):$(uname -m)" = Linux:aarch64 ] &&
+        [ "$(awk '/^Uid:/ {print $3}' /proc/self/status)" = 0 ] &&
+        [ -f /usr/sbin/helper.sh ] && grep -Eq '^am_get_webui_page\(\)[[:space:]]*\{' /usr/sbin/helper.sh &&
+        type opkg >/dev/null 2>&1 && [ -d /opt/etc/init.d ] || {
+            echo 'Install coreutils-timeout in Entware before setup' >&2; return 1;
+        }
+    tt_install_disabled && opkg update && opkg install coreutils-timeout
+}
 tt_install_platform() {
     [ -z "${TT_ROOT:-}" ] || { echo 'Installation is prohibited with TT_ROOT' >&2; return 1; }
     [ "$(uname -s):$(uname -m)" = Linux:aarch64 ] || { echo 'Linux aarch64 router required' >&2; return 1; }
     # Firmware BusyBox can lack id until Entware dependencies are installed.
     [ "$(awk '/^Uid:/ {print $3}' /proc/self/status)" = 0 ] || { echo 'root required' >&2; return 1; }
-    type nvram >/dev/null 2>&1 && nvram get rc_support | grep -qw am_addons || {
+    type nvram >/dev/null 2>&1 && tt_install_nvram rc_support | grep -qw am_addons || {
         echo 'Merlin Addons API required' >&2; return 1;
     }
-    tt_install_firmware_supported "$(nvram get firmver)" "$(nvram get buildno)" || {
+    tt_install_firmware_supported "$(tt_install_nvram firmver)" "$(tt_install_nvram buildno)" || {
         echo 'Minimum supported Merlin firmware: 3004.388.12 (older versions untested)' >&2; return 1;
     }
-    [ "$(nvram get jffs2_scripts)" = 1 ] || { echo 'Enable JFFS custom scripts in Merlin first' >&2; return 1; }
+    [ "$(tt_install_nvram jffs2_scripts)" = 1 ] || { echo 'Enable JFFS custom scripts in Merlin first' >&2; return 1; }
     type opkg >/dev/null 2>&1 && [ -d /opt/etc/init.d ] || { echo 'Working Entware is required' >&2; return 1; }
     # opkg already checked the package architecture in maintainer context.
     # Never run another opkg process from inside its scripts/package lock.

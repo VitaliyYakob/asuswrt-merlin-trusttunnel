@@ -130,7 +130,7 @@ class InstallerTests(unittest.TestCase):
         self.shim('nvram', 'case "$2" in rc_support) echo "am_addons bcmhnd";; firmver) echo 3.0.0.4;; buildno) echo 388.12;; jffs2_scripts) echo 1;; esac')
         self.shim('opkg', 'if [ "$1" = print-architecture ]; then echo "arch aarch64-3.10 160"; else exit 91; fi')
         self.shim('gpg', 'exit 92')
-        self.shim('timeout', 'exit 94')
+        self.shim('timeout', 'if [ "$1" = -k ]; then shift 3; exec "$@"; fi; exit 94')
         self.source = self.work / 'source'
         (self.source / 'tools').mkdir(parents=True)
         (self.source / 'addon/lib').mkdir(parents=True)

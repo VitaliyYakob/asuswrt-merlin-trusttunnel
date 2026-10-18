@@ -39,6 +39,7 @@ async function exercise(browser, viewport, screenshot) {
     const errors = [], httpRequests = [], downloads = [];
     let validations = 0;
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ttm-browser-'));
+    page.on('dialog',dialog=>dialog.accept());
     page.on('pageerror', error => errors.push(String(error)));
     page.on('console', entry => { if (entry.type() === 'error') errors.push(entry.text()); });
     page.on('request', request => { if (/^https?:/i.test(request.url())) httpRequests.push(request.url()); });
@@ -72,6 +73,7 @@ async function exercise(browser, viewport, screenshot) {
         for (const [bridge, ssid] of Object.entries(ssids)) {
             const item = rows.filter({has: page.getByRole('checkbox', {name: ssid, exact: true})});
             assert.equal(await item.count(), 1, 'one selectable network per SSID inventory entry');
+            await item.locator('.ttm-network-mode').selectOption('custom');
             result[bridge] = item;
         }
         return result;
@@ -90,6 +92,7 @@ async function exercise(browser, viewport, screenshot) {
         await page.getByRole('button', {name: 'Подключить', exact: true}).click();
         assert.match(await page.locator('#ttm-message').innerText(), /Демонстрация/);
         await page.getByRole('tab', {name:'Подключение',exact:true}).click();
+        await page.locator('#ttm-replace-connection').evaluate(panel=>panel.open=true);
 
         const exportEndpoint = page.getByRole('button', {name: 'Проверить и скачать конфигурацию', exact: true});
         await expectError(exportEndpoint, '#ttm-connection-message', /Некорректное поле/);
@@ -181,6 +184,7 @@ async function exercise(browser, viewport, screenshot) {
         await savePolicy.click();
         assert.match(await page.locator('#ttm-message').innerText(), /Демонстрация/);
 
+        await rows.br1.locator('.ttm-network-mode').selectOption('devices');
         await rows.br1.locator('.ttm-device').selectOption('192.168.50.20/32');
         assert.equal(await rows.br1.locator('.ttm-cidrs').inputValue(),'192.168.50.20/32','device selection replaces the broad subnet');
         await page.getByText('Дополнительно: доступ к NAS и другим локальным сетям',{exact:true}).click();
@@ -198,6 +202,7 @@ async function exercise(browser, viewport, screenshot) {
         await expectError(exportPolicy, '#ttm-message', /Выберите/);
         await rows.br0.locator('.ttm-selected').check();
         await rows.br2.locator('.ttm-selected').check();
+        await rows.br1.locator('.ttm-network-mode').selectOption('custom');
         await rows.br1.locator('.ttm-cidrs').fill('ignored while unchecked');
         await rows.br3.locator('.ttm-cidrs').fill('');
         const subset = await downloadJson(exportPolicy, 'policy', 'trusttunnel-policy.json');
@@ -219,6 +224,7 @@ async function exercise(browser, viewport, screenshot) {
         for (const bridge of Object.keys(sources)) await rows[bridge].locator('.ttm-cidrs').fill(sources[bridge]);
         await page.getByRole('button', {name: 'Выбрать все', exact: true}).click();
         await page.getByRole('tab', {name:'Подключение',exact:true}).click();
+        await page.locator('#ttm-replace-connection').evaluate(panel=>panel.open=true);
         await page.getByRole('tab', {name: 'Ссылка tt://', exact: true}).click();
         await page.locator('#ttm-link').fill(dnsLinkFixture);
         await page.getByRole('button', {name: 'Разобрать ссылку', exact: true}).click();
@@ -295,6 +301,8 @@ async function exerciseOverview(browser, width) {
         const legacy=page.getByRole('combobox',{name:'Добавить устройство из Legacy',exact:true});
         assert.deepEqual(await home.locator('option').allTextContents(),['Добавить устройство…','Home fixture · 192.168.10.10']);
         assert.deepEqual(await legacy.locator('option').allTextContents(),['Добавить устройство…','Legacy fixture · 192.168.10.20']);
+        page.on('dialog',dialog=>dialog.accept());
+        await page.locator('.ttm-network-mode').selectOption('devices');
         await home.selectOption('192.168.10.10/32');
         await legacy.selectOption('192.168.10.20/32');
         assert.equal(await page.locator('.ttm-cidrs').inputValue(),'192.168.10.10/32\n192.168.10.20/32');

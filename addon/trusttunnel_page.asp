@@ -4,10 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
 <title>ASUSWRT-Merlin — TrustTunnel</title>
 <link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css">
-<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.12.css">
+<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.13.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.12"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.12"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.12"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.13"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.13"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.13"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,7 +23,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.12</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.13</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -32,7 +32,11 @@
 <button role="tab" type="button" data-view-button="diagnostics" onclick="ttmView('diagnostics')">Диагностика</button>
 </div>
 <div class="ttm-draft"><span id="ttm-dirty">Изменения сохранены</span><button type="button" onclick="ttmReload()">Обновить данные</button></div>
+<p id="ttm-conflict" class="ttm-error" hidden>Настройки изменены в другой вкладке. Ваш черновик сохранён в форме. Обновите данные перед сохранением.</p>
+<p id="ttm-operation-progress" class="ttm-note" role="status" hidden></p>
+<div class="ttm-actions"><button id="ttm-check-operation" type="button" onclick="ttmCheckOperation()" hidden>Проверить результат</button></div>
 <div id="ttm-message" class="ttm-note" role="status" aria-live="polite"></div>
+<div id="ttm-setup" class="ttm-banner" hidden><p id="ttm-setup-state"></p><button type="button" onclick="ttmSetup()">Продолжить настройку</button></div>
 <div id="ttm-transaction" class="ttm-banner" hidden><p id="ttm-transaction-state"></p><div class="ttm-actions"><button id="ttm-confirm" type="button" onclick="ttmTransaction('confirm')">Доступ проверен, подтвердить</button><button type="button" onclick="ttmTransaction('rollback')">Откатить</button></div></div>
 <section class="ttm-section" data-view="overview" aria-labelledby="ttm-status-title">
 <div class="ttm-heading"><h3 id="ttm-status-title">Управление клиентом</h3></div>
@@ -49,7 +53,7 @@
 </dl>
 <p id="ttm-startup" class="ttm-note" role="status" hidden></p>
 <div class="ttm-actions"><button id="ttm-toggle" type="button" class="ttm-primary" data-runtime onclick="ttmToggle()" disabled>Подключить</button></div>
-<p class="ttm-muted">Отключение возвращает выбранные сети к обычной маршрутизации Merlin.</p>
+<p id="ttm-protection-note" class="ttm-muted">Загрузка состояния защиты…</p>
 <details id="ttm-advanced-actions"><summary>Дополнительные действия</summary>
 <div class="ttm-actions">
 <button type="button" data-runtime onclick="ttmAction('pause')" disabled>Пауза с блокировкой</button>
@@ -65,11 +69,24 @@
 <label class="ttm-check"><input type="checkbox" id="ttm-nightly" onchange="ttmAction(this.checked?'channel_nightly':'channel_stable')"> Устанавливать ночные сборки</label>
 <p class="ttm-muted">При включении ищутся только официальные nightly для Linux ARM64. Beta и RC не считаются ночными. Обновление запускается вручную кнопкой; отсутствие nightly будет показано явно.</p>
 <div class="ttm-actions"><button type="button" data-runtime onclick="ttmAction('check_updates')" disabled>Проверить обновления</button><button type="button" id="ttm-update-client" onclick="ttmUpdateClient()" disabled>Обновить CLI</button></div>
+<div id="ttm-client-trial" class="ttm-banner" hidden><p id="ttm-client-trial-state"></p><button id="ttm-confirm-client" type="button" onclick="ttmAction('confirm_client')" disabled>Доступ проверен, принять CLI</button></div>
+<div class="ttm-actions"><button id="ttm-rollback-client" type="button" onclick="ttmAction('rollback_client')" disabled hidden>Вернуть предыдущий CLI</button></div>
 <p id="ttm-update-requirements" class="ttm-muted"></p>
 <p class="ttm-muted">Проверяется подпись upstream. Предыдущий клиент сохраняется; при ошибке запуска выполняется откат. При работающем VPN обновление прервёт трафик на время перезапуска, блокировка обхода сохранится.</p>
 </section>
 <section class="ttm-section" data-view="connection" aria-labelledby="ttm-connection-title" hidden>
 <div class="ttm-heading"><h3 id="ttm-connection-title">Настройки подключения</h3><span class="ttm-step">HTTPS · приватное сохранение</span></div>
+<div id="ttm-profile" hidden>
+<dl class="ttm-grid"><dt>Сохранённый сервер</dt><dd id="ttm-profile-server">—</dd><dt>Параметры</dt><dd id="ttm-profile-summary">—</dd><dt>Учётные данные</dt><dd>Пароль сохранён на роутере. DNS берётся из конфигурации подключения.</dd></dl>
+<details id="ttm-profile-editor"><summary>Изменить параметры подключения</summary>
+<form id="ttm-settings-form" onsubmit="return false">
+<div class="ttm-row"><label class="ttm-label" for="ttm-setting-protocol">Транспорт</label><div class="ttm-value"><select id="ttm-setting-protocol"><option value="http2">HTTP/2 · TCP</option><option value="http3">HTTP/3 · QUIC</option></select></div></div>
+<div class="ttm-row"><label class="ttm-label" for="ttm-setting-mtu">MTU</label><div class="ttm-value"><input id="ttm-setting-mtu" type="number" min="1280" max="1500" value="1350"></div></div>
+<div class="ttm-row"><div class="ttm-label">Anti-DPI</div><div class="ttm-value"><label class="ttm-check"><input id="ttm-setting-anti-dpi" type="checkbox"> Включить Anti-DPI</label></div></div>
+<div class="ttm-actions"><button id="ttm-save-settings" type="button" onclick="ttmSaveSettings()" disabled>Сохранить параметры</button></div>
+<p class="ttm-muted">Меняются только транспорт, MTU и Anti-DPI. Существующие пароль, DNS и сертификат сохраняются на роутере. При работающем VPN понадобится подтвердить пробное применение.</p>
+</form></details></div>
+<details id="ttm-replace-connection" open><summary>Новое подключение или замена сохранённого</summary>
 <p id="ttm-saved-connection" class="ttm-note"></p>
 <p class="ttm-muted">Введите параметры вручную, вставьте ссылку или загрузите файл. Существующий пароль с роутера не загружается: сохранение заменяет конфигурацию подключения целиком.</p>
 <div class="ttm-row"><label class="ttm-label" for="ttm-file">Импорт из файла</label><div class="ttm-value"><input type="file" id="ttm-file" accept=".json,.txt" onchange="ttmImportFile(this)"><small>JSON подключения или текст со ссылкой tt://, до 64 КиБ.</small></div></div>
@@ -100,7 +117,14 @@
 <div class="ttm-row"><label class="ttm-label" for="ttm-certificate">Сертификат PEM</label><div class="ttm-value"><textarea id="ttm-certificate" spellcheck="false" maxlength="16384" placeholder="-----BEGIN CERTIFICATE-----"></textarea><small>Если выдан вашим сервером. Для доверенного публичного сертификата оставьте пустым. Проверка TLS всегда включена.</small></div></div>
 </div>
 </details>
-<details class="ttm-exclusions-help" open><summary>Исключения из VPN</summary>
+
+</form>
+<div class="ttm-actions"><button type="button" id="ttm-save-endpoint" class="ttm-primary" onclick="ttmSaveEndpoint()">Сохранить подключение</button><button type="button" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
+</div>
+</details>
+<details id="ttm-exclusions" class="ttm-exclusions-help" open><summary>Исключения из VPN</summary>
+<div class="ttm-actions"><label for="ttm-new-exclusion">Новое исключение</label><input type="text" id="ttm-new-exclusion" placeholder="Домен, IPv4 или подсеть" spellcheck="false"><button type="button" onclick="ttmAddExclusion()">Добавить исключение</button></div>
+<div id="ttm-exclusion-list"></div>
 <p>Совпавшие назначения обходят TrustTunnel и выходят напрямую через WAN. Указывайте по одному правилу в строке.</p>
 <div class="ttm-settings">
 <div class="ttm-row"><label class="ttm-label" for="ttm-exclusion-domains">Домены сайтов</label><div class="ttm-value"><textarea id="ttm-exclusion-domains" spellcheck="false" placeholder="example.com&#10;*.example.net"></textarea><small><code>example.com</code> включает сам домен и его поддомены. <code>*.example.com</code> включает только поддомены. Полный URL, протокол и путь указывать нельзя.</small></div></div>
@@ -110,9 +134,6 @@
 <p>Эта кнопка обновляет только исключения сохранённого подключения. Для удаления всех исключений очистите оба списка и сохраните. При включённом VPN потребуется подтвердить пробное применение.</p>
 <p class="ttm-error">Исключённый трафик не защищён VPN и использует внешний адрес провайдера. Правила <code>0.0.0.0/0</code> и <code>*:порт</code> могут вывести напрямую большой объём трафика; <code>*:53</code> может вывести DNS.</p>
 </details>
-</form>
-<div class="ttm-actions"><button type="button" id="ttm-save-endpoint" class="ttm-primary" onclick="ttmSaveEndpoint()">Сохранить подключение</button><button type="button" onclick="ttmExportEndpoint()">Проверить и скачать конфигурацию</button><button type="button" onclick="ttmClearConnection()">Очистить данные</button></div>
-</div>
 <div id="ttm-connection-message" role="status" aria-live="polite" class="ttm-note"></div>
 <details class="ttm-import-help"><summary>Как применить подключение на роутере</summary>
 <p>Кнопка сохранения использует зашифрованную передачу через штатный интерфейс Merlin по HTTPS. Если этот экспериментальный канал недоступен, используйте импорт по SSH:</p>
@@ -133,7 +154,7 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <details><summary>Дополнительно: интерфейсы и подсети Wi-Fi</summary><div id="ttm-wifi-inventory"></div><p class="ttm-muted">Имя SSID не определяет отдельную IP-подсеть. Адресация и интерфейсы обнаружены на роутере.</p></details>
 <p class="ttm-muted">Список формируется автоматически. Если разные SSID включены в один bridge, правило для его подсети затронет их всех и проводные устройства. Для отдельной маршрутизации SSID нужна отдельная подсеть и bridge в Merlin. До 16 сетей и 32 записей подсетей суммарно.</p>
-<p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Выбор устройства заменяет целые подсети списком адресов /32. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
+<p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Для выбора устройств сначала включите режим «Выбранные устройства». Переход из режима всей сети запрашивает подтверждение. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
 <details><summary>Дополнительно: доступ к NAS и другим локальным сетям</summary><p>Необязательно. Отметьте сеть с NAS, принтером или другим локальным ресурсом, к которому нужен доступ из VPN-сети. Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
 <label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях, чтобы он не обходил VPN.</span></label>
@@ -146,7 +167,8 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <section class="ttm-section" data-view="diagnostics" aria-labelledby="ttm-diagnostics-title" hidden>
 <div class="ttm-heading"><h3 id="ttm-diagnostics-title">Диагностика и история</h3></div>
 <p class="ttm-muted">Отчёт содержит версии, доступность инструментов и результаты операций. Пароль, ссылка подключения и журнал клиента в него не включаются. Проверка прохождения трафика и ускорения HND требует роутера.</p>
-<div class="ttm-actions"><button type="button" data-runtime onclick="ttmAction('diagnostics')">Обновить диагностику</button><button type="button" onclick="ttmDownloadDiagnostics()">Скачать отчёт</button></div>
+<div class="ttm-actions"><button type="button" data-runtime onclick="ttmAction('diagnostics')">Обновить диагностику</button><button type="button" onclick="ttmDownloadDiagnostics()">Скачать обезличенный отчёт</button></div>
+<p id="ttm-resources" class="ttm-muted">Показатели процесса ещё не получены.</p>
 <pre id="ttm-operation-list"></pre><details><summary>Совместимость и версии</summary><pre id="ttm-diagnostics"></pre></details>
 </section>
 </div></td></tr></table><div id="footer"></div></body></html>

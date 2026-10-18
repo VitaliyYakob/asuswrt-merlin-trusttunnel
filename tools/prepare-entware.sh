@@ -5,6 +5,7 @@ export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 [ "$#" -eq 1 ] && [ "$1" = --lab-only ] || { echo 'Usage: prepare-entware.sh --lab-only' >&2; exit 2; }
 SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 . "$SRC/router-platform.sh"
+tt_install_bootstrap_timeout
 tt_install_platform ''
 umask 077
 WORK=$(mktemp -d /opt/ttm-setup-dependencies.XXXXXX)

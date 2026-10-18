@@ -20,6 +20,16 @@ test('primary action follows process state without treating TUN as verified conn
     assert.equal(api.connectionAction({enabled:false, process_running:true}), 'disable');
 });
 
+test('shared diagnostic report uses an allowlist and removes network identity and credentials', () => {
+    const secret='SYNTHETIC-private-server';
+    const report=api.publicDiagnostics({version:'alpha',state:'disabled',hostname:secret,endpoint:{password:secret},clients:[{mac:secret}],
+        diagnostics:{model:'RT-AX86U',firmware:'3.0.0.4.388.12_2',architecture:'aarch64',private:secret,tools:[{name:'jq',available:true,private:secret}]},
+        operations:[{id:secret,action:'start',state:'succeeded',code:'completed',revision:secret}],policy:{networks:[{sources:[secret]}]}});
+    assert.equal(JSON.stringify(report).includes(secret),false);
+    assert.deepEqual(report.tools,[{name:'jq',available:true}]);
+    assert.equal(report.network_count,1);
+});
+
 test('SSID clients use actual association, not shared subnet alone', () => {
     const network={lan_if:'br0',sources:['192.168.50.0/24']};
     const wireless=(lan_if,ssid)=>({lan_if,ssid});

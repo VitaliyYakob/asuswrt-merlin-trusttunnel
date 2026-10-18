@@ -30,21 +30,24 @@ if [ -e "$DST/trusttunnel.sh" ]; then
             echo 'Existing unmarked installation refused' >&2; exit 1;
         }
 fi
-tt_error() { printf 'TrustTunnel: %s\n' "$*" >&2; }
-. "$SRC/addon/lib/backup.sh"
-tt_backup_install "$DST" /opt/etc/init.d/S99trusttunnel
-[ -z "$TT_INSTALL_BACKUP" ] || printf 'Previous addon files saved in %s\n' "$TT_INSTALL_BACKUP"
-# Preserve private configuration across reinstall. No rm -rf on shared paths.
-cp -R "$SRC/addon/lib" "$SRC/addon/share" "$SRC/addon/web" "$DST/"
-cp "$SRC/addon/trusttunnel.sh" "$SRC/addon/trusttunnel_page.asp" "$DST/"
-cp "$SRC/uninstall.sh" "$DST/uninstall.sh"
-printf '%s\n' trusttunnel-merlin-addon-v1 >"$DST/.trusttunnel-owned"
-chmod 755 "$DST/trusttunnel.sh"
-printf '%s\n' 'Laboratory alpha; not a verified leak-prevention product.' >"$DST/config/LAB_ONLY_ACKNOWLEDGED"
-chmod 700 "$DST/config"
-cp "$SRC/addon/S99trusttunnel" /opt/etc/init.d/S99trusttunnel
-chmod 755 /opt/etc/init.d/S99trusttunnel
-# install-webui acquires the same lock. Release only after the complete code copy.
-exec 9>&-
-"$DST/trusttunnel.sh" install-webui
+# UI functions run in this shell under the existing control lock. No child
+# controller reacquires the same lock and no service is started during setup.
+tt_install_load() {
+    TT_BASE=$DST
+    for library in common config network service webui transaction transfer diagnostics client-update traffic-check; do
+        # shellcheck disable=SC1090
+        . "$TT_BASE/lib/$library.sh"
+    done
+}
+tt_install_ui() {
+    tt_install_load
+    tt_hooks install && tt_mount_ui &&
+        cru a TrustTunnelMerlin '* * * * * /jffs/addons/trusttunnel/trusttunnel.sh refresh >/dev/null 2>&1'
+}
+tt_install_ui_cleanup() {
+    tt_install_load
+    tt_hooks remove && tt_unmount_ui && cru d TrustTunnelMerlin
+}
+. "$SRC/addon/lib/install-transaction.sh"
+tt_install_transaction "$SRC" "$DST" /opt/etc/init.d/S99trusttunnel
 printf '%s\n' 'Installed, not enabled. Open VPN > TrustTunnel over HTTPS; SSH import is also available.'

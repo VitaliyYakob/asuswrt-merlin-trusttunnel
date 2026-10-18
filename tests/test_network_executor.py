@@ -16,6 +16,10 @@ class ExecutorTests(unittest.TestCase):
         content=(ROOT/'tests/mock_net.py').read_bytes()
         for name in ['fc','ip','iptables','ip6tables','iptables-restore','ip6tables-restore']:
             file=self.path/'fakebin'/name;file.write_bytes(content);file.chmod(0o755)
+        proc=self.path/'sandbox/proc'
+        (proc/'sys/kernel/random').mkdir(parents=True)
+        (proc/'sys/kernel/random/boot_id').write_text('synthetic-boot-1')
+        (proc/'uptime').write_text('1000.0 0.0\n')
         self.env=os.environ|{'TT_ROOT':str(self.path/'sandbox'),'TT_MOCK_NET':str(self.path/'net')}
     def execute(self,body,fail=''):
         script=f'''TT_BASE='{ROOT}/addon'

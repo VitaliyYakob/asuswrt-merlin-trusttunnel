@@ -5,6 +5,8 @@ import hashlib
 import tarfile
 import zipfile
 import importlib.util
+import json
+import subprocess
 
 spec = importlib.util.spec_from_file_location('build_ipk', Path(__file__).with_name('build-ipk.py'))
 ipk_builder = importlib.util.module_from_spec(spec)
@@ -35,6 +37,23 @@ checks = [f'{hashlib.sha256(ipk.read_bytes()).hexdigest()}  {ipk.name}']
 for suffix in ('zip', 'tar.gz'):
     file = out / f'{name}.{suffix}'
     checks.append(f'{hashlib.sha256(file.read_bytes()).hexdigest()}  {file.name}')
+# A manifest binds each downloadable file and the source snapshot. Signing is
+# performed by the release workflow with GitHub/Sigstore, never a local secret.
+try:
+    revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True))
+except (OSError, subprocess.CalledProcessError):
+    revision, dirty = None, None
+snapshot = hashlib.sha256(b'trusttunnel-source-v1\0')
+for file in files:
+    snapshot.update(file.relative_to(root).as_posix().encode() + b'\0')
+    snapshot.update(hashlib.sha256(file.read_bytes()).digest())
+manifest = {'schema':1,'project':'asuswrt-merlin-trusttunnel','version':version,'architecture':'aarch64-3.10',
+            'source':{'commit':revision,'dirty':dirty,'sha256':snapshot.hexdigest()},
+            'artifacts':[{ 'name':line.split('  ',1)[1], 'sha256':line.split('  ',1)[0],
+                           'size':(out/line.split('  ',1)[1]).stat().st_size} for line in checks]}
+(out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+checks.append(f'{hashlib.sha256((out/"manifest.json").read_bytes()).hexdigest()}  manifest.json')
 (out / 'SHA256SUMS').write_text('\n'.join(checks) + '\n')
 print(f'Built IPK for aarch64-3.10: {ipk.name}')
 print(f'Packaged {len(files)} source/documentation files into {out}')

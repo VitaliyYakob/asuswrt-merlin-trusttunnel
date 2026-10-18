@@ -21,6 +21,7 @@ tt_validate() {
 }
 tt_import() {
     [ ! -e "$TT_CONFIG/transaction" ] || { tt_error 'recover the pending transaction first'; return 1; }
+    [ ! -e "$TT_CONFIG/client-update-journal.json" ] || { tt_error 'finish or recover the client update trial first'; return 1; }
     [ ! -f "$TT_ENABLED" ] || { tt_error 'disable the addon before changing configuration'; return 1; }
     tt_save_config "$@"
 }
@@ -47,7 +48,7 @@ tt_apply_request() {
     [ -f "$TT_REQUEST_FILE" ] && [ ! -L "$TT_REQUEST_FILE" ] && [ "$(wc -c <"$TT_REQUEST_FILE")" -le 65536 ] || return 1
     if ! jq -e -s 'length==1 and (.[0] | type=="object" and
         ((keys-["version","revision","kind","data"])|length)==0 and .version==1 and
-        (.kind=="endpoint" or .kind=="policy" or .kind=="exclusions") and (.revision|type=="string") and
+        (.kind=="endpoint" or .kind=="policy" or .kind=="exclusions" or .kind=="endpoint_settings") and (.revision|type=="string") and
         (.data|type=="object"))' "$TT_REQUEST_FILE" >/dev/null 2>&1; then
         tt_error 'invalid save request'; return 1
     fi
@@ -60,15 +61,19 @@ tt_apply_request() {
         tt_operation_write failed revision_conflict; return 1
     fi
     if [ -e "$TT_CONFIG/transaction" ]; then tt_operation_write failed transaction_pending; return 1; fi
+    if [ -e "$TT_CONFIG/client-update-journal.json" ]; then tt_operation_write failed update_pending; return 1; fi
     TT_REQUEST_TMP=$(mktemp "$TT_RUN/request-data.XXXXXX") || return 1
     TT_SAVE_KIND=$TT_REQUEST_KIND
-    if [ "$TT_REQUEST_KIND" = exclusions ]; then
+    if [ "$TT_REQUEST_KIND" = exclusions ] || [ "$TT_REQUEST_KIND" = endpoint_settings ]; then
         # The caller holds the controller lock. Merge only this allowlisted field
         # into the private endpoint; credentials never travel back to the browser.
         TT_SAVE_KIND=endpoint
+        if [ "$TT_REQUEST_KIND" = exclusions ]; then
+            TT_PATCH_KEYS='["exclusions"]'
+        else TT_PATCH_KEYS='["anti_dpi","mtu","protocol"]'; fi
         if ! tt_validate endpoint "$TT_ENDPOINT" ||
-            ! jq -e '.data | keys==["exclusions"] and (.exclusions|type=="array")' "$TT_REQUEST_FILE" >/dev/null 2>&1 ||
-            ! jq --slurpfile request "$TT_REQUEST_FILE" '.exclusions=$request[0].data.exclusions' "$TT_ENDPOINT" >"$TT_REQUEST_TMP"; then
+            ! jq -e --argjson allowed "$TT_PATCH_KEYS" '.data | (keys==$allowed)' "$TT_REQUEST_FILE" >/dev/null 2>&1 ||
+            ! jq --slurpfile request "$TT_REQUEST_FILE" '. + $request[0].data' "$TT_ENDPOINT" >"$TT_REQUEST_TMP"; then
             rm -f "$TT_REQUEST_TMP"; tt_operation_write failed invalid_configuration; return 1
         fi
     else

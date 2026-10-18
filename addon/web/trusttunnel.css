@@ -123,3 +123,10 @@
 .ttm-ssid-row strong { overflow-wrap:anywhere; }
 .ttm-ssid-row small { margin-top:5px; }
 @media(max-width:760px) { .ttm-ssid-row { grid-template-columns:minmax(0,1fr); } .ttm-ssid-row > div:first-child { border-right:0; } }
+
+.ttm-container #ttm-state[data-state="disabled"] { color: #e0e7e9; }
+.ttm-container #ttm-state[data-state="tun_ready_unverified"] { color: #b5e9ff; }
+.ttm-container #ttm-state[data-state="blocked_or_start_failed"] { color: #ffb2a5; }
+.ttm-network-mode { margin-bottom: 8px !important; }
+.ttm-exclusion-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 10px; overflow-wrap: anywhere; }
+.ttm-exclusion-item span { min-width: 0; }

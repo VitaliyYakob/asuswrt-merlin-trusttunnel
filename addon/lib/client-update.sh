@@ -45,9 +45,11 @@ tt_update_check() (
     token=$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')
     installed=$(tt_update_version) || installed=
     installed_hash=; [ ! -f "$TT_BIN.sha256" ] || installed_hash=$(cat "$TT_BIN.sha256")
-    jq --arg id "$token" --arg channel "$channel" --arg installed "$installed" --arg hash "$installed_hash" --argjson now "$(date +%s)" \
-        '{id:$id,channel:$channel,checked_at:$now,installed_version:$installed,installed_sha256:$hash,
-          candidate:.,state:(if .==null then "not_published" elif .tag==("v"+$installed) then "current" else "available" end)}' \
+    jq -L "$TT_BASE/share" --arg id "$token" --arg channel "$channel" --arg installed "$installed" --arg hash "$installed_hash" --argjson now "$(date +%s)" \
+        'include "versions";
+        (if .==null then "none" else (.tag|version_relation($installed)) end) as $relation |
+        {id:$id,channel:$channel,checked_at:$now,installed_version:$installed,installed_sha256:$hash,
+          candidate:.,relation:$relation,state:(if .==null then "not_published" elif $relation=="current" then "current" elif $relation=="newer" then "available" elif $relation=="older" then "older" else "incompatible" end)}' \
         "$work/selected.json" >"$work/result.json" || return 1
     # Search history survives candidate invalidation, channel changes and reboot.
     # It is informational only; installation still requires a fresh bound token.
@@ -68,16 +70,24 @@ tt_update_status() {
     TT_U_LAST_CHECK=null
     [ ! -f "$TT_CONFIG/client-last-check.json" ] || TT_U_LAST_CHECK=$(jq -c \
         '{checked_at,channel,state,available_tag}' "$TT_CONFIG/client-last-check.json")
+    TT_U_TRIAL=null
+    if [ -f "$TT_CONFIG/client-update-journal.json" ] && jq -e '.phase=="trial"' "$TT_CONFIG/client-update-journal.json" >/dev/null; then
+        TT_U_TRIAL=$(jq -n --argjson remaining "$(tt_timer_remaining "$TT_CONFIG/client-update-journal.json")" '{remaining_seconds:$remaining}')
+    fi
+    TT_U_ROLLBACK=false
+    if [ -f "$TT_BIN.previous" ] && [ ! -L "$TT_BIN.previous" ] && [ -f "$TT_BIN.previous.sha256" ] && [ ! -L "$TT_BIN.previous.sha256" ] &&
+        [ "$(cat "$TT_BIN.previous.sha256")" != "$TT_U_HASH" ] &&
+        [ "$(sha256sum "$TT_BIN.previous" | awk '{print $1}')" = "$(cat "$TT_BIN.previous.sha256")" ]; then TT_U_ROLLBACK=true; fi
     TT_U_READY=true
     for TT_U_TOOL in curl gpg tar timeout od; do type "$TT_U_TOOL" >/dev/null 2>&1 || TT_U_READY=false; done
-    jq -n --arg channel "$TT_U_CHANNEL" --argjson check "$TT_U_INFO" --argjson installed "$TT_U_INSTALLED" --argjson last_check "$TT_U_LAST_CHECK" \
+    jq -n --argjson trial "$TT_U_TRIAL" --argjson rollback "$TT_U_ROLLBACK" --arg channel "$TT_U_CHANNEL" --argjson check "$TT_U_INFO" --argjson installed "$TT_U_INSTALLED" --argjson last_check "$TT_U_LAST_CHECK" \
         --argjson ready "$TT_U_READY" --argjson pending "$([ ! -e "$TT_CONFIG/client-update-journal.json" ] && printf false || printf true)" \
-        '{channel:$channel,check:$check,installed:$installed,last_check:$last_check,dependencies_ready:$ready,recovery_pending:$pending}'
+        '{channel:$channel,check:$check,installed:$installed,last_check:$last_check,dependencies_ready:$ready,recovery_pending:$pending,trial:$trial,rollback_available:$rollback}'
 }
 tt_update_candidate_valid() {
     tt_id_valid "$1" && [ -f "$TT_RUN/client-candidate.json" ] &&
-        jq -e --arg id "$1" --arg channel "$(tt_update_get_channel)" --arg hash "$(cat "$TT_BIN.sha256" 2>/dev/null)" --argjson now "$(date +%s)" \
-        '.id==$id and .channel==$channel and .installed_sha256==$hash and .state=="available" and .checked_at<= $now and .checked_at>($now-3600) and .candidate!=null' \
+        jq -e --arg mode "${2:-upgrade}" --arg id "$1" --arg channel "$(tt_update_get_channel)" --arg hash "$(cat "$TT_BIN.sha256" 2>/dev/null)" --argjson now "$(date +%s)" \
+        '.id==$id and .channel==$channel and .installed_sha256==$hash and ((.state=="available") or ($mode=="downgrade" and .state=="older")) and .checked_at<= $now and .checked_at>($now-3600) and .candidate!=null' \
         "$TT_RUN/client-candidate.json" >/dev/null
 }
 tt_update_verify_binary() (
@@ -107,6 +117,8 @@ tt_update_unpack() {
 tt_update_recover() {
     [ -e "$TT_CONFIG/client-update-journal.json" ] || return 0
     [ ! -L "$TT_CONFIG/client-update-journal.json" ] || return 1
+    if [ "${1:-}" != force ] && jq -e '.phase=="trial"' "$TT_CONFIG/client-update-journal.json" >/dev/null &&
+        [ "$(tt_timer_remaining "$TT_CONFIG/client-update-journal.json")" -gt 0 ]; then return 0; fi
     TT_U_OLD_HASH=$(jq -er '.previous_sha256|select(test("^[a-f0-9]{64}$"))' "$TT_CONFIG/client-update-journal.json") || return 1
     [ -f "$TT_BIN.previous" ] && [ ! -L "$TT_BIN.previous" ] &&
         [ "$(sha256sum "$TT_BIN.previous" | awk '{print $1}')" = "$TT_U_OLD_HASH" ] || return 1
@@ -172,12 +184,19 @@ tt_update_replace() {
         rm -f "$TT_U_METADATA"; return 1
     fi
     rm -f "$TT_U_METADATA"
-    rm -f "$TT_CONFIG/client-update-journal.json" "$TT_RUN/client-candidate.json"
+    if [ -f "$TT_ENABLED" ]; then
+        TT_U_TIMER=$(tt_timer 300) || return 1
+        TT_U_TRIAL=$(mktemp "$TT_RUN/.client-trial.XXXXXX") || return 1
+        if ! jq --argjson timer "$TT_U_TIMER" '. + {phase:"trial",timer:$timer}' "$TT_CONFIG/client-update-journal.json" >"$TT_U_TRIAL" ||
+            ! tt_atomic_json "$TT_U_TRIAL" "$TT_CONFIG/client-update-journal.json"; then rm -f "$TT_U_TRIAL"; return 1; fi
+        rm -f "$TT_U_TRIAL"
+    else rm -f "$TT_CONFIG/client-update-journal.json"; fi
+    rm -f "$TT_RUN/client-candidate.json"
 }
 tt_update_install() (
     tt_live || return 1
     [ ! -e "$TT_CONFIG/transaction" ] && [ ! -e "$TT_CONFIG/client-update-journal.json" ] || return 1
-    tt_update_candidate_valid "$1" || { tt_update_fail update_stale 'check updates again'; return 1; }
+    tt_update_candidate_valid "$1" "${2:-upgrade}" || { tt_update_fail update_stale 'check updates again'; return 1; }
     [ "$(uname -m)" = aarch64 ] || return 1
     for tool in curl gpg tar timeout od; do type "$tool" >/dev/null 2>&1 || { tt_update_fail update_dependencies 'curl, GnuPG, tar, timeout and od are required'; return 1; }; done
     # Download/verification can take minutes: never block guard restoration.
@@ -201,7 +220,37 @@ tt_update_install() (
     [ -n "$version" ] && [ "v$version" = "$(jq -r .tag "$work/candidate.json")" ] || return 1
     jq --arg version "$version" --arg sha "$(sha256sum "$stage" | awk '{print $1}')" \
         '{version:$version,tag,channel,sha256:$sha}' "$work/candidate.json" >"$work/installed.json" || return 1
-    tt_lock && tt_update_candidate_valid "$1" && [ ! -e "$TT_CONFIG/transaction" ] &&
+    tt_lock && tt_update_candidate_valid "$1" "${2:-upgrade}" && [ ! -e "$TT_CONFIG/transaction" ] &&
         [ ! -e "$TT_CONFIG/client-update-journal.json" ] || return 1
     tt_update_replace "$stage" "$work/installed.json"
 )
+
+tt_update_confirm() {
+    tt_live || return 1
+    [ ! -L "$TT_BIN" ] && [ ! -L "$TT_BIN.sha256" ] && [ ! -L "$TT_CONFIG/client-update-journal.json" ] || return 1
+    if [ -f "$TT_ENABLED" ]; then [ ! -f "$TT_PAUSED" ] && tt_pid_matches && ip link show tt0 >/dev/null 2>&1 || return 1; fi
+    [ ! -e "$TT_CONFIG/transaction" ] && [ -f "$TT_CONFIG/client-update-journal.json" ] || return 1
+    jq -e '.phase=="trial"' "$TT_CONFIG/client-update-journal.json" >/dev/null &&
+        [ "$(tt_timer_remaining "$TT_CONFIG/client-update-journal.json")" -gt 0 ] || return 1
+    TT_U_HASH=$(sha256sum "$TT_BIN" | awk '{print $1}') || return 1
+    jq -e --arg hash "$TT_U_HASH" '.next_sha256==$hash' "$TT_CONFIG/client-update-journal.json" >/dev/null || return 1
+    [ "$TT_U_HASH" = "$(cat "$TT_BIN.sha256")" ] || return 1
+    rm -f "$TT_CONFIG/client-update-journal.json"
+}
+tt_update_rollback() {
+    tt_live && [ ! -e "$TT_CONFIG/transaction" ] && tt_update_guards || return 1
+    if [ ! -e "$TT_CONFIG/client-update-journal.json" ]; then
+        [ -f "$TT_BIN.previous" ] && [ ! -L "$TT_BIN.previous" ] && [ ! -L "$TT_BIN.previous.sha256" ] || return 1
+        TT_U_PREV=$(cat "$TT_BIN.previous.sha256") || return 1
+        printf '%s' "$TT_U_PREV" | grep -Eq '^[a-f0-9]{64}$' || return 1
+        [ "$(sha256sum "$TT_BIN.previous" | awk '{print $1}')" = "$TT_U_PREV" ] || return 1
+        TT_U_HASH=$(sha256sum "$TT_BIN" | awk '{print $1}') || return 1
+        [ "$TT_U_HASH" != "$TT_U_PREV" ] && [ "$TT_U_HASH" = "$(cat "$TT_BIN.sha256")" ] || return 1
+        TT_U_JOURNAL=$(mktemp "$TT_RUN/.client-rollback.XXXXXX") || return 1
+        if ! jq -n --arg prev "$TT_U_PREV" --arg next "$TT_U_HASH" '{previous_sha256:$prev,next_sha256:$next}' >"$TT_U_JOURNAL" ||
+            ! tt_atomic_json "$TT_U_JOURNAL" "$TT_CONFIG/client-update-journal.json"; then rm -f "$TT_U_JOURNAL"; return 1; fi
+        rm -f "$TT_U_JOURNAL"
+    fi
+    tt_update_recover force || return 1
+    if [ -f "$TT_ENABLED" ] && [ ! -f "$TT_PAUSED" ]; then tt_preflight && tt_spawn; fi
+}
