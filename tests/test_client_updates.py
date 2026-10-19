@@ -355,6 +355,7 @@ gpg() { case " $* " in *" --import "*) return 0;; esac; printf '[GNUPG:] VALIDSI
         self.assertIn('dependencies_ready',report['client_updates'])
         self.assertEqual(report['tunnel_addresses'],[])
         self.assertIsNone(report['traffic_check'])
+        self.assertIsNone(report['traffic_check_history'])
 
     def install_fixture(self, mutation=''):
         archive=self.path/'download.tar.gz'

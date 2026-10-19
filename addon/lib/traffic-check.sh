@@ -50,17 +50,59 @@ tt_verify_traffic() {
     TT_CHECK_AFTER=$(tt_packet_snapshot) || return 1
     tt_check_guard_rules || TT_CHECK_GUARD=false
     tt_pid_matches && [ "$(cat "$TT_RUN/client.start")" = "$TT_CHECK_START" ] || return 1
-    TT_CHECK_TMP=$(mktemp "$TT_RUN/.traffic-check.XXXXXX") || return 1
+    TT_CHECK_TIMER=$(tt_timer 300) || return 1
+    [ ! -L "$TT_CONFIG/traffic-check.json" ] || return 1
+    TT_CHECK_TMP=$(mktemp "$TT_CONFIG/.traffic-check.XXXXXX") || return 1
     jq -n --argjson before "$TT_CHECK_BEFORE" --argjson after "$TT_CHECK_AFTER" --argjson guard "$TT_CHECK_GUARD" \
-        --arg generation "$TT_CHECK_START" --arg revision "$(tt_revision)" --argjson now "$(date +%s)" \
-        '{checked_at:$now,generation:$generation,revision:$revision,rules_checked:$guard,leak_test_verified:false,
+        --arg generation "$TT_CHECK_START" --arg revision "$(tt_revision)" --argjson now "$(date +%s)" --argjson timer "$TT_CHECK_TIMER" \
+        '{checked_at:$now,timer:$timer,generation:$generation,revision:$revision,rules_checked:$guard,leak_test_verified:false,
           sent_packets:($after.sent-$before.sent),received_packets:($after.received-$before.received),
           state:(if $guard|not then "incomplete" elif $after.sent<$before.sent or $after.received<$before.received then "counters_reset"
             elif $after.sent>$before.sent and $after.received>$before.received then "traffic_observed" else "idle" end)}' \
-        >"$TT_CHECK_TMP" && mv -f "$TT_CHECK_TMP" "$TT_RUN/traffic-check.json"
+        >"$TT_CHECK_TMP" && chmod 600 "$TT_CHECK_TMP" && mv -f "$TT_CHECK_TMP" "$TT_CONFIG/traffic-check.json" && return 0
+    rm -f "$TT_CHECK_TMP"
+    return 1
 }
+tt_traffic_check_valid() {
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(wc -c <"$1")" -le 4096 ] || return 1
+    jq -e -s 'length==1 and (.[0] | type=="object" and
+        (.checked_at|type=="number" and .>0 and floor==.) and
+        (.generation|type=="string" and length>0) and (.revision|type=="string") and
+        (.rules_checked|type=="boolean") and .leak_test_verified==false and
+        (.sent_packets|type=="number" and floor==.) and (.received_packets|type=="number" and floor==.) and
+        (.timer==null or (.timer|type=="object" and (.boot_id|type=="string" and length>0) and
+            (.started|type=="number" and .>=0 and floor==.) and (.deadline|type=="number") and .deadline==(.started+300))) and
+        (.state=="traffic_observed" or .state=="idle" or .state=="incomplete" or .state=="counters_reset"))' "$1" >/dev/null 2>&1
+}
+tt_preserve_traffic_check() {
+    # Publication may migrate the old /tmp record once. Read-only status never
+    # writes configuration; old observations are never promoted to fresh ones.
+    [ ! -e "$TT_CONFIG/traffic-check.json" ] && [ ! -L "$TT_CONFIG/traffic-check.json" ] || return 0
+    tt_traffic_check_valid "$TT_RUN/traffic-check.json" || return 0
+    tt_atomic_json "$TT_RUN/traffic-check.json" "$TT_CONFIG/traffic-check.json"
+}
+tt_traffic_check_history() (
+    report="$TT_CONFIG/traffic-check.json"
+    [ -e "$report" ] || [ -L "$report" ] || report="$TT_RUN/traffic-check.json"
+    tt_traffic_check_valid "$report" || { printf 'null\n'; return; }
+    generation=; [ ! -f "$TT_RUN/client.start" ] || generation=$(cat "$TT_RUN/client.start")
+    running=false
+    if tt_pid_matches && [ -f "$TT_ENABLED" ] && [ ! -f "$TT_PAUSED" ]; then running=true; fi
+    boot=$(tt_boot_id 2>/dev/null) || boot=
+    remaining=$(tt_timer_remaining "$report") || remaining=0
+    jq --arg generation "$generation" --arg revision "$(tt_revision)" --arg boot "$boot" \
+        --argjson running "$running" --argjson remaining "$remaining" --argjson now "$(date +%s)" '
+        (if .timer!=null and .timer.boot_id!=$boot then "router_restarted"
+         elif $running|not then "client_stopped"
+         elif .generation!=$generation then "client_restarted"
+         elif .revision!=$revision then "settings_changed"
+         elif .timer==null then (if .checked_at<=($now-300) then "expired" else "legacy" end)
+         elif $remaining<=0 then "expired" else null end) as $reason |
+        {checked_at,state,rules_checked,sent_packets,received_packets,leak_test_verified:false,
+         fresh:($reason==null),stale_reason:$reason}' "$report"
+)
 tt_traffic_check_status() {
-    [ -f "$TT_RUN/traffic-check.json" ] && [ -f "$TT_RUN/client.start" ] || { printf 'null\n'; return; }
-    jq --arg generation "$(cat "$TT_RUN/client.start")" --arg revision "$(tt_revision)" --argjson now "$(date +%s)" \
-        'if .generation==$generation and .revision==$revision and .checked_at<=$now and .checked_at>($now-300) then . else null end' "$TT_RUN/traffic-check.json"
+    # Compatibility contract: only a fresh observation may describe current
+    # guards. Historical success is published separately, never as live proof.
+    tt_traffic_check_history | jq 'if .fresh==true then del(.fresh,.stale_reason) else null end'
 }

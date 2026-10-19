@@ -336,9 +336,17 @@
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
         renderWifiInventory(inventoryOrEmpty(status));
         text('ttm-tun-address',(status.tunnel_addresses||[]).join(', ')||'Не назначен');
-        var traffic=status.traffic_check;
+        var traffic=status.traffic_check, historyTraffic=status.traffic_check_history||traffic;
         var trafficLabels={traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'За 10 секунд двусторонний трафик не появился — откройте сайт и повторите',incomplete:'Не все правила или маршруты присутствуют',counters_reset:'Счётчики сброшены; повторите проверку'};
-        text('ttm-traffic-check',traffic ? (trafficLabels[traffic.state]||'Результат неизвестен') : 'Ещё не выполнялась / результат устарел');
+        text('ttm-traffic-check',historyTraffic ? (trafficLabels[historyTraffic.state]||'Результат неизвестен') : 'Проверка ещё не выполнялась');
+        text('ttm-traffic-checked-at',historyTraffic ? dateLabel(historyTraffic.checked_at,'Дата неизвестна')+' · Пакеты за 10 с: отправлено '+historyTraffic.sent_packets+', получено '+historyTraffic.received_packets+'.' : '');
+        var trafficReasons={expired:'Результату больше 5 минут.',client_restarted:'После проверки клиент был перезапущен.',settings_changed:'После проверки настройки изменились.',router_restarted:'После проверки роутер был перезагружен.',client_stopped:'Клиент остановлен.',legacy:'Проверка выполнена до обновления панели.'};
+        var trafficFresh=historyTraffic && (historyTraffic.fresh===true || (historyTraffic.fresh===undefined && !!traffic));
+        text('ttm-traffic-freshness',historyTraffic ? (trafficFresh?'Актуально для текущего запуска клиента; это наблюдение пакетов, а не тест утечек.':
+            (trafficReasons[historyTraffic.stale_reason]||'Результат устарел.')+' Сохранён результат последней проверки. Для новой проверки откройте «Дополнительные действия» → «Проверить трафик».') :
+            'Для проверки откройте «Дополнительные действия» → «Проверить трафик».');
+        el('ttm-traffic-checked-at').hidden=!historyTraffic;
+        el('ttm-traffic-freshness').hidden=false;
         var updates=status.client_updates||{}, check=updates.check;
         text('ttm-client-version',(updates.installed||{}).version||(check||{}).installed_version||'Нажмите «Проверить обновления»');
         text('ttm-client-installed-at',dateLabel((updates.installed||{}).installed_at,'Дата неизвестна'));

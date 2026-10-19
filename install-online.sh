@@ -3,9 +3,9 @@
 # First-party IPK is pinned here; official CLI is verified independently by setup.
 set -eu
 export PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-VERSION=0.3.1-alpha.13
-IPK=asuswrt-merlin-trusttunnel_0.3.1-alpha.13-1_aarch64-3.10.ipk
-IPK_SHA256=07c45c17e4f54a6036ff0430f5e1b71dc4ad8e0705270a04404971eb23b68922
+VERSION=0.3.1-alpha.14
+IPK=asuswrt-merlin-trusttunnel_0.3.1-alpha.14-1_aarch64-3.10.ipk
+IPK_SHA256=b1a8d5758bbc2923d7583fb9829b168dd382287c28f02b18321ebccc78b81740
 [ "${1:-}" = --lab-only ] && [ "$#" -eq 1 ] || {
     echo 'Usage: install-online.sh --lab-only (experimental; installs disabled)' >&2; exit 2;
 }

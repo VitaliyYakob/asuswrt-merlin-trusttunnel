@@ -14,7 +14,7 @@ fixture = {
     "process_running": False, "interface_up": False, "enabled": False, "connection_verified": False,
     "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed",
     "endpoint":{"configured":True,"exclusions":[],"settings":{"protocol":"http2","mtu":1350,"anti_dpi":False}},
-    "tunnel_addresses":[],"traffic_check":None,"client_updates":{"channel":"stable","installed":{"version":"1.1.5","installed_at":1790776800},"last_check":{"checked_at":1790777400,"channel":"stable"},"dependencies_ready":True,"recovery_pending":False,"check":None},
+    "tunnel_addresses":[],"traffic_check":None,"traffic_check_history":None,"client_updates":{"channel":"stable","installed":{"version":"1.1.5","installed_at":1790776800},"last_check":{"checked_at":1790777400,"channel":"stable"},"dependencies_ready":True,"recovery_pending":False,"check":None},
     "revision":"0123456789abcdef", "operations":[], "transaction":None,
     "clients":[{"ip":"192.168.51.10","name":"Ноутбук","wireless":[{"lan_if":"br1","ssid":"Guest 1"}]},{"ip":"192.168.50.20","name":"Телефон","wireless":[{"lan_if":"br0","ssid":"Home"}]}],
     "diagnostics":{"model":"RT-AX86U","firmware":"Не проверена","guard":"unverified","client_version_target":"1.1.5","packet_path_verified":False},
