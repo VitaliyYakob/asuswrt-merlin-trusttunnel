@@ -15,11 +15,14 @@ tt_transaction_guard() {
     tt_transaction_ownership || return 1
     tt_validate policy "$TT_CONFIG/transaction/old-policy.json" &&
         tt_validate policy "$TT_CONFIG/transaction/new-policy.json" || return 1
+    if [ "$1" = remove ]; then tt_ports_transaction remove || return 1; fi
     TT_TX_PLAN=$(mktemp "$TT_RUN/transaction-plan.XXXXXX") || return 1
     if ! jq -s --arg mode "$1" -f "$TT_BASE/share/quarantine.jq" \
         "$TT_CONFIG/transaction/old-policy.json" "$TT_CONFIG/transaction/new-policy.json" >"$TT_TX_PLAN"; then rm -f "$TT_TX_PLAN"; return 1; fi
     tt_execute_plan "$TT_TX_PLAN"; TT_TX_RESULT=$?
-    rm -f "$TT_TX_PLAN"; return "$TT_TX_RESULT"
+    rm -f "$TT_TX_PLAN"
+    if [ "$TT_TX_RESULT" = 0 ] && [ "$1" != remove ]; then tt_ports_transaction "$1" || TT_TX_RESULT=$?; fi
+    return "$TT_TX_RESULT"
 }
 tt_transaction_ownership() {
     # /tmp ownership does not survive reboot. Refuse foreign resources before

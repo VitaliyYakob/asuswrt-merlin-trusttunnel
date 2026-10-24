@@ -213,3 +213,60 @@ tt_check_guard_rules
         r=self.shell(body);self.assertEqual(r.returncode,0,r.stderr);self.assertNotIn('MUTATION',r.stderr)
         r=self.shell(body.replace('ip6tables() { iptables "$@"; }','ip6tables() { return 1; }'))
         self.assertNotEqual(r.returncode,0)
+
+class AutomaticTrafficTests(unittest.TestCase):
+    shell=TrafficCheckTests.shell
+    def auto(self,body=''):
+        # No host networking: all collector dependencies are explicitly replaced.
+        return self.shell('''TT_ROOT=
+tt_pid_matches() { return 0; }
+tt_check_guard_rules() { return 0; }
+tt_uptime() { cat "$TT_PROC/test-up"; }
+date() { cat "$TT_PROC/test-now"; }
+tt_packet_snapshot() { cat "$TT_PROC/test-packets"; }
+: >"$TT_ENABLED"; printf 42 >"$TT_RUN/client.start"
+'''+body)
+    def setUp(self):
+        TrafficCheckTests.setUp(self)
+        self.values(1000,1800000000,1,2)
+    def values(self,up,now,sent,received):
+        for key,value in [('up',str(up)),('now',str(now)),('packets',json.dumps(dict(sent=sent,received=received)))]:
+            (self.path/'proc'/('test-'+key)).write_text(value)
+    def test_initial_sample_then_fresh_bidirectional_observation(self):
+        r=self.auto('tt_observe_traffic && tt_observation_status');self.assertEqual(r.returncode,0,r.stderr)
+        self.assertEqual(json.loads(r.stdout)['state'],'sampling')
+        self.values(1060,1800000060,9,12)
+        r=self.auto('tt_observe_traffic && tt_observation_status');self.assertEqual(r.returncode,0,r.stderr)
+        report=json.loads(r.stdout);self.assertEqual(report['state'],'traffic_observed');self.assertEqual(report['checked_at'],1800000060)
+        self.assertEqual((report['sent_packets'],report['received_packets'],report['interval_seconds']),(8,10,60))
+        self.assertFalse(report['leak_test_verified'])
+        self.assertFalse((self.config/'traffic-check.json').exists())
+    def test_calendar_jump_restarts_sampling_and_never_reports_future_check(self):
+        self.auto('tt_observe_traffic')
+        self.values(1020,1790000000,9,12)
+        r=self.auto('tt_observe_traffic && tt_observation_status');self.assertEqual(r.returncode,0,r.stderr)
+        self.assertEqual(json.loads(r.stdout)['checked_at'],1790000000)
+        self.assertEqual(json.loads(r.stdout)['state'],'sampling')
+    def test_stale_or_different_generation_is_not_current(self):
+        self.auto('tt_observe_traffic')
+        self.values(1200,1800000200,9,12)
+        self.assertIsNone(json.loads(self.auto('tt_observation_status').stdout))
+        self.values(1000,1800000000,9,12)
+        self.assertIsNone(json.loads(self.auto('printf 43 >"$TT_RUN/client.start"; tt_observation_status').stdout))
+    def test_corrupted_sample_recovers_without_writing_flash(self):
+        for content in ('{','{}','[]','null','{}\n{}'):
+            self.auto('true');(self.run/'traffic-sample.json').write_text(content)
+            r=self.auto('tt_observe_traffic && tt_observation_status');self.assertEqual(r.returncode,0,r.stderr)
+            self.assertEqual(json.loads(r.stdout)['state'],'sampling')
+
+    def test_firewall_reset_rebaselines_without_faking_observation_date(self):
+        self.auto('tt_observe_traffic')
+        self.values(1060,1800000060,9,12)
+        first=json.loads(self.auto('tt_observe_traffic; tt_observation_status').stdout)
+        self.values(1061,1800000061,0,0)
+        after=json.loads(self.auto('tt_traffic_baseline; tt_observe_traffic; tt_observation_status').stdout)
+        self.assertEqual(first,after)
+        self.values(1120,1800000120,5,8)
+        report=json.loads(self.auto('tt_observe_traffic; tt_observation_status').stdout)
+        self.assertEqual(report['state'],'traffic_observed')
+        self.assertEqual((report['sent_packets'],report['received_packets'],report['interval_seconds']),(5,8,59))

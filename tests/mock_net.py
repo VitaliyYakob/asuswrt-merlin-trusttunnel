@@ -66,10 +66,10 @@ if name in ('iptables','ip6tables'):
 if name=='ip':
     if args[:2]==['link','show']:done(1)
     if args[:3]==['-4','rule','show']:
-        text='\n'.join(f'{r[0]}: from {r[1]} iif {r[2]} lookup {r[3]}' for r in state['rules'])
+        text='\n'.join(f'{r[0]}: from '+(('all fwmark '+r[1][7:]) if r[1].startswith('fwmark=') else r[1])+f' iif {r[2]} lookup {r[3]}' for r in state['rules'])
         done(text=text)
     if args[:2]==['-4','rule']:
-        rule=[opt(args,'pref'),opt(args,'from'),opt(args,'iif'),opt(args,'lookup')]
+        rule=[opt(args,'pref'),('fwmark='+opt(args,'fwmark')) if 'fwmark' in args else opt(args,'from'),opt(args,'iif'),opt(args,'lookup')]
         if args[2]=='del':
             if rule not in state['rules']:done(2)
             state['rules'].remove(rule);done()

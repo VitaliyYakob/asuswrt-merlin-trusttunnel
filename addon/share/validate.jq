@@ -79,12 +79,17 @@ def networks: if .schema==1 then [{lan_if,sources}] else .networks end;
 def policy:
   require(type=="object"; "policy: expected an object") |
   require(.schema==1 or .schema==2 or .schema==3 or .schema==4; "policy: unsupported schema") |
-  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==2 then ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==4 then ["schema","networks","local_access","block_ipv6_bridge","table","priority"] else ["schema","networks","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
-  require((networks|type)=="array" and (networks|length)>=1 and (networks|length)<=16; "policy: choose 1..16 bridges") |
+  require((keys - (if .schema==1 then ["schema","lan_if","sources","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==2 then ["schema","networks","dns_ipv4","block_ipv6_bridge","table","priority"] elif .schema==4 then ["schema","networks","local_access","ports","block_ipv6_bridge","table","priority"] else ["schema","networks","block_ipv6_bridge","table","priority"] end)|length)==0; "policy: unknown field") |
+  require((networks|type)=="array" and ((networks|length)>=1 or (.schema==4 and ((.ports//[])|length)>0)) and (networks|length)<=16; "policy: choose 1..16 bridges") |
   require(all(networks[]; network | true); "policy: invalid network") |
   require(([networks[].lan_if]|unique|length)==(networks|length); "policy: duplicate bridge") |
-  require(([networks[].sources|length]|add)<=32; "policy: at most 32 source rules across all bridges") |
+  require(([networks[].sources|length]|add//0)<=32; "policy: at most 32 source rules across all bridges") |
   (if .schema==4 then
+    require(((has("ports")|not) or (.ports|type=="array")) and ((.ports//[])|type)=="array" and ((.ports//[])|length)<=5 and
+      all(.ports[]?;type=="object" and ((keys-["interface","lan_if","identity"])|length)==0 and
+        (.interface|type=="string" and test("^eth[1-5]$")) and .lan_if=="br0" and
+        (.identity|type=="string" and test("^[0-9a-f]{64}$"))) and
+      ((.ports//[])|unique_by(.interface)|length)==((.ports//[])|length); "policy: invalid physical LAN ports") |
     require(all(.networks[];has("identity")); "policy: schema four requires topology identities") |
     require((.local_access|type)=="array" and (.local_access|length)<=16 and
         all(.local_access[];type=="object" and ((keys-["lan_if","destination","identity"])|length)==0 and

@@ -130,3 +130,7 @@
 .ttm-network-mode { margin-bottom: 8px !important; }
 .ttm-exclusion-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 10px; overflow-wrap: anywhere; }
 .ttm-exclusion-item span { min-width: 0; }
+/* Physical ports are independent choices; no editable Linux interface names. */
+#ttm-ports{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:10px}
+#ttm-ports .ttm-port{display:block;margin:0;padding:12px;background:#2f3d43;border:1px solid #637980;border-radius:3px}
+#ttm-ports .ttm-port small{display:block;margin:7px 0 0;line-height:1.4}

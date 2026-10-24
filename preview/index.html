@@ -140,6 +140,10 @@
 .ttm-network-mode { margin-bottom: 8px !important; }
 .ttm-exclusion-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 10px; overflow-wrap: anywhere; }
 .ttm-exclusion-item span { min-width: 0; }
+/* Physical ports are independent choices; no editable Linux interface names. */
+#ttm-ports{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:10px}
+#ttm-ports .ttm-port{display:block;margin:0;padding:12px;background:#2f3d43;border:1px solid #637980;border-radius:3px}
+#ttm-ports .ttm-port small{display:block;margin:7px 0 0;line-height:1.4}
 
 body{background:#20313b;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:13px;margin:0;padding:12px 18px 26px}
 #TopBanner,.content,#footer{box-sizing:border-box;width:100%;max-width:1180px;margin:0 auto}
@@ -187,7 +191,7 @@ body{padding:0;background:#4c595e}
 .preview-tabs{padding:0 8px;gap:4px}.preview-tab{display:none;min-height:35px;padding:0 12px;font-size:12px}.preview-tab.preview-client,.preview-tab[aria-current=page]{display:flex}
 #footer{padding:12px;font-size:10px;text-align:left}
 }
-</style><script>window.TTM_PREVIEW={"version": "0.3.1-alpha.14", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "endpoint": {"configured": true, "exclusions": [], "settings": {"protocol": "http2", "mtu": 1350, "anti_dpi": false}}, "tunnel_addresses": [], "traffic_check": null, "traffic_check_history": null, "client_updates": {"channel": "stable", "installed": {"version": "1.1.5", "installed_at": 1790776800}, "last_check": {"checked_at": 1790777400, "channel": "stable"}, "dependencies_ready": true, "recovery_pending": false, "check": null}, "revision": "0123456789abcdef", "operations": [], "transaction": null, "clients": [{"ip": "192.168.51.10", "name": "\u041d\u043e\u0443\u0442\u0431\u0443\u043a", "wireless": [{"lan_if": "br1", "ssid": "Guest 1"}]}, {"ip": "192.168.50.20", "name": "\u0422\u0435\u043b\u0435\u0444\u043e\u043d", "wireless": [{"lan_if": "br0", "ssid": "Home"}]}], "diagnostics": {"model": "RT-AX86U", "firmware": "\u041d\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u0430", "guard": "unverified", "client_version_target": "1.1.5", "packet_path_verified": false}, "discovered_networks": [{"lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "identity": "1111111111111111111111111111111111111111111111111111111111111111", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "identity": "2222222222222222222222222222222222222222222222222222222222222222", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "identity": "3333333333333333333333333333333333333333333333333333333333333333", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
+</style><script>window.TTM_PREVIEW={"version": "0.3.1-alpha.15", "state": "disabled", "hostname": "vpn.example.com", "process_running": false, "interface_up": false, "enabled": false, "connection_verified": false, "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed", "endpoint": {"configured": true, "exclusions": [], "settings": {"protocol": "http2", "mtu": 1350, "anti_dpi": false}}, "tunnel_addresses": [], "traffic_check": null, "traffic_check_history": null, "client_updates": {"channel": "stable", "installed": {"version": "1.1.5", "installed_at": 1790776800}, "last_check": {"checked_at": 1790777400, "channel": "stable"}, "dependencies_ready": true, "recovery_pending": false, "check": null}, "ports": [{"interface": "eth4", "label": "LAN1", "lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "available": true, "reason": "", "link_up": false}, {"interface": "eth3", "label": "LAN2", "lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "available": true, "reason": "", "link_up": false}, {"interface": "eth2", "label": "LAN3", "lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "available": true, "reason": "", "link_up": false}, {"interface": "eth1", "label": "LAN4", "lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "available": true, "reason": "", "link_up": true}, {"interface": "eth5", "label": "2.5G", "lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "available": true, "reason": "", "link_up": false}], "client_uptime_seconds": null, "traffic_observation": null, "revision": "0123456789abcdef", "operations": [], "transaction": null, "clients": [{"ip": "192.168.51.10", "name": "\u041d\u043e\u0443\u0442\u0431\u0443\u043a", "wireless": [{"lan_if": "br1", "ssid": "Guest 1"}]}, {"ip": "192.168.50.20", "name": "\u0422\u0435\u043b\u0435\u0444\u043e\u043d", "wireless": [{"lan_if": "br0", "ssid": "Home"}]}], "diagnostics": {"model": "RT-AX86U", "firmware": "\u041d\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u0430", "guard": "unverified", "client_version_target": "1.1.5", "packet_path_verified": false}, "discovered_networks": [{"lan_if": "br0", "identity": "0000000000000000000000000000000000000000000000000000000000000000", "sources": ["192.168.50.0/24"], "ssids": ["Home"]}, {"lan_if": "br1", "identity": "1111111111111111111111111111111111111111111111111111111111111111", "sources": ["192.168.51.0/24"], "ssids": ["Guest 1"]}, {"lan_if": "br2", "identity": "2222222222222222222222222222222222222222222222222222222222222222", "sources": ["192.168.52.0/24"], "ssids": ["Guest 2"]}, {"lan_if": "br3", "identity": "3333333333333333333333333333333333333333333333333333333333333333", "sources": ["192.168.53.0/24"], "ssids": ["Guest 3"]}], "policy": {"schema": 3, "networks": [{"lan_if": "br1", "sources": ["192.168.51.0/24"]}], "block_ipv6_bridge": true, "table": 871, "priority": 17100}, "hardware_tested": false};</script><script>/* TrustTunnel v1 deep links, checked against TrustTunnel v1.0.33/deeplink.
  * Client v1.1.5 pins that implementation in trusttunnel/Cargo.lock.
  * https://github.com/TrustTunnel/TrustTunnel/blob/v1.0.33/DEEP_LINK.md
  * parseLink(uri) -> {endpoint: schema-1 object, name: string, warnings: string[]}.
@@ -521,7 +525,7 @@ body{padding:0;background:#4c595e}
             return bindings.size===1 && associations.some(function (w) { return w.lan_if===network.lan_if && w.ssid===ssid; });
         });
     }
-    function policyFromNetworks(rows, acknowledge) {
+    function policyFromNetworks(rows, acknowledge, ports) {
         var total = 0, seen = [], networks = rows.filter(function (row) { return row.selected !== false; }).map(function (row) {
             var lan = row.lan_if.trim(), cidrs = Array.isArray(row.sources) ? row.sources : row.sources.trim().split(/[\s,;]+/).filter(Boolean);
             if (!/^br[0-9]+(?:\.[0-9]+)?$/.test(lan) || lan.length > 15) throw new Error('Не удалось определить сетевой интерфейс. Обновите страницу.');
@@ -532,7 +536,7 @@ body{padding:0;background:#4c595e}
             total += cidrs.length;
             return {lan_if: lan, sources: cidrs};
         });
-        if (!networks.length || networks.length > 16 || total > 32) throw new Error('Выберите от 1 до 16 сетей, не более 32 записей подсетей суммарно.');
+        if ((!networks.length && !(ports||[]).length) || networks.length > 16 || total > 32) throw new Error('Выберите сеть, устройство или LAN-порт; до 16 сетей и 32 записей подсетей.');
         if (!acknowledge) throw new Error('Подтвердите блокировку IPv6 в выбранных сетях.');
         return {schema: 3, networks: networks, block_ipv6_bridge: true, table: 871, priority: 17100};
     }
@@ -596,7 +600,7 @@ body{padding:0;background:#4c595e}
         var date=new Date(value*1000);
         return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString('ru-RU');
     }
-    var startErrors={update_pending:'Сначала подтвердите новую версию CLI или верните предыдущую.',update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
+    var startErrors={update_pending:'Сначала подтвердите новую версию CLI или верните предыдущую.',update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',ports_unavailable:'Проверьте доступность LAN-портов, WAN/IPTV/агрегацию и конфликтующие правила других VPN. Снимите недоступные порты во вкладке «Сети».',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
     function operationLabel(op) {
         var actions={status:'Обновление статуса',start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',endpoint_settings:'Параметры подключения',downgrade_client:'Переход на предыдущую сборку',confirm_client:'Подтверждение CLI',rollback_client:'Возврат предыдущего CLI',diagnostics:'Диагностика',verify_traffic:'Проверка трафика',check_updates:'Поиск обновлений',update_client:'Обновление CLI',channel_stable:'Стабильный канал',channel_nightly:'Ночной канал'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
@@ -707,14 +711,20 @@ body{padding:0;background:#4c595e}
             var value=document.createElement('div'); addDevicePicker(value,row,group.clients,group.ssid); card.appendChild(value); box.appendChild(card);
         });
     }
-    function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей выбрано'); }
+    function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей · '+document.querySelectorAll('#ttm-ports input:checked').length+' портов выбрано'); }
     function rows() { return Array.from(document.querySelectorAll('.ttm-network')).map(function (row) {
         var model = networkModels.get(row);
         return {selected:row.querySelector('.ttm-selected').checked,available:model.available,identity:model.identity.token,lan_if:model.identity.lan_if,sources:row.querySelector('.ttm-cidrs').value};
     }); }
     function policy() {
         if (rows().some(function (row) { return row.selected && !row.available; })) throw new Error('Выбранная сеть больше не обнаружена. Снимите её выбор и проверьте настройки Wi-Fi роутера.');
-        var p=policyFromNetworks(rows(),el('ttm-v6ack').checked);
+        var ports=Array.from(document.querySelectorAll('#ttm-ports input:checked')).map(function (input) {
+            var port=(latest.ports||[]).find(function (p) { return p.interface===input.value && p.available; });
+            if (!port || !/^[0-9a-f]{64}$/.test(port.identity||'')) throw new Error('Выбранный порт недоступен. Обновите список или снимите выбор.');
+            return {interface:port.interface,lan_if:port.lan_if,identity:port.identity};
+        });
+        var p=policyFromNetworks(rows(),el('ttm-v6ack').checked,ports);
+        if (ports.length) p.ports=ports;
         p.schema=4; p.local_access=[];
         p.networks.forEach(function (network) {
             network.identity=rows().find(function (row) { return row.lan_if===network.lan_if; }).identity;
@@ -734,6 +744,20 @@ body{padding:0;background:#4c595e}
         var inventory = Array.isArray(status.discovered_networks) ? status.discovered_networks : [];
         var selected = status.policy ? (status.policy.schema === 1 ? [{lan_if:status.policy.lan_if,sources:status.policy.sources}] : status.policy.networks) : [];
         if (!initialized || (!dirty.policy && policyRevision!==(status.revision||'0'))) {
+            el('ttm-ports').textContent='';
+            var ports=(status.ports||[]).slice(), savedPorts=(status.policy||{}).ports||[];
+            savedPorts.forEach(function (saved) { if (!ports.some(function (p) { return p.interface===saved.interface; })) ports.push(Object.assign({},saved,{label:saved.interface,available:false,reason:'Сохранённый порт недоступен'})); });
+            ports.forEach(function (port) {
+                var label=document.createElement('label'), checkbox=document.createElement('input'), hint=document.createElement('small');
+                label.className='ttm-check ttm-port'; checkbox.type='checkbox'; checkbox.value=port.interface;
+                checkbox.checked=savedPorts.some(function (p) { return p.interface===port.interface; });
+                checkbox.disabled=!port.available && !checkbox.checked;
+                checkbox.addEventListener('change',function () { if (!port.available && !checkbox.checked) checkbox.disabled=true; markDirty('policy'); updateCount(); });
+                label.appendChild(checkbox); label.appendChild(document.createTextNode(' '+port.label));
+                hint.textContent=port.available?(port.link_up?'Кабель подключён':'Нет соединения по кабелю'):port.reason;
+                label.appendChild(hint); el('ttm-ports').appendChild(label);
+            });
+            el('ttm-ports-empty').hidden=!!ports.length;
             el('ttm-networks').textContent=''; rowIndex=0;
             inventory.forEach(function (network) {
                 var saved=selected.find(function (n) { return n.lan_if===network.lan_if; });
@@ -757,6 +781,11 @@ body{padding:0;background:#4c595e}
                 if (!rows().some(function (r) { return r.lan_if===network.lan_if; })) addNetwork(network,false,true);
             });
         }
+        document.querySelectorAll('#ttm-ports input').forEach(function (input) {
+            var port=(status.ports||[]).find(function (p) { return p.interface===input.value; });
+            input.disabled=(!port || !port.available) && !input.checked;
+            input.parentNode.querySelector('small').textContent=!port?'Порт больше не обнаружен':!port.available?port.reason:port.link_up?'Кабель подключён':'Нет соединения по кабелю';
+        });
         document.querySelectorAll('.ttm-network').forEach(function (row) {
             var model=networkModels.get(row), network=inventory.find(function (n) { return n.lan_if===model.identity.lan_if; });
             model.available=!!network && model.identity.token===network.identity;
@@ -826,6 +855,11 @@ body{padding:0;background:#4c595e}
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
         renderWifiInventory(inventoryOrEmpty(status));
         text('ttm-tun-address',(status.tunnel_addresses||[]).join(', ')||'Не назначен');
+        var elapsed=status.client_uptime_seconds;
+        text('ttm-client-uptime',status.process_running && Number.isFinite(elapsed)?Math.floor(elapsed/86400)+' сут. '+Math.floor(elapsed%86400/3600)+' ч '+Math.floor(elapsed%3600/60)+' мин':'Клиент остановлен / нет данных');
+        var observation=status.traffic_observation;
+        var observationLabels={sampling:'Первый снимок получен; ожидание следующего',traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'Двусторонний трафик за интервал не наблюдался — возможен простой',counters_reset:'Счётчики сброшены; ожидание нового интервала',incomplete:'Часть правил или маршрутов отсутствует'};
+        text('ttm-auto-traffic',observation?dateLabel(observation.checked_at,'Дата неизвестна')+' · '+(observationLabels[observation.state]||'Результат неизвестен')+(observation.interval_seconds?' · за '+observation.interval_seconds+' с: отправлено '+observation.sent_packets+', получено '+observation.received_packets:''):'Нет свежего наблюдения. При работающем клиенте снимки обновляются примерно раз в минуту.');
         var traffic=status.traffic_check, historyTraffic=status.traffic_check_history||traffic;
         var trafficLabels={traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'За 10 секунд двусторонний трафик не появился — откройте сайт и повторите',incomplete:'Не все правила или маршруты присутствуют',counters_reset:'Счётчики сброшены; повторите проверку'};
         text('ttm-traffic-check',historyTraffic ? (trafficLabels[historyTraffic.state]||'Результат неизвестен') : 'Проверка ещё не выполнялась');
@@ -855,7 +889,7 @@ body{padding:0;background:#4c595e}
         if (metrics && (!lastMetrics || metrics.system_ticks!==lastMetrics.system_ticks)) lastMetrics=metrics;
         if (!metrics) lastMetrics=null;
         text('ttm-update-requirements',updates.recovery_pending?'Незавершённое обновление: требуется восстановление предыдущего клиента.':updates.dependencies_ready?'':'Для установки нужны curl, GnuPG, tar, timeout и od из Entware. Поиск обновлений требует curl.');
-        text('ttm-ipv6-help','Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже при выборе устройств /32.'+((status.diagnostics||{}).ipv6_service==='disabled'?' Сейчас IPv6 отключён в Merlin; правило защищает и после его включения.':''));
+        text('ttm-ipv6-help','На выбранных физических портах блокируется IPv6-трафик этих портов и IPv6 DNS к роутеру. Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже при выборе устройств /32.'+((status.diagnostics||{}).ipv6_service==='disabled'?' Сейчас IPv6 отключён в Merlin; правило защищает и после его включения.':''));
         text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Блокировка настроена; тест обрыва ещё не выполнен',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
         if (traffic && traffic.rules_checked) text('ttm-guard','Правила и маршрут проверены; тест обрыва ещё не выполнен');
         var startup=(status.diagnostics||{}).startup;
@@ -1103,7 +1137,7 @@ body{padding:0;background:#4c595e}
 <td class="ttm-sidebar"><div id="mainMenu" aria-label="Образец меню прошивки"><div class="preview-quick"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Быстрая настройка<br>Интернет</span></div><div class="preview-menu-group"><div class="preview-menu-heading">Общие настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Карта сети</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>AiMesh</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Гостевая сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>AiProtection</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="10" r="4"/><circle cx="24" cy="12" r="3"/><path d="M3 27v-5c0-7 16-7 16 0v5M20 19c5-2 9 1 9 5v3"/></svg><span>Родительский контроль</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Адаптивный QoS</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Анализатор трафика</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Игры</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Open NAT</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V5m-4 4 4-5 4 5M16 22H9a3 3 0 0 1-3-3v-4M16 17h7a3 3 0 0 0 3-3v-2"/><circle cx="6" cy="12" r="3"/><rect x="23" y="5" width="6" height="6"/><circle cx="16" cy="28" r="2"/></svg><span>USB-приложение</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Информация о системе</span></div></div><div class="preview-menu-group"><div class="preview-menu-heading">Дополнительные настройки</div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c7-7 17-7 24 0M8 17c5-5 11-5 16 0M12 22c3-3 5-3 8 0"/><circle cx="16" cy="27" r="1"/></svg><span>Беспроводная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>Локальная сеть</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>Интернет</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10"/><path d="M6 16h20M16 6c-6 6-6 14 0 20M16 6c6 6 6 14 0 20M8 10h16M8 22h16"/></svg><span>IPv6</span></div><div class="preview-menu-item is-active"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="18" rx="1"/><path d="M12 23v5M20 23v5M8 28h16M7 14h5l3-5 4 10 3-5h3"/></svg><span>VPN</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3L5 8v9c0 6 5 10 11 13 6-3 11-7 11-13V8z"/><rect x="11" y="15" width="10" height="8" rx="1"/><path d="M13 15v-3a3 3 0 0 1 6 0v3"/></svg><span>Брандмауэр</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Администрирование</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3h19v26H7zM3 7h4M3 13h4M3 19h4M3 25h4M12 9h9M12 14h9M12 19h9M12 24h6"/></svg><span>Системный журнал</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Сетевые утилиты</span></div><div class="preview-menu-item"><svg class="preview-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M23 4a8 8 0 0 0-9 10L4 24a3 3 0 0 0 4 4l10-10a8 8 0 0 0 10-9l-5 5-5-5z"/></svg><span>Дополнения</span></div></div></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"><div class="preview-status"><span>Режим: <b>Беспроводной роутер</b></span><span>Модель: <b>RT-AX86U</b></span><span class="preview-offline">Нет подключения к прошивке</span></div><div class="preview-tabs" aria-label="Образец вкладок VPN"><span class="preview-tab">VPN Status</span><span class="preview-tab">VPN Director</span><span class="preview-tab">VPN Server</span><span class="preview-tab preview-client">VPN Client</span><span class="preview-tab">Instant Guard</span><span class="preview-tab" aria-current="page">TrustTunnel</span></div></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.14</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.15</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -1125,11 +1159,13 @@ body{padding:0;background:#4c595e}
 <dt>Сервер</dt><dd id="ttm-host">—</dd>
 <dt>Процесс / интерфейс</dt><dd><span id="ttm-process">—</span> / <span id="ttm-tun">—</span></dd>
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
-<dt>Обновлено</dt><dd id="ttm-age">—</dd>
+<dt>Статус обновлён</dt><dd id="ttm-age">—</dd>
 <dt>Последняя операция</dt><dd id="ttm-last">—</dd>
 <dt>Блокировка обхода VPN</dt><dd id="ttm-guard">—</dd>
 <dt>IP-адрес TUN</dt><dd><span id="ttm-tun-address">—</span><small>Внутренний адрес интерфейса, не внешний IP VPN.</small></dd>
-<dt>Последняя проверка трафика</dt><dd><span id="ttm-traffic-check">Проверка ещё не выполнялась</span><small id="ttm-traffic-checked-at" hidden></small><small id="ttm-traffic-freshness" hidden></small></dd>
+<dt>Клиент работает</dt><dd><span id="ttm-client-uptime">—</span><small>Время работы процесса клиента. Внутренние переподключения к серверу его не обнуляют.</small></dd>
+<dt>Автоматическое наблюдение</dt><dd id="ttm-auto-traffic">Ожидание данных</dd>
+<dt>История ручной проверки</dt><dd><span id="ttm-traffic-check">Проверка ещё не выполнялась</span><small id="ttm-traffic-checked-at" hidden></small><small id="ttm-traffic-freshness" hidden></small></dd>
 </dl>
 <p id="ttm-startup" class="ttm-note" role="status" hidden></p>
 <div class="ttm-actions"><button id="ttm-toggle" type="button" class="ttm-primary" data-runtime onclick="ttmToggle()" disabled>Подключить</button></div>
@@ -1231,13 +1267,15 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <p id="ttm-network-warnings" class="ttm-error" hidden></p>
+<div class="ttm-settings"><h4>Физические LAN-порты</h4><div id="ttm-ports"></div><p id="ttm-ports-empty" class="ttm-muted">Для этой модели выбор портов пока недоступен.</p></div>
+<p class="ttm-muted">Выбор сетей, устройств и портов суммируется: снятый порт всё равно использует VPN, если выбрана его подсеть или устройство. Можно отметить один, несколько или все доступные порты. IPv4-трафик устройств за отмеченными портами направляется через VPN, включая подключённый коммутатор. Подсеть и Wi-Fi не меняются. Поддерживается обычное подключение без VLAN-тегов. WAN, IPTV и агрегация исключаются. Не выбирайте порт управления без готовности подтвердить доступ после изменения.</p>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <details><summary>Дополнительно: интерфейсы и подсети Wi-Fi</summary><div id="ttm-wifi-inventory"></div><p class="ttm-muted">Имя SSID не определяет отдельную IP-подсеть. Адресация и интерфейсы обнаружены на роутере.</p></details>
 <p class="ttm-muted">Список формируется автоматически. Если разные SSID включены в один bridge, правило для его подсети затронет их всех и проводные устройства. Для отдельной маршрутизации SSID нужна отдельная подсеть и bridge в Merlin. До 16 сетей и 32 записей подсетей суммарно.</p>
 <p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Для выбора устройств сначала включите режим «Выбранные устройства». Переход из режима всей сети запрашивает подтверждение. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
 <details><summary>Дополнительно: доступ к NAS и другим локальным сетям</summary><p>Необязательно. Отметьте сеть с NAS, принтером или другим локальным ресурсом, к которому нужен доступ из VPN-сети. Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
-<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях, чтобы он не обходил VPN.</span></label>
+<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях и на выбранных портах, чтобы он не обходил VPN.</span></label>
 <p class="ttm-muted" id="ttm-ipv6-help">Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже если выше выбраны только отдельные устройства /32.</p>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button></div>

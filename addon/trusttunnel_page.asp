@@ -4,10 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
 <title>ASUSWRT-Merlin — TrustTunnel</title>
 <link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css">
-<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.14.css">
+<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.15.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.14"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.14"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.14"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.15"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.15"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.15"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,7 +23,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.14</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.15</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -45,11 +45,13 @@
 <dt>Сервер</dt><dd id="ttm-host">—</dd>
 <dt>Процесс / интерфейс</dt><dd><span id="ttm-process">—</span> / <span id="ttm-tun">—</span></dd>
 <dt>Получено / отправлено</dt><dd id="ttm-counter">—</dd>
-<dt>Обновлено</dt><dd id="ttm-age">—</dd>
+<dt>Статус обновлён</dt><dd id="ttm-age">—</dd>
 <dt>Последняя операция</dt><dd id="ttm-last">—</dd>
 <dt>Блокировка обхода VPN</dt><dd id="ttm-guard">—</dd>
 <dt>IP-адрес TUN</dt><dd><span id="ttm-tun-address">—</span><small>Внутренний адрес интерфейса, не внешний IP VPN.</small></dd>
-<dt>Последняя проверка трафика</dt><dd><span id="ttm-traffic-check">Проверка ещё не выполнялась</span><small id="ttm-traffic-checked-at" hidden></small><small id="ttm-traffic-freshness" hidden></small></dd>
+<dt>Клиент работает</dt><dd><span id="ttm-client-uptime">—</span><small>Время работы процесса клиента. Внутренние переподключения к серверу его не обнуляют.</small></dd>
+<dt>Автоматическое наблюдение</dt><dd id="ttm-auto-traffic">Ожидание данных</dd>
+<dt>История ручной проверки</dt><dd><span id="ttm-traffic-check">Проверка ещё не выполнялась</span><small id="ttm-traffic-checked-at" hidden></small><small id="ttm-traffic-freshness" hidden></small></dd>
 </dl>
 <p id="ttm-startup" class="ttm-note" role="status" hidden></p>
 <div class="ttm-actions"><button id="ttm-toggle" type="button" class="ttm-primary" data-runtime onclick="ttmToggle()" disabled>Подключить</button></div>
@@ -151,13 +153,15 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <fieldset id="ttm-policy-fields" disabled>
 <div class="ttm-actions"><button type="button" onclick="ttmSelectNetworks(true)">Выбрать все</button><button type="button" onclick="ttmSelectNetworks(false)">Снять выбор</button></div>
 <p id="ttm-network-warnings" class="ttm-error" hidden></p>
+<div class="ttm-settings"><h4>Физические LAN-порты</h4><div id="ttm-ports"></div><p id="ttm-ports-empty" class="ttm-muted">Для этой модели выбор портов пока недоступен.</p></div>
+<p class="ttm-muted">Выбор сетей, устройств и портов суммируется: снятый порт всё равно использует VPN, если выбрана его подсеть или устройство. Можно отметить один, несколько или все доступные порты. IPv4-трафик устройств за отмеченными портами направляется через VPN, включая подключённый коммутатор. Подсеть и Wi-Fi не меняются. Поддерживается обычное подключение без VLAN-тегов. WAN, IPTV и агрегация исключаются. Не выбирайте порт управления без готовности подтвердить доступ после изменения.</p>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <details><summary>Дополнительно: интерфейсы и подсети Wi-Fi</summary><div id="ttm-wifi-inventory"></div><p class="ttm-muted">Имя SSID не определяет отдельную IP-подсеть. Адресация и интерфейсы обнаружены на роутере.</p></details>
 <p class="ttm-muted">Список формируется автоматически. Если разные SSID включены в один bridge, правило для его подсети затронет их всех и проводные устройства. Для отдельной маршрутизации SSID нужна отдельная подсеть и bridge в Merlin. До 16 сетей и 32 записей подсетей суммарно.</p>
 <p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Для выбора устройств сначала включите режим «Выбранные устройства». Переход из режима всей сети запрашивает подтверждение. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
 <details><summary>Дополнительно: доступ к NAS и другим локальным сетям</summary><p>Необязательно. Отметьте сеть с NAS, принтером или другим локальным ресурсом, к которому нужен доступ из VPN-сети. Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
-<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях, чтобы он не обходил VPN.</span></label>
+<label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях и на выбранных портах, чтобы он не обходил VPN.</span></label>
 <p class="ttm-muted" id="ttm-ipv6-help">Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже если выше выбраны только отдельные устройства /32.</p>
 </fieldset>
 <div class="ttm-actions"><button type="button" class="ttm-primary" id="ttm-save" onclick="ttmAction('policy')" disabled>Сохранить маршрутизацию</button></div>

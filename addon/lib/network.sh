@@ -1,10 +1,13 @@
 #!/bin/sh
 # No eval, no main-table default-route replacement, no global conntrack flush.
+# shellcheck source=ports.sh
+. "$TT_BASE/lib/ports.sh"
 tt_claim_resources() {
     if [ -f "$TT_OWNED" ]; then
         cmp -s "$TT_POLICY" "$TT_RUNTIME_POLICY" || { tt_error 'active policy differs from the owned policy'; return 1; }
         return 0
     fi
+    tt_ports_check || return 1
     # Refuse to take ownership of a populated table, priority, interface or chain.
     TT_ROUTES=$(ip -4 route show table 871 2>/dev/null) || TT_ROUTES=
     [ -z "$TT_ROUTES" ] || { tt_error 'routing table 871 is already occupied'; return 1; }
@@ -25,6 +28,7 @@ tt_claim_resources() {
     done
     tt_atomic_json "$TT_POLICY" "$TT_RUNTIME_POLICY" || return 1
     : >"$TT_OWNED"
+    if tt_ports_selected "$TT_RUNTIME_POLICY"; then tt_ports_claim || return 1; fi
 }
 tt_run_argv() (
     # $1 is a JSON operation generated locally from the validated policy.
@@ -54,8 +58,11 @@ tt_run_plan() {
     if ! tt_plan "$1" "$2" >"$TT_PLAN_RAW"; then
         rm -f "$TT_PLAN_RAW"; return 1
     fi
+    if [ "$1" = guard ] && type tt_observe_traffic >/dev/null 2>&1; then tt_observe_traffic || :; fi
     tt_execute_plan "$TT_PLAN_RAW"
     TT_EXEC_RESULT=$?
+    if [ "$TT_EXEC_RESULT" = 0 ] && [ "$1" = guard ]; then tt_ports_guard || TT_EXEC_RESULT=$?; fi
+    if [ "$TT_EXEC_RESULT" = 0 ] && [ "$1" = guard ] && type tt_traffic_baseline >/dev/null 2>&1; then tt_traffic_baseline || :; fi
     rm -f "$TT_PLAN_RAW"
     return "$TT_EXEC_RESULT"
 }
@@ -72,7 +79,7 @@ tt_execute_plan() {
                 # Missing objects are expected on repeated cleanup. Final disarm is audited below.
                 tt_run_argv "$TT_OP" >/dev/null 2>&1 || :;;
             flush-flows)
-                TT_FLUSH_BRIDGES=$(printf '%s' "$TT_OP" | jq -er '.interfaces[]') || { TT_PLAN_OK=0; break; }
+                TT_FLUSH_BRIDGES=$(printf '%s' "$TT_OP" | jq -r '.interfaces[]') || { TT_PLAN_OK=0; break; }
                 for TT_FLUSH_BRIDGE in $TT_FLUSH_BRIDGES; do
                     printf '%s' "$TT_FLUSH_BRIDGE" | grep -Eq '^br[0-9]+(\.[0-9]+)?$' || { TT_PLAN_OK=0; break; }
                     # Flush only selected bridges and their physical members. No
@@ -86,6 +93,8 @@ tt_execute_plan() {
                     [ "$TT_PLAN_OK" = 1 ] || break
                 done
                 if [ "$TT_PLAN_OK" != 1 ]; then TT_FAILURE_CODE=offload_flush_failed; break; fi;;
+            port-clean) if iptables -t mangle -S TTM4_PORT >/dev/null 2>&1; then TT_PLAN_OK=0; break; fi;;
+            port-rule) tt_port_rule "$(printf '%s' "$TT_OP" | jq -r .action)" || { TT_PLAN_OK=0; break; };;
             rule) tt_rule "$TT_OP" || { TT_PLAN_OK=0; break; };;
             restore)
                 TT_PROGRAM=$(printf '%s' "$TT_OP" | jq -r .program)
@@ -127,7 +136,7 @@ tt_execute_plan() {
     [ "$TT_PLAN_OK" = 1 ]
 }
 tt_rpf_loose() {
-    TT_RPF_LANS=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if end' "$TT_RUNTIME_POLICY") || return 1
+    TT_RPF_LANS=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if,.ports[]?.lan_if end' "$TT_RUNTIME_POLICY") || return 1
     for TT_IF in $TT_RPF_LANS tt0; do
         TT_RPF_FILE="$TT_PROC/sys/net/ipv4/conf/$TT_IF/rp_filter"
         [ -f "$TT_RPF_FILE" ] || continue
@@ -148,7 +157,7 @@ tt_rpf_restore() {
 }
 tt_rpf_prune() {
     # A confirmed migration no longer owns rp_filter on bridges it stopped using.
-    TT_RPF_KEEP=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if end' "$TT_RUNTIME_POLICY") || return 1
+    TT_RPF_KEEP=$(jq -r 'if .schema==1 then .lan_if else .networks[].lan_if,.ports[]?.lan_if end' "$TT_RUNTIME_POLICY") || return 1
     for TT_SAVED in "$TT_RUN"/rpf-*; do
         [ -f "$TT_SAVED" ] || continue
         TT_IF=${TT_SAVED##*/rpf-}
@@ -163,6 +172,7 @@ tt_rpf_prune() {
 }
 tt_disarm() {
     [ -f "$TT_OWNED" ] || return 0
+    tt_ports_remove || return 1
     tt_run_plan disarm "$TT_RUNTIME_POLICY" || return 1
     # Never report successful removal while owned resources remain.
     if ip -4 rule show | awk -F: '$1>=17100 && $1<=17131 {f=1} END {exit !f}'; then

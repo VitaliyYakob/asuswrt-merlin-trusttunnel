@@ -31,7 +31,7 @@
             return bindings.size===1 && associations.some(function (w) { return w.lan_if===network.lan_if && w.ssid===ssid; });
         });
     }
-    function policyFromNetworks(rows, acknowledge) {
+    function policyFromNetworks(rows, acknowledge, ports) {
         var total = 0, seen = [], networks = rows.filter(function (row) { return row.selected !== false; }).map(function (row) {
             var lan = row.lan_if.trim(), cidrs = Array.isArray(row.sources) ? row.sources : row.sources.trim().split(/[\s,;]+/).filter(Boolean);
             if (!/^br[0-9]+(?:\.[0-9]+)?$/.test(lan) || lan.length > 15) throw new Error('Не удалось определить сетевой интерфейс. Обновите страницу.');
@@ -42,7 +42,7 @@
             total += cidrs.length;
             return {lan_if: lan, sources: cidrs};
         });
-        if (!networks.length || networks.length > 16 || total > 32) throw new Error('Выберите от 1 до 16 сетей, не более 32 записей подсетей суммарно.');
+        if ((!networks.length && !(ports||[]).length) || networks.length > 16 || total > 32) throw new Error('Выберите сеть, устройство или LAN-порт; до 16 сетей и 32 записей подсетей.');
         if (!acknowledge) throw new Error('Подтвердите блокировку IPv6 в выбранных сетях.');
         return {schema: 3, networks: networks, block_ipv6_bridge: true, table: 871, priority: 17100};
     }
@@ -106,7 +106,7 @@
         var date=new Date(value*1000);
         return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString('ru-RU');
     }
-    var startErrors={update_pending:'Сначала подтвердите новую версию CLI или верните предыдущую.',update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
+    var startErrors={update_pending:'Сначала подтвердите новую версию CLI или верните предыдущую.',update_check_failed:'Не удалось получить официальный список релизов. Проверьте доступ к GitHub и повторите поиск.',update_failed:'Обновление не завершилось. Обновите статус; при незавершённом восстановлении потребуется recover-client по SSH.',check_not_running:'Для проверки трафика сначала запустите клиент.',endpoint_missing:'Сначала сохраните корректное подключение.',policy_missing:'Выберите сети во вкладке «Сети» и нажмите «Сохранить маршрутизацию».',client_missing:'Не установлен проверенный клиент TrustTunnel.',forwarding_disabled:'На роутере отключена пересылка IPv4.',dns_missing:'В подключении не задан DNS.',dns_conflict:'Не удалось проверить внутренний адрес DNS.',ports_unavailable:'Проверьте доступность LAN-портов, WAN/IPTV/агрегацию и конфликтующие правила других VPN. Снимите недоступные порты во вкладке «Сети».',network_changed:'Состав выбранных сетей изменился. Проверьте вкладку «Сети».',offload_unavailable:'Прошивка не предоставляет SKIPLOG или выборочное управление кешем потоков. Запуск заблокирован для защиты выбранных сетей.',offload_flush_failed:'Не удалось очистить ускоренные потоки выбранной сети. Защитные правила сохранены.',tun_unavailable:'Не удалось загрузить штатный TUN-модуль роутера.',missing_dependency:'На роутере отсутствует необходимая утилита.'};
     function operationLabel(op) {
         var actions={status:'Обновление статуса',start:'Запуск',pause:'Пауза',restart:'Перезапуск',disable:'Отключение',endpoint:'Подключение',exclusions:'Исключения',policy:'Маршрутизация',endpoint_settings:'Параметры подключения',downgrade_client:'Переход на предыдущую сборку',confirm_client:'Подтверждение CLI',rollback_client:'Возврат предыдущего CLI',diagnostics:'Диагностика',verify_traffic:'Проверка трафика',check_updates:'Поиск обновлений',update_client:'Обновление CLI',channel_stable:'Стабильный канал',channel_nightly:'Ночной канал'};
         var states={running:'выполняется',succeeded:'выполнено',failed:'ошибка'};
@@ -217,14 +217,20 @@
             var value=document.createElement('div'); addDevicePicker(value,row,group.clients,group.ssid); card.appendChild(value); box.appendChild(card);
         });
     }
-    function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей выбрано'); }
+    function updateCount() { text('ttm-network-count',document.querySelectorAll('.ttm-selected:checked').length + ' сетей · '+document.querySelectorAll('#ttm-ports input:checked').length+' портов выбрано'); }
     function rows() { return Array.from(document.querySelectorAll('.ttm-network')).map(function (row) {
         var model = networkModels.get(row);
         return {selected:row.querySelector('.ttm-selected').checked,available:model.available,identity:model.identity.token,lan_if:model.identity.lan_if,sources:row.querySelector('.ttm-cidrs').value};
     }); }
     function policy() {
         if (rows().some(function (row) { return row.selected && !row.available; })) throw new Error('Выбранная сеть больше не обнаружена. Снимите её выбор и проверьте настройки Wi-Fi роутера.');
-        var p=policyFromNetworks(rows(),el('ttm-v6ack').checked);
+        var ports=Array.from(document.querySelectorAll('#ttm-ports input:checked')).map(function (input) {
+            var port=(latest.ports||[]).find(function (p) { return p.interface===input.value && p.available; });
+            if (!port || !/^[0-9a-f]{64}$/.test(port.identity||'')) throw new Error('Выбранный порт недоступен. Обновите список или снимите выбор.');
+            return {interface:port.interface,lan_if:port.lan_if,identity:port.identity};
+        });
+        var p=policyFromNetworks(rows(),el('ttm-v6ack').checked,ports);
+        if (ports.length) p.ports=ports;
         p.schema=4; p.local_access=[];
         p.networks.forEach(function (network) {
             network.identity=rows().find(function (row) { return row.lan_if===network.lan_if; }).identity;
@@ -244,6 +250,20 @@
         var inventory = Array.isArray(status.discovered_networks) ? status.discovered_networks : [];
         var selected = status.policy ? (status.policy.schema === 1 ? [{lan_if:status.policy.lan_if,sources:status.policy.sources}] : status.policy.networks) : [];
         if (!initialized || (!dirty.policy && policyRevision!==(status.revision||'0'))) {
+            el('ttm-ports').textContent='';
+            var ports=(status.ports||[]).slice(), savedPorts=(status.policy||{}).ports||[];
+            savedPorts.forEach(function (saved) { if (!ports.some(function (p) { return p.interface===saved.interface; })) ports.push(Object.assign({},saved,{label:saved.interface,available:false,reason:'Сохранённый порт недоступен'})); });
+            ports.forEach(function (port) {
+                var label=document.createElement('label'), checkbox=document.createElement('input'), hint=document.createElement('small');
+                label.className='ttm-check ttm-port'; checkbox.type='checkbox'; checkbox.value=port.interface;
+                checkbox.checked=savedPorts.some(function (p) { return p.interface===port.interface; });
+                checkbox.disabled=!port.available && !checkbox.checked;
+                checkbox.addEventListener('change',function () { if (!port.available && !checkbox.checked) checkbox.disabled=true; markDirty('policy'); updateCount(); });
+                label.appendChild(checkbox); label.appendChild(document.createTextNode(' '+port.label));
+                hint.textContent=port.available?(port.link_up?'Кабель подключён':'Нет соединения по кабелю'):port.reason;
+                label.appendChild(hint); el('ttm-ports').appendChild(label);
+            });
+            el('ttm-ports-empty').hidden=!!ports.length;
             el('ttm-networks').textContent=''; rowIndex=0;
             inventory.forEach(function (network) {
                 var saved=selected.find(function (n) { return n.lan_if===network.lan_if; });
@@ -267,6 +287,11 @@
                 if (!rows().some(function (r) { return r.lan_if===network.lan_if; })) addNetwork(network,false,true);
             });
         }
+        document.querySelectorAll('#ttm-ports input').forEach(function (input) {
+            var port=(status.ports||[]).find(function (p) { return p.interface===input.value; });
+            input.disabled=(!port || !port.available) && !input.checked;
+            input.parentNode.querySelector('small').textContent=!port?'Порт больше не обнаружен':!port.available?port.reason:port.link_up?'Кабель подключён':'Нет соединения по кабелю';
+        });
         document.querySelectorAll('.ttm-network').forEach(function (row) {
             var model=networkModels.get(row), network=inventory.find(function (n) { return n.lan_if===model.identity.lan_if; });
             model.available=!!network && model.identity.token===network.identity;
@@ -336,6 +361,11 @@
         el('ttm-network-warnings').hidden=!(status.network_warnings||[]).length;
         renderWifiInventory(inventoryOrEmpty(status));
         text('ttm-tun-address',(status.tunnel_addresses||[]).join(', ')||'Не назначен');
+        var elapsed=status.client_uptime_seconds;
+        text('ttm-client-uptime',status.process_running && Number.isFinite(elapsed)?Math.floor(elapsed/86400)+' сут. '+Math.floor(elapsed%86400/3600)+' ч '+Math.floor(elapsed%3600/60)+' мин':'Клиент остановлен / нет данных');
+        var observation=status.traffic_observation;
+        var observationLabels={sampling:'Первый снимок получен; ожидание следующего',traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'Двусторонний трафик за интервал не наблюдался — возможен простой',counters_reset:'Счётчики сброшены; ожидание нового интервала',incomplete:'Часть правил или маршрутов отсутствует'};
+        text('ttm-auto-traffic',observation?dateLabel(observation.checked_at,'Дата неизвестна')+' · '+(observationLabels[observation.state]||'Результат неизвестен')+(observation.interval_seconds?' · за '+observation.interval_seconds+' с: отправлено '+observation.sent_packets+', получено '+observation.received_packets:''):'Нет свежего наблюдения. При работающем клиенте снимки обновляются примерно раз в минуту.');
         var traffic=status.traffic_check, historyTraffic=status.traffic_check_history||traffic;
         var trafficLabels={traffic_observed:'Пакеты прошли через TUN в обе стороны',idle:'За 10 секунд двусторонний трафик не появился — откройте сайт и повторите',incomplete:'Не все правила или маршруты присутствуют',counters_reset:'Счётчики сброшены; повторите проверку'};
         text('ttm-traffic-check',historyTraffic ? (trafficLabels[historyTraffic.state]||'Результат неизвестен') : 'Проверка ещё не выполнялась');
@@ -365,7 +395,7 @@
         if (metrics && (!lastMetrics || metrics.system_ticks!==lastMetrics.system_ticks)) lastMetrics=metrics;
         if (!metrics) lastMetrics=null;
         text('ttm-update-requirements',updates.recovery_pending?'Незавершённое обновление: требуется восстановление предыдущего клиента.':updates.dependencies_ready?'':'Для установки нужны curl, GnuPG, tar, timeout и od из Entware. Поиск обновлений требует curl.');
-        text('ttm-ipv6-help','Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже при выборе устройств /32.'+((status.diagnostics||{}).ipv6_service==='disabled'?' Сейчас IPv6 отключён в Merlin; правило защищает и после его включения.':''));
+        text('ttm-ipv6-help','На выбранных физических портах блокируется IPv6-трафик этих портов и IPv6 DNS к роутеру. Аддон направляет через VPN только IPv4. Блокировка IPv6 действует на весь выбранный bridge, даже при выборе устройств /32.'+((status.diagnostics||{}).ipv6_service==='disabled'?' Сейчас IPv6 отключён в Merlin; правило защищает и после его включения.':''));
         text('ttm-guard',({disabled:'Отключена',unverified:'Проверка недоступна',installed_unverified:'Блокировка настроена; тест обрыва ещё не выполнен',incomplete:'Часть защитных правил отсутствует'})[(status.diagnostics||{}).guard]||'Нет данных');
         if (traffic && traffic.rules_checked) text('ttm-guard','Правила и маршрут проверены; тест обрыва ещё не выполнен');
         var startup=(status.diagnostics||{}).startup;

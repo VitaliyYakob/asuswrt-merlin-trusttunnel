@@ -11,15 +11,25 @@ def restore($program;$lines): {op:"restore",program:$program,stdin:(($lines|join
 # 192.0.2.53 must never be assigned locally (checked during preflight).
 "192.0.2.53" as $dns_transit |
 (if .schema==1 then . + {networks:[{lan_if,sources}]} | del(.lan_if,.sources) else . end) as $p |
+($p.ports//[]) as $ports |
 [$p.networks[] as $network | $network.sources[] | {source:.,interface:$network.lan_if}] as $rules |
 if $action=="guard" then [
   restore("ip6tables-restore"; ["*filter",":TTM6_FWD - [0:0]",":TTM6_IN - [0:0]","-F TTM6_FWD","-F TTM6_IN"] +
+    (if ($ports|length)>0 then ["-A TTM6_FWD -m mark --mark 0x10000000/0x10000000 -j SKIPLOG","-A TTM6_FWD -m mark --mark 0x10000000/0x10000000 -j REJECT",
+      "-A TTM6_IN -m mark --mark 0x10000000/0x10000000 -p udp --dport 53 -j REJECT","-A TTM6_IN -m mark --mark 0x10000000/0x10000000 -p tcp --dport 53 -j REJECT"] else [] end) +
     [$p.networks[] | "-A TTM6_FWD -i \(.lan_if) -j SKIPLOG", "-A TTM6_FWD -o \(.lan_if) -j SKIPLOG", "-A TTM6_FWD -i \(.lan_if) -j REJECT",
       "-A TTM6_IN -i \(.lan_if) -p udp --dport 53 -j REJECT",
       "-A TTM6_IN -i \(.lan_if) -p tcp --dport 53 -j REJECT"] + ["COMMIT"]),
   jump("ip6tables";"filter";"FORWARD";"TTM6_FWD"),
   jump("ip6tables";"filter";"INPUT";"TTM6_IN"),
   restore("iptables-restore"; ["*filter",":TTM4_FWD - [0:0]","-F TTM4_FWD"] +
+    (if ($ports|length)>0 then [
+      "-A TTM4_FWD -m mark --mark 0x10000000/0x10000000 -j SKIPLOG",
+      "-A TTM4_FWD -m connmark --mark 0x10000000/0x10000000 -j SKIPLOG"] +
+      [$p.local_access[]? | "-A TTM4_FWD -i br0 -m mark --mark 0x10000000/0x10000000 -d \(.destination) -o \(.lan_if) -j RETURN"] + [
+      "-A TTM4_FWD -i br0 -m mark --mark 0x10000000/0x10000000 -o tt0 -j ACCEPT",
+      "-A TTM4_FWD -m mark --mark 0x10000000/0x10000000 -j REJECT",
+      "-A TTM4_FWD -i tt0 -o br0 -m connmark --mark 0x10000000/0x10000000 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"] else [] end) +
     [$rules[] | "-A TTM4_FWD -i \(.interface) -s \(.source) -j SKIPLOG", "-A TTM4_FWD -o \(.interface) -d \(.source) -j SKIPLOG"] +
     [$rules[] as $r | $p.local_access[]? |
       "-A TTM4_FWD -i \($r.interface) -s \($r.source) -d \(.destination) -o \(.lan_if) -j RETURN"] +
@@ -28,16 +38,25 @@ if $action=="guard" then [
       "-A TTM4_FWD -i tt0 -o \(.interface) -d \(.source) -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"] + ["COMMIT"]),
   jump("iptables";"filter";"FORWARD";"TTM4_FWD"),
   restore("iptables-restore"; ["*nat",":TTM4_DNS - [0:0]",":TTM4_SNAT - [0:0]","-F TTM4_DNS","-F TTM4_SNAT"] +
+    (if ($ports|length)>0 then [
+      "-A TTM4_DNS -i br0 -m mark --mark 0x10000000/0x10000000 -p udp --dport 53 -j DNAT --to-destination \($dns_transit):53",
+      "-A TTM4_DNS -i br0 -m mark --mark 0x10000000/0x10000000 -p tcp --dport 53 -j DNAT --to-destination \($dns_transit):53",
+      "-A TTM4_SNAT -m mark --mark 0x10000000/0x10000000 -o tt0 -j MASQUERADE"] else [] end) +
     [$rules[] | "-A TTM4_DNS -i \(.interface) -s \(.source) -p udp --dport 53 -j DNAT --to-destination \($dns_transit):53",
       "-A TTM4_DNS -i \(.interface) -s \(.source) -p tcp --dport 53 -j DNAT --to-destination \($dns_transit):53"] +
     [$rules|map(.source)|unique[] | "-A TTM4_SNAT -s \(.) -o tt0 -j MASQUERADE"] + ["COMMIT"]),
   jump("iptables";"nat";"PREROUTING";"TTM4_DNS"), jump("iptables";"nat";"POSTROUTING";"TTM4_SNAT"),
   cmd(["ip","-4","route","replace","prohibit","default","table",($p.table|tostring),"metric","32760"])
-] + [$p.local_access[]? | cmd(["ip","-4","route","replace",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] +
+] + (if ($ports|length)>0 then [
+  restore("iptables-restore";["*mangle",":TTM4_PORT - [0:0]","-F TTM4_PORT","-A TTM4_PORT -m mark --mark 0x10000000/0x10000000 -j CONNMARK --save-mark --nfmask 0x10000000 --ctmask 0x10000000","COMMIT"]),
+  jump("iptables";"mangle";"PREROUTING";"TTM4_PORT"),
+  {op:"port-rule",action:"add"}
+] else [] end) + [$p.local_access[]? | cmd(["ip","-4","route","replace",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] +
     [$rules|to_entries[] | {op:"rule",priority:($p.priority+.key),source:.value.source,interface:.value.interface,table:$p.table}] + [{op:"flush-flows",interfaces:([$p.networks[].lan_if]|unique)}]
 elif $action=="up" then [cmd(["ip","-4","route","replace","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="down" then [remove(["ip","-4","route","del","default","dev","tt0","table",($p.table|tostring),"metric","10"])]
 elif $action=="disarm" then
+  (if ($ports|length)>0 then [{op:"port-rule",action:"del"},detach("iptables";"mangle";"PREROUTING";"TTM4_PORT"),{op:"port-clean"}] else [] end) +
   [$rules|to_entries[] | remove(["ip","-4","rule","del","pref",($p.priority+.key|tostring),"from",.value.source,"iif",.value.interface,"lookup",($p.table|tostring)])] +
   [$p.local_access[]? | remove(["ip","-4","route","del",.destination,"dev",.lan_if,"scope","link","table",($p.table|tostring),"metric","20"])] + [
   remove(["ip","-4","route","del","default","dev","tt0","table",($p.table|tostring),"metric","10"]),
