@@ -4,10 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
 <title>ASUSWRT-Merlin — TrustTunnel</title>
 <link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css">
-<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.17.css">
+<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.18.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.17"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.17"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.17"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.18"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.18"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.18"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,7 +23,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.17</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.18</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -156,7 +156,7 @@ rm /tmp/trusttunnel-endpoint.json</pre>
 <div id="ttm-networks"></div><p id="ttm-networks-empty" class="ttm-note" hidden>Список сетей пока не получен от роутера. Дождитесь обновления статуса и проверьте настройки Wi-Fi.</p>
 <details><summary>Дополнительно: интерфейсы и подсети Wi-Fi</summary><div id="ttm-wifi-inventory"></div><p class="ttm-muted">Имя SSID не определяет отдельную IP-подсеть. Адресация и интерфейсы обнаружены на роутере.</p></details>
 <p class="ttm-muted">Список формируется автоматически. Если разные SSID включены в один bridge, правило для его подсети затронет их всех и проводные устройства. Для отдельной маршрутизации SSID нужна отдельная подсеть и bridge в Merlin. До 16 сетей и 32 записей подсетей суммарно.</p>
-<p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Для выбора устройств сначала включите режим «Выбранные устройства». Переход из режима всей сети запрашивает подтверждение. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
+<p class="ttm-muted">В списке SSID показаны только устройства, чьё текущее подключение подтвердил Wi-Fi-драйвер, с известным адресом DHCP. Неопределённые и отключённые устройства не приписываются SSID; их IPv4 можно указать вручную. Выберите устройство в списке — режим «Выбранные устройства» включится автоматически. Другие режимы сохраняются в черновиках. Изменения применяются после сохранения маршрутизации. Закрепите адрес в DHCP Merlin: правило привязано к IPv4, а не к MAC.</p>
 <details><summary>Дополнительно: доступ к NAS и другим локальным сетям</summary><p>Необязательно. Отметьте сеть с NAS, принтером или другим локальным ресурсом, к которому нужен доступ из VPN-сети. Разрешить обычную маршрутизацию к отмеченным локальным сетям. Ограничения гостевой изоляции Merlin сохраняются. Интернет и DNS остаются направлены через VPN.</p><div id="ttm-local-access" class="ttm-local-access"></div></details>
 
 <label class="ttm-check ttm-acknowledgement"><input type="checkbox" id="ttm-v6ack"><span>Блокировать IPv6 в выбранных сетях и на выбранных портах, чтобы он не обходил VPN.</span></label>

@@ -191,14 +191,24 @@
     }
     function addDevicePicker(box, row, clients, ssid) {
         var devices=document.createElement('select'); devices.className='ttm-device'; devices.setAttribute('aria-label',ssid?'Добавить устройство из '+ssid:'Добавить устройство по IPv4');
-        devices.add(new Option(clients.length?'Добавить устройство…':'Нет подтверждённых устройств',''));
+        devices.add(new Option(clients.length?'Добавить устройство…':'Нет устройств',''));
         clients.forEach(function (client) { devices.add(new Option(client.name+' · '+client.ip,client.ip+'/32')); });
-        devices.disabled=!clients.length || networkModels.get(row).mode!=='devices';
-        devices.addEventListener('change',function () { if (!devices.value || networkModels.get(row).mode!=='devices') return;
+        devices.disabled=!clients.length;
+        devices.title='Выбор устройства переключает сеть в режим «Выбранные устройства». Применение — после сохранения маршрутизации.';
+        devices.addEventListener('change',function () {
+            var model=networkModels.get(row);
+            if (!devices.value || !model.available) return;
             var sources=row.querySelector('.ttm-cidrs'), checkbox=row.querySelector('.ttm-selected');
+            if (model.mode!=='devices') {
+                // Preserve other modes as drafts; never append /32 to a broad
+                // subnet and silently keep routing the entire network.
+                model.drafts[model.mode]=sources.value;
+                model.mode='devices'; sources.value=model.drafts.devices;
+                sources.readOnly=true; row.querySelector('.ttm-network-mode').value='devices';
+            }
             var list=sources.value.trim().split(/[\s,;]+/).filter(Boolean);
             if (list.indexOf(devices.value)<0) list.push(devices.value);
-            sources.value=list.join('\n'); checkbox.checked=true; devices.value=''; markDirty('policy'); updateCount();
+            sources.value=list.join('\n'); model.drafts.devices=sources.value; checkbox.checked=true; devices.value=''; markDirty('policy'); updateCount();
         }); box.appendChild(devices);
     }
     function renderNetworkDevices(row, network, available) {
