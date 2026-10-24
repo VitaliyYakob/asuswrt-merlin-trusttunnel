@@ -23,14 +23,20 @@ for op in ('-L','-N','-F','-X','-A','-I','-D'):
   if chain and chain not in chains: sys.exit(1)
   for c,rules in chains.items():
    if chain and c!=chain: continue
-   for rule in rules: print(shlex.join(['ebtables','-t',table,'-A',c,*rule])+' ')
+   # Real Merlin legacy ebtables prints bare jumps without trailing space.
+   # Include user-chain declarations as --Lx does, including empty chains.
+   if c not in ('BROUTING','PREROUTING','POSTROUTING','INPUT','FORWARD','OUTPUT'):
+    print(shlex.join(['ebtables','-t',table,'-N',c]))
+   for rule in rules: print(shlex.join(['ebtables','-t',table,'-A',c,*rule]))
   sys.exit(0)
  if op=='-N':
   if chain in chains: sys.exit(1)
   chains[chain]=[];finish()
  if chain not in chains: sys.exit(1)
  if op=='-F': chains[chain]=[];finish()
- if op=='-X': del chains[chain];finish()
+ if op=='-X':
+  if any('-j' in rule and rule[rule.index('-j')+1]==chain for rules in chains.values() for rule in rules): sys.exit(1)
+  del chains[chain];finish()
  body=args[pos+(3 if op=='-I' else 2):]
  if op=='-A': chains[chain].append(body);finish()
  if op=='-I': chains[chain].insert(0,body);finish()

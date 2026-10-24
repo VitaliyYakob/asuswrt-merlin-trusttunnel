@@ -38,7 +38,7 @@ tt_ports_check() {{ return 0; }}
         self.assertIn(['17132','fwmark=0x10000000/0x10000000','br0','871'],self.state()['rules'])
         rules=self.state()['chains']['iptables:filter:TTM4_FWD']
         self.assertIn(['-m','mark','--mark','0x10000000/0x10000000','-j','REJECT'],rules)
-        ethernet=self.ethernet()['broute'];self.assertEqual(ethernet['BROUTING'],[['-j','TTM_PORTS']]);self.assertEqual(len(ethernet['TTM_PORTS']),1)
+        ethernet=self.ethernet()['broute'];self.assertEqual(ethernet['BROUTING'],[['-j','TTM_PORTS']]);self.assertEqual(len(ethernet['TTM_PORTS']),2);self.assertEqual(ethernet['TTM_PORTS'][-1],['-j','RETURN'])
         self.assertIn('eth4',ethernet['TTM_PORTS'][0]);self.assertTrue(all('br0' not in rule for rule in ethernet['TTM_PORTS']))
         self.assertEqual(set(self.state()['routes']),{'871:32760'})
         calls=[json.loads(l) for l in (self.path/'net/ethernet-calls.jsonl').read_text().splitlines()]
@@ -64,11 +64,11 @@ cp "$TT_POLICY" "$TT_CONFIG/transaction/old-policy.json"
 jq '.ports[0].interface="eth3"' "$TT_POLICY" >"$TT_CONFIG/transaction/new-policy.json"
 tt_ports_transaction block && tt_ports_transaction trial''')
         self.assertEqual(r.returncode,0,r.stderr)
-        rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),2)
+        rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),3);self.assertEqual(rules[-1],['-j','RETURN'])
         self.assertTrue(any('eth4' in rule and '0x20000000' in rule for rule in rules))
         self.assertTrue(any('eth3' in rule and '0x10000000' in rule for rule in rules))
         r=self.port_execute('''cp "$TT_CONFIG/transaction/new-policy.json" "$TT_POLICY"; tt_ports_transaction remove''')
-        self.assertEqual(r.returncode,0,r.stderr);rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),1);self.assertIn('eth3',rules[0])
+        self.assertEqual(r.returncode,0,r.stderr);rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),2);self.assertEqual(rules[-1],['-j','RETURN']);self.assertIn('eth3',rules[0])
     def test_offline_inventory_and_live_classifier_refuse_host_network(self):
         r=self.execute('''ebtables() { echo HOST_CALL >&2; }; ip() { echo HOST_CALL >&2; }
 tt_port_inventory; tt_ports_classifier '[]' ''')
@@ -103,7 +103,7 @@ TT_OP_ID=0123456789abcdef
 tt_transaction_apply policy "$TT_RUN/candidate.json" && '''+action)
                 self.assertEqual(r.returncode,0,r.stderr)
                 self.assertFalse(any('TXN' in c for c in self.state()['chains']))
-                rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),1);self.assertIn(expected,rules[0]);self.assertIn('0x10000000',rules[0])
+                rules=self.ethernet()['broute']['TTM_PORTS'];self.assertEqual(len(rules),2);self.assertEqual(rules[-1],['-j','RETURN']);self.assertIn(expected,rules[0]);self.assertIn('0x10000000',rules[0])
                 r=self.port_execute('tt_disarm && rm -f "$TT_ENABLED" "$TT_PAUSED"');self.assertEqual(r.returncode,0,r.stderr)
 
     def test_concurrent_foreign_ethernet_edit_is_not_overwritten(self):
@@ -113,3 +113,20 @@ tt_transaction_apply policy "$TT_RUN/candidate.json" && '''+action)
         self.assertNotEqual(r.returncode,0);self.assertIn('changed concurrently',r.stderr)
         table=self.ethernet()['broute'];self.assertIn(['-i','eth3','-j','ACCEPT'],table['BROUTING'])
         self.assertIn('eth4',table['TTM_PORTS'][0])
+
+    def test_repeated_refresh_deduplicates_bare_legacy_jumps_and_returns(self):
+        r=self.port_execute('''tt_claim_resources && tt_run_plan guard "$TT_POLICY" || exit 1
+# Reproduce the duplicate exact hooks left by alpha.15 on real legacy output.
+ebtables -t broute -I BROUTING 1 -j TTM_PORTS
+ebtables -t broute -I BROUTING 1 -j TTM_PORTS
+ebtables -t broute -A BROUTING -i wl0.1 -j DROP
+tt_run_plan guard "$TT_POLICY" && tt_run_plan guard "$TT_POLICY"
+''')
+        self.assertEqual(r.returncode,0,r.stderr)
+        table=self.ethernet()['broute']
+        self.assertEqual(table['BROUTING'].count(['-j','TTM_PORTS']),1)
+        self.assertIn(['-i','wl0.1','-j','DROP'],table['BROUTING'])
+        self.assertEqual(table['TTM_PORTS'][-1],['-j','RETURN'])
+        r=self.port_execute('tt_disarm');self.assertEqual(r.returncode,0,r.stderr)
+        table=self.ethernet()['broute'];self.assertNotIn('TTM_PORTS',table)
+        self.assertEqual(table['BROUTING'],[['-i','wl0.1','-j','DROP']])

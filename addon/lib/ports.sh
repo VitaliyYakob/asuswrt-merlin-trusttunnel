@@ -81,9 +81,15 @@ tt_ports_classifier() (
     original=$(ebtables -t broute --atomic-file "$file" -L) || return 1
     if ebtables -t broute --atomic-file "$file" -L TTM_PORTS >/dev/null 2>&1; then
         ebtables -t broute --atomic-file "$file" -F TTM_PORTS || return 1
-        if ebtables -t broute --atomic-file "$file" -L BROUTING --Lx | grep -q -- '-j TTM_PORTS '; then
+        # Legacy ebtables prints a bare chain jump without a trailing space.
+        # Remove every exact owned hook from the snapshot, including duplicates
+        # left by older refreshes. Never delete selector-bearing foreign hooks.
+        removed=0
+        while ebtables -t broute --atomic-file "$file" -L BROUTING --Lx | grep -Eq -- ' -A BROUTING -j TTM_PORTS([[:space:]]|$)'; do
+            [ "$removed" -lt 64 ] || return 1
             ebtables -t broute --atomic-file "$file" -D BROUTING -j TTM_PORTS || return 1
-        fi
+            removed=$((removed+1))
+        done
     else ebtables -t broute --atomic-file "$file" -N TTM_PORTS || return 1; fi
     lines=$(printf '%s' "$entries" | jq -r '.[]|"\(.interface) \(.mark)"') || return 1
     while read -r interface mark; do
@@ -94,7 +100,11 @@ tt_ports_classifier() (
     done <<EOF
 $lines
 EOF
-    if [ -n "$lines" ]; then ebtables -t broute --atomic-file "$file" -I BROUTING 1 -j TTM_PORTS || return 1
+    if [ -n "$lines" ]; then
+        # User chains default to ACCEPT on legacy ebtables. Return explicitly
+        # so firmware guest-isolation rules later in BROUTING still execute.
+        ebtables -t broute --atomic-file "$file" -A TTM_PORTS -j RETURN || return 1
+        ebtables -t broute --atomic-file "$file" -I BROUTING 1 -j TTM_PORTS || return 1
     else ebtables -t broute --atomic-file "$file" -X TTM_PORTS || return 1; fi
     # Do not overwrite a table that firmware/another addon changed meanwhile.
     live=$(ebtables -t broute -L) || return 1
