@@ -27,19 +27,21 @@
 - Официальный CLI не включён в репозиторий; его первоначальная загрузка проверяется по закреплённым хешам и GPG-подписи.
 - В релизе IPK и соответствующие ему исходники/SHA256SUMS; сборочные и rollback-каталоги не опубликованы.
 
-## Свидетельство происхождения alpha.13
+<a id="свидетельство-происхождения-alpha13"></a>
+
+## Свидетельство происхождения
 
 Сборка создаёт manifest.json: версия, архитектура, commit (если доступен Git), признак изменённого дерева, digest исходного содержимого и хеши/размеры трёх файлов поставки. SHA256SUMS также включает manifest. Локальный manifest не подписан.
 
-Запускать workflow с ref того же тега (например gh workflow run release.yml --ref v0.3.1-alpha.13 -f release_tag=v0.3.1-alpha.13). SHA контекста workflow обязан совпадать с checkout; изменённое дерево и несовпадающий manifest отклоняются. Release workflow требует завершённый успешный полный ci.yml именно коммита тега, повторяет browser tests, затем закреплённый actions/attest создаёт подпись GitHub/Sigstore. В черновик добавляется attestation.bundle.json. На компьютере с GitHub CLI:
+Запускать workflow с ref того же тега (например gh workflow run release.yml --ref v0.3.1-alpha.18 -f release_tag=v0.3.1-alpha.18). SHA контекста workflow обязан совпадать с checkout; изменённое дерево и несовпадающий manifest отклоняются. Release workflow требует завершённый успешный полный ci.yml именно коммита тега, повторяет browser tests, затем закреплённый actions/attest создаёт подпись GitHub/Sigstore. В черновик добавляется attestation.bundle.json. На компьютере с GitHub CLI:
 
 ```sh
-gh attestation verify asuswrt-merlin-trusttunnel_0.3.1-alpha.13-1_aarch64-3.10.ipk \
+gh attestation verify asuswrt-merlin-trusttunnel_0.3.1-alpha.18-1_aarch64-3.10.ipk \
   --repo VitaliyYakob/asuswrt-merlin-trusttunnel \
   --signer-workflow VitaliyYakob/asuswrt-merlin-trusttunnel/.github/workflows/release.yml \
   --bundle attestation.bundle.json
 ```
 
-Проверить source commit в manifest и результате provenance против согласованного тега; CLI также поддерживает `--source-ref refs/tags/v0.3.1-alpha.13 --source-digest 045b78c38a3fbd67db379076b7d6b9d34b163216`. Проверять каждый из четырёх подписываемых файлов (IPK, ZIP, TAR.GZ, manifest), а не только наличие bundle. На роутере GitHub CLI не требуется: при ручной установке переносится уже проверенный пакет. Фактические запуски CI/сборки связаны ссылками в TEST-REPORT.md; наличие YAML само по себе не считается успешной подписью. Для online bootstrap остаётся прежняя модель доверия HTTPS + закреплённый SHA-256.
+Проверить source commit в manifest и результате provenance против согласованного тега; CLI также поддерживает `--source-ref refs/tags/v0.3.1-alpha.18 --source-digest <коммит тега>`. Проверять каждый из четырёх подписываемых файлов (IPK, ZIP, TAR.GZ, manifest), а не только наличие bundle. На роутере GitHub CLI не требуется: при ручной установке переносится уже проверенный пакет. Фактические запуски CI/сборки связаны ссылками в TEST-REPORT.md; наличие YAML само по себе не считается успешной подписью. Для online bootstrap остаётся прежняя модель доверия HTTPS + закреплённый SHA-256.
 
 Чтобы установщик main не ссылался на ещё отсутствующий IPK, сначала подготовить и проверить черновик из прошедшего CI тега, опубликовать файлы, затем выполнить обычное fast-forward обновление main с обязательными проверками. Опубликованный тег и его файлы не перезаписывать. Уточнения отчёта после выпуска оформлять отдельным коммитом; локальную копию релиза сохранять побайтовой копией опубликованных файлов.
