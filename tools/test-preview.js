@@ -256,14 +256,14 @@ async function exerciseOverview(browser, width) {
     try {
         await page.setContent(previewWithStatus(status=>{
             Object.assign(status,{enabled:true,process_running:true,interface_up:true,state:'tun_ready_unverified',tunnel_addresses:['172.16.219.2/32']});
-            status.traffic_check={state:'traffic_observed',rules_checked:true,leak_test_verified:false};
+            status.traffic_observation={checked_at:Math.floor(Date.now()/1000),state:'traffic_observed',interval_seconds:60,sent_packets:9,received_packets:4,rules_checked:true,leak_test_verified:false};
             status.client_updates.check={id:'0123456789abcdef',channel:'stable',checked_at:Math.floor(Date.now()/1000),state:'available',candidate:{tag:'v1.1.7',channel:'stable'}};
             status.discovered_networks=[{lan_if:'br0',sources:['192.168.10.0/24'],ssids:['Home','Legacy'],wireless:[{ssid:'Home',nvif:'wl0',ifname:'eth6'},{ssid:'Legacy',nvif:'wl0.2',ifname:'wl0.2'}]}];
             status.clients=[{ip:'192.168.10.10',name:'Home fixture',wireless:[{lan_if:'br0',ssid:'Home'}]},{ip:'192.168.10.20',name:'Legacy fixture',wireless:[{lan_if:'br0',ssid:'Legacy'}]},{ip:'192.168.10.30',name:'Unknown fixture'}];
             status.policy=null;
         }),{waitUntil:'load'});
         assert.equal(await page.locator('#ttm-tun-address').innerText(),'172.16.219.2/32');
-        assert.match(await page.locator('#ttm-traffic-check').innerText(),/в обе стороны/);
+        assert.match(await page.locator('#ttm-auto-traffic').innerText(),/в обе стороны/);
         assert.match(await page.locator('#ttm-guard').innerText(),/тест обрыва ещё не выполнен/);
         assert.equal(await page.getByText('Ревизия настроек',{exact:true}).count(),0);
         assert.match(await page.locator('#ttm-client-installed-at').innerText(),/2026/);

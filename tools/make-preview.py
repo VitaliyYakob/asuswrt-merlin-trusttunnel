@@ -14,7 +14,7 @@ fixture = {
     "process_running": False, "interface_up": False, "enabled": False, "connection_verified": False,
     "rx_bytes": 0, "tx_bytes": 0, "timestamp": 1789394400, "last_result": "preview:not_executed",
     "endpoint":{"configured":True,"exclusions":[],"settings":{"protocol":"http2","mtu":1350,"anti_dpi":False}},
-    "tunnel_addresses":[],"traffic_check":None,"traffic_check_history":None,"client_updates":{"channel":"stable","installed":{"version":"1.1.5","installed_at":1790776800},"last_check":{"checked_at":1790777400,"channel":"stable"},"dependencies_ready":True,"recovery_pending":False,"check":None},
+    "tunnel_addresses":[],"client_updates":{"channel":"stable","installed":{"version":"1.1.5","installed_at":1790776800},"last_check":{"checked_at":1790777400,"channel":"stable"},"dependencies_ready":True,"recovery_pending":False,"check":None},
     "ports":[{"interface":f"eth{4-i}" if i<4 else "eth5","label":f"LAN{i+1}" if i<4 else "2.5G","lan_if":"br0","identity":"0"*64,"available":True,"reason":"","link_up":i==3} for i in range(5)],
     "client_uptime_seconds":None,"traffic_observation":None,
     "revision":"0123456789abcdef", "operations":[], "transaction":None,

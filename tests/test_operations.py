@@ -60,13 +60,12 @@ tt_wire_dispatch ttm_do_0123456789abcdef_start''')
         op=json.loads((self.path/'tmp/trusttunnel/operations/0123456789abcdef.json').read_text())
         self.assertEqual(op['code'],'transaction_pending')
 
-    def test_traffic_check_reports_running_requirement(self):
-        result=self.run_shell('''tt_verify_traffic() { TT_FAILURE_CODE=check_not_running; return 1; }
+    def test_removed_manual_traffic_action_is_rejected_without_execution(self):
+        result=self.run_shell('''tt_verify_traffic() { echo UNEXPECTED >&2; }
 tt_wire_dispatch ttm_do_0123456789abcdef_verify_traffic''')
         self.assertNotEqual(result.returncode,0)
-        op=json.loads((self.path/'tmp/trusttunnel/operations/0123456789abcdef.json').read_text())
-        self.assertEqual(op['action'],'verify_traffic')
-        self.assertEqual(op['code'],'check_not_running')
+        self.assertNotIn('UNEXPECTED',result.stderr)
+        self.assertFalse((self.path/'tmp/trusttunnel/operations/0123456789abcdef.json').exists())
 
     def test_dhcp_inventory_preserves_names_as_data_and_skips_bad_ip(self):
         leases=self.path/'var/lib/misc'; leases.mkdir(parents=True)

@@ -100,6 +100,9 @@ tt_process_metrics''')
             (dest/f).write_text('old-'+f)
         (dest/'.trusttunnel-owned').write_text('trusttunnel-merlin-addon-v1\n')
         private=dest/'config/endpoint.json'; private.write_text('synthetic-secret'); private.chmod(0o600)
+        retired=dest/'config/traffic-check.json'; retired.write_text('synthetic-history'); retired.chmod(0o600)
+        runtime=self.root/'tmp/trusttunnel'; runtime.mkdir(parents=True)
+        (runtime/'traffic-check.json').write_text('synthetic-runtime-history')
         init=self.root/'S99trusttunnel'; init.write_text('old-init'); init.chmod(0o711)
         code='''. "$TT_BASE/lib/install-transaction.sh"
 tt_install_ui_cleanup() { printf cleanup >>"$TT_ROOT/effects"; }
@@ -114,6 +117,17 @@ tt_install_ui() { [ "$TT_BASE" != fail ]; }
             code+='cp() { for last; do :; done; [ \"$last\" != \"$TT_ROOT/installed/config\" ] || return 28; command cp \"$@\"; }\n'.replace('\\"','"')
         code+=f'tt_install_transaction "{src}" "{dest}" "{init}"'
         result=self.shell(code)
+        self.assertEqual((runtime/'traffic-check.json').exists(),result.returncode!=0)
+        self.assertEqual(retired.exists(),result.returncode!=0)
+        records=list((dest/'install-backups').glob('install-*'))
+        saved=records[0]/('config-before' if result.returncode==0 else 'rejected/config')/'traffic-check.json'
+        if result.returncode==0:
+            self.assertEqual((records[0]/'traffic-check-runtime.json').read_text(),'synthetic-runtime-history')
+            self.assertEqual(saved.read_text(),'synthetic-history')
+            self.assertEqual(saved.stat().st_mode & 0o777,0o600)
+        else:
+            self.assertEqual(retired.read_text(),'synthetic-history')
+            self.assertEqual(retired.stat().st_mode & 0o777,0o600)
         self.assertEqual(private.read_text(),'synthetic-secret')
         self.assertEqual(private.stat().st_mode & 0o777,0o600)
         return dest,init,result

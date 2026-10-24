@@ -68,9 +68,18 @@ tt_install_transaction() (
     if [ ! -f "$destination/config/LAB_ONLY_ACKNOWLEDGED" ]; then
         printf '%s\n' 'Laboratory alpha; not a verified leak-prevention product.' >"$destination/config/LAB_ONLY_ACKNOWLEDGED" || exit 1
     fi
+    # Retired manual traffic history: the original is in config-before.
+    # Unlink only this exact owned filename; never follow a symlink target.
+    rm -f "$destination/config/traffic-check.json" || exit 1
     mv -f "$init_temp" "$init_script" || exit 1
     init_changed=1; ui_attempted=1
     tt_install_ui || exit 1
+    # The old RAM record is retired too, but never copied into current status.
+    if [ -n "${TT_RUN:-}" ] && [ -e "$TT_RUN/traffic-check.json" ]; then
+        [ ! -L "$TT_RUN" ] && [ ! -L "$TT_RUN/traffic-check.json" ] || exit 1
+        cp -p "$TT_RUN/traffic-check.json" "$work/traffic-check-runtime.json" || exit 1
+        rm -f "$TT_RUN/traffic-check.json" || exit 1
+    fi
     committed=1
     printf 'Installation committed. Previous files and configuration: %s\n' "$work"
 )

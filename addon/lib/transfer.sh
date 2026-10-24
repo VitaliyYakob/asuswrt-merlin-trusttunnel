@@ -42,7 +42,7 @@ tt_wire_dispatch() {
                 jq -e --arg id "$TT_WIRE_ID" '.id==$id' "$TT_CONFIG/transaction/manifest.json" >/dev/null && tt_transaction_rollback;;
         ttm_do_*)
             TT_WIRE=${TT_WIRE#ttm_do_}; TT_WIRE_ID=${TT_WIRE%%_*}; TT_WIRE_ACTION=${TT_WIRE#*_}
-            case "$TT_WIRE_ACTION" in status|start|pause|restart|disable|diagnostics|check_updates|channel_stable|channel_nightly|verify_traffic|update_client_*|downgrade_client_*|confirm_client|rollback_client) :;; *) return 1;; esac
+            case "$TT_WIRE_ACTION" in status|start|pause|restart|disable|diagnostics|check_updates|channel_stable|channel_nightly|update_client_*|downgrade_client_*|confirm_client|rollback_client) :;; *) return 1;; esac
             TT_WIRE_CANDIDATE=
             TT_WIRE_MODE=upgrade
             case "$TT_WIRE_ACTION" in downgrade_client_*) TT_WIRE_MODE=downgrade; TT_WIRE_ACTION=update_client_${TT_WIRE_ACTION#downgrade_client_};; esac
@@ -65,7 +65,6 @@ tt_wire_dispatch() {
                 check_updates) tt_update_check || TT_WIRE_RESULT=$?;;
                 channel_stable) tt_update_channel stable || TT_WIRE_RESULT=$?;;
                 channel_nightly) tt_update_channel nightly || TT_WIRE_RESULT=$?;;
-                verify_traffic) tt_verify_traffic || TT_WIRE_RESULT=$?;;
                 update_client) tt_update_install "$TT_WIRE_CANDIDATE" "$TT_WIRE_MODE" || TT_WIRE_RESULT=$?;;
                 confirm_client) tt_update_confirm || TT_WIRE_RESULT=$?;;
                 rollback_client) tt_update_rollback || TT_WIRE_RESULT=$?;;
@@ -77,7 +76,7 @@ tt_wire_dispatch() {
                 else tt_operation_write succeeded completed; fi
             else
                 case "$TT_FAILURE_CODE" in
-                    check_not_running|endpoint_missing|policy_missing|client_missing|forwarding_disabled|dns_missing|dns_conflict|network_changed|offload_unavailable|offload_flush_failed|tun_unavailable|missing_dependency) TT_WIRE_CODE=$TT_FAILURE_CODE;;
+                    endpoint_missing|policy_missing|client_missing|forwarding_disabled|dns_missing|dns_conflict|network_changed|offload_unavailable|offload_flush_failed|tun_unavailable|missing_dependency) TT_WIRE_CODE=$TT_FAILURE_CODE;;
                     *) case "$TT_WIRE_ACTION" in update_client) TT_WIRE_CODE=update_failed;; check_updates) TT_WIRE_CODE=update_check_failed;; *) TT_WIRE_CODE=action_failed;; esac;;
                 esac
                 tt_operation_write failed "$TT_WIRE_CODE"

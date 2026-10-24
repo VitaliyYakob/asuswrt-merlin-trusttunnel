@@ -347,6 +347,7 @@ gpg() { case " $* " in *" --import "*) return 0;; esac; printf '[GNUPG:] VALIDSI
 
     def test_controller_loads_update_and_traffic_status_modules(self):
         (self.config/'client-channel.json').write_text('{"channel":"nightly"}')
+        (self.config/'traffic-check.json').write_text('{"state":"traffic_observed","rules_checked":true}')
         r=subprocess.run([str(ROOT/'addon/trusttunnel.sh'),'status'],capture_output=True,text=True,
             env=os.environ|{'TT_ROOT':str(self.path)})
         self.assertEqual(r.returncode,0,r.stderr)
@@ -354,8 +355,9 @@ gpg() { case " $* " in *" --import "*) return 0;; esac; printf '[GNUPG:] VALIDSI
         self.assertEqual(report['client_updates']['channel'],'nightly')
         self.assertIn('dependencies_ready',report['client_updates'])
         self.assertEqual(report['tunnel_addresses'],[])
-        self.assertIsNone(report['traffic_check'])
-        self.assertIsNone(report['traffic_check_history'])
+        self.assertNotIn('traffic_check',report)
+        self.assertNotIn('traffic_check_history',report)
+        self.assertIsNone(report['traffic_observation'])
 
     def install_fixture(self, mutation=''):
         archive=self.path/'download.tar.gz'

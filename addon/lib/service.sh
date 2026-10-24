@@ -194,19 +194,17 @@ tt_status_details() {
     TT_STATUS_CLIENTS='[]'; TT_STATUS_DIAG='{}'
     if type tt_client_inventory >/dev/null 2>&1; then TT_STATUS_CLIENTS=$(tt_client_inventory) || TT_STATUS_CLIENTS='[]'; fi
     if type tt_diagnostics >/dev/null 2>&1; then TT_STATUS_DIAG=$(tt_diagnostics) || TT_STATUS_DIAG='{}'; fi
-    TT_TUN_ADDRESSES='[]'; TT_STATUS_UPDATES='{}'; TT_STATUS_TRAFFIC=null; TT_STATUS_TRAFFIC_HISTORY=null; TT_STATUS_OBSERVATION=null
+    TT_TUN_ADDRESSES='[]'; TT_STATUS_UPDATES='{}'; TT_STATUS_OBSERVATION=null
     if type tt_tunnel_addresses >/dev/null 2>&1; then TT_TUN_ADDRESSES=$(tt_tunnel_addresses) || TT_TUN_ADDRESSES='[]'; fi
     if type tt_update_status >/dev/null 2>&1; then TT_STATUS_UPDATES=$(tt_update_status) || TT_STATUS_UPDATES='{}'; fi
-    if type tt_traffic_check_status >/dev/null 2>&1; then TT_STATUS_TRAFFIC=$(tt_traffic_check_status) || TT_STATUS_TRAFFIC=null; fi
-    if type tt_traffic_check_history >/dev/null 2>&1; then TT_STATUS_TRAFFIC_HISTORY=$(tt_traffic_check_history) || TT_STATUS_TRAFFIC_HISTORY=null; fi
     if type tt_observation_status >/dev/null 2>&1; then TT_STATUS_OBSERVATION=$(tt_observation_status) || TT_STATUS_OBSERVATION=null; fi
     if [ -f "$TT_RUN/nvram-failed" ]; then TT_DETAILS_READY=false; TT_DETAILS_ERROR=nvram_unavailable; fi
     jq -n --argjson ports "$TT_STATUS_PORTS" --argjson available "$TT_DETAILS_READY" --arg error "$TT_DETAILS_ERROR" \
         --argjson discovered_networks "$TT_DISCOVERED_NETWORKS" --argjson network_warnings "$TT_NETWORK_WARNINGS" \
         --argjson clients "$TT_STATUS_CLIENTS" --argjson diagnostics "$TT_STATUS_DIAG" \
-        --argjson tunnel_addresses "$TT_TUN_ADDRESSES" --argjson client_updates "$TT_STATUS_UPDATES" --argjson traffic_check "$TT_STATUS_TRAFFIC" --argjson traffic_check_history "$TT_STATUS_TRAFFIC_HISTORY" --argjson traffic_observation "$TT_STATUS_OBSERVATION" \
+        --argjson tunnel_addresses "$TT_TUN_ADDRESSES" --argjson client_updates "$TT_STATUS_UPDATES" --argjson traffic_observation "$TT_STATUS_OBSERVATION" \
         '{available:$available,error:$error,ports:$ports,discovered_networks:$discovered_networks,network_warnings:$network_warnings,
-          clients:$clients,diagnostics:$diagnostics,tunnel_addresses:$tunnel_addresses,client_updates:$client_updates,traffic_check:$traffic_check,traffic_check_history:$traffic_check_history,traffic_observation:$traffic_observation}'
+          clients:$clients,diagnostics:$diagnostics,tunnel_addresses:$tunnel_addresses,client_updates:$client_updates,traffic_observation:$traffic_observation}'
 }
 tt_read_status_details() (
     # Only read-only collection runs in this process group. A timeout must never
@@ -261,7 +259,7 @@ tt_status() {
         --argjson endpoint "$TT_PUBLIC_ENDPOINT" --argjson metrics "$(tt_process_metrics)" --argjson client_uptime_seconds "$(tt_client_uptime)" \
         '{version:$version,state:$state,hostname:$hostname,enabled:$enabled,process_running:$process_running,
           interface_up:$interface_up,tunnel_addresses:($details.tunnel_addresses//[]),client_updates:($details.client_updates//{}),
-          traffic_check:($details.traffic_check//null),traffic_check_history:($details.traffic_check_history//null),connection_verified:false,client_uptime_seconds:$client_uptime_seconds,traffic_observation:($details.traffic_observation//null),metrics:$metrics,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
+          connection_verified:false,client_uptime_seconds:$client_uptime_seconds,traffic_observation:($details.traffic_observation//null),metrics:$metrics,rx_bytes:$rx,tx_bytes:$tx,endpoint:$endpoint,
           policy:$policy,ports:($details.ports//[]),discovered_networks:($details.discovered_networks//[]),network_warnings:($details.network_warnings//[]),
           timestamp:$timestamp,last_result:$last_result,hardware_tested:false,revision:$revision,operations:$operations,
           transaction:$transaction,clients:($details.clients//[]),diagnostics:($details.diagnostics//{}),
@@ -269,7 +267,6 @@ tt_status() {
 }
 tt_publish_status() {
     if type tt_transfer_expire >/dev/null 2>&1; then tt_transfer_expire || :; fi
-    if type tt_preserve_traffic_check >/dev/null 2>&1; then tt_preserve_traffic_check || :; fi
     if type tt_observe_traffic >/dev/null 2>&1; then tt_observe_traffic || :; fi
     tt_limit_log
     TT_STATUS_TMP=$(mktemp "$TT_RUN/status.XXXXXX") || return 1

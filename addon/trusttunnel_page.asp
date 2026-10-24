@@ -4,10 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
 <title>ASUSWRT-Merlin — TrustTunnel</title>
 <link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css">
-<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.16.css">
+<link rel="stylesheet" href="/user/trusttunnel/trusttunnel.0.3.1-alpha.17.css">
 <script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script>
 <script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script>
-<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.16"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.16"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.16"></script>
+<script src="/user/trusttunnel/connection.js?v=0.3.1-alpha.17"></script><script src="/user/trusttunnel/transfer.js?v=0.3.1-alpha.17"></script><script src="/user/trusttunnel/trusttunnel.js?v=0.3.1-alpha.17"></script>
 </head><body class="bg" onload="ttmInitial()">
 <div id="TopBanner"></div><div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" title="Результат команды" style="display:none"></iframe>
@@ -23,7 +23,7 @@
 <td class="ttm-sidebar"><div id="mainMenu"></div><div id="subMenu"></div></td>
 <td style="vertical-align:top"><div id="tabMenu" class="submenuBlock"></div>
 <div class="FormTitle ttm-container">
-<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.16</span></div>
+<div class="ttm-heading ttm-titlebar"><h2>Настройки клиента TrustTunnel</h2><span class="ttm-badge" id="ttm-version">0.3.1-alpha.17</span></div>
 <div class="ttm-banner"><strong>Тестовая сборка для AX86U.</strong> Проверка защиты от утечек и восстановления после сбоев продолжается. Наличие процесса и TUN не подтверждает соединение с VPN.</div>
 <div class="ttm-tabs ttm-navigation" role="tablist" aria-label="Настройки TrustTunnel">
 <button role="tab" type="button" data-view-button="overview" onclick="ttmView('overview')">Обзор</button>
@@ -51,7 +51,6 @@
 <dt>IP-адрес TUN</dt><dd><span id="ttm-tun-address">—</span><small>Внутренний адрес интерфейса, не внешний IP VPN.</small></dd>
 <dt>Клиент работает</dt><dd><span id="ttm-client-uptime">—</span><small>Время работы процесса клиента. Внутренние переподключения к серверу его не обнуляют.</small></dd>
 <dt>Автоматическое наблюдение</dt><dd id="ttm-auto-traffic">Ожидание данных</dd>
-<dt>История ручной проверки</dt><dd><span id="ttm-traffic-check">Проверка ещё не выполнялась</span><small id="ttm-traffic-checked-at" hidden></small><small id="ttm-traffic-freshness" hidden></small></dd>
 </dl>
 <p id="ttm-startup" class="ttm-note" role="status" hidden></p>
 <div class="ttm-actions"><button id="ttm-toggle" type="button" class="ttm-primary" data-runtime onclick="ttmToggle()" disabled>Подключить</button></div>
@@ -60,11 +59,10 @@
 <div class="ttm-actions">
 <button type="button" data-runtime onclick="ttmAction('pause')" disabled>Пауза с блокировкой</button>
 <button type="button" data-runtime onclick="ttmAction('restart')" disabled>Перезапустить</button>
-<button type="button" data-runtime onclick="ttmAction('verify_traffic')" disabled>Проверить трафик</button>
 <button id="ttm-release-guards" type="button" class="ttm-release" data-runtime onclick="ttmAction('disable')" disabled hidden>Снять блокировку и отключить VPN</button>
 </div>
 <p class="ttm-muted">Пауза останавливает клиент и сохраняет блокировку обхода VPN. Чтобы продолжить, нажмите «Подключить». После паузы или ошибки запуска блокировку можно снять отдельной кнопкой в этом разделе; выбранные сети вернутся к обычной маршрутизации Merlin.</p>
-<details><summary>Как проверить соединение и защиту</summary><p>Подключите устройство к выбранной сети, нажмите «Проверить трафик» и в течение 10 секунд откройте сайт. Панель проверит правила, маршрут и прохождение пакетов в обе стороны. Отсутствие пакетов при простое не означает ошибку. Последний результат сохраняется вместе с датой; через 5 минут, после перезапуска клиента или изменения настроек он показывается как история. «Обновить данные» перечитывает статус и не запускает новую проверку.</p><p>Для полной проверки блокировки обхода нужен отдельный тест: на подготовленном устройстве открыть сайт, включить «Пауза с блокировкой», убедиться, что Интернет недоступен, затем нажать «Подключить». Такая проверка временно отключает Интернет выбранных сетей и не запускается автоматически. Исключения из VPN проверяйте отдельно.</p></details>
+<details><summary>Как проверить соединение и защиту</summary><p>При работающем клиенте панель автоматически наблюдает трафик примерно раз в минуту. Откройте сайт с устройства выбранной сети или LAN-порта: в строке «Автоматическое наблюдение» появятся дата и счётчики пакетов за интервал. Простой без новых пакетов не означает ошибку. «Обновить данные» перечитывает статус, не создавая тестовых запросов.</p><p>Для полной проверки блокировки обхода нужен отдельный тест: на подготовленном устройстве открыть сайт, включить «Пауза с блокировкой», убедиться, что Интернет недоступен, затем нажать «Подключить». Такая проверка временно отключает Интернет выбранных сетей и не запускается автоматически. Исключения из VPN проверяйте отдельно.</p></details>
 </details>
 <div class="ttm-heading"><h3>Обновление CLI</h3></div>
 <dl class="ttm-grid"><dt>Установленная версия</dt><dd id="ttm-client-version">—</dd><dt>Последняя установка CLI</dt><dd id="ttm-client-installed-at">Дата неизвестна</dd><dt>Последняя проверка</dt><dd id="ttm-client-checked-at">Ещё не выполнялась</dd><dt>Доступная сборка</dt><dd id="ttm-client-update">Обновления ещё не проверялись</dd></dl>

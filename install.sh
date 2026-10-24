@@ -34,7 +34,7 @@ fi
 # controller reacquires the same lock and no service is started during setup.
 tt_install_load() {
     TT_BASE=$DST
-    for library in common config network service webui transaction transfer diagnostics client-update traffic-check; do
+    for library in common config network service webui transaction transfer diagnostics client-update traffic-observation; do
         # shellcheck disable=SC1090
         . "$TT_BASE/lib/$library.sh"
     done
