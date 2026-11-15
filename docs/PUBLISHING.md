@@ -2,7 +2,7 @@
 
 Имя: `VitaliyYakob/asuswrt-merlin-trusttunnel`, основная ветка: `main`. Рабочие ветки имеют префикс `codex/`; конкретную ветку проверяйте перед публикацией. Документ описывает подготовку и публикацию новых версий; workflow создаёт черновик релиза, а его публичный выпуск выполняется по разрешению автора.
 
-Текущий выпуск — [v0.3.1-alpha.18](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.18), с проверенными контрольными суммами и GitHub/Sigstore-подписями. Точные запуски и границы проверки указаны в [TEST-REPORT.md](TEST-REPORT.md).
+Текущий выпуск — [v0.3.1-alpha.19](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.19). Результаты проверок файлов и GitHub Actions указаны в [TEST-REPORT.md](TEST-REPORT.md).
 
 Первый публичный выпуск — [v0.3.1-alpha.10](https://github.com/VitaliyYakob/asuswrt-merlin-trusttunnel/releases/tag/v0.3.1-alpha.10). Обе проверки GitHub Actions, состав архивов, контрольные суммы и анонимное скачивание подтверждены в [TEST-REPORT.md](TEST-REPORT.md). Issues и защита main настроены; опубликованный тег не перезаписывать.
 
@@ -35,15 +35,19 @@
 
 Сборка создаёт manifest.json: версия, архитектура, commit (если доступен Git), признак изменённого дерева, digest исходного содержимого и хеши/размеры трёх файлов поставки. SHA256SUMS также включает manifest. Локальный manifest не подписан.
 
-Запускать workflow с ref того же тега (например gh workflow run release.yml --ref v0.3.1-alpha.18 -f release_tag=v0.3.1-alpha.18). SHA контекста workflow обязан совпадать с checkout; изменённое дерево и несовпадающий manifest отклоняются. Release workflow требует завершённый успешный полный ci.yml именно коммита тега, повторяет browser tests, затем закреплённый actions/attest создаёт подпись GitHub/Sigstore. В черновик добавляется attestation.bundle.json. На компьютере с GitHub CLI:
+Запускайте workflow для того же тега, который указан в `release_tag`, например `gh workflow run release.yml --ref v0.3.1-alpha.19 -f release_tag=v0.3.1-alpha.19`. Коммит тега должен совпадать с коммитом запуска. После успешного полного CI workflow повторяет тесты, собирает файлы и добавляет подписанное свидетельство `attestation.bundle.json` к черновику. Проверка IPK из рабочей копии с тегом выполняется командой:
 
 ```sh
-gh attestation verify asuswrt-merlin-trusttunnel_0.3.1-alpha.18-1_aarch64-3.10.ipk \
+tag=v0.3.1-alpha.19
+commit=$(git rev-parse "${tag}^{commit}")
+gh attestation verify asuswrt-merlin-trusttunnel_0.3.1-alpha.19-1_aarch64-3.10.ipk \
   --repo VitaliyYakob/asuswrt-merlin-trusttunnel \
   --signer-workflow VitaliyYakob/asuswrt-merlin-trusttunnel/.github/workflows/release.yml \
+  --source-ref "refs/tags/$tag" --source-digest "$commit" --signer-digest "$commit" \
+  --deny-self-hosted-runners \
   --bundle attestation.bundle.json
 ```
 
-Проверить source commit в manifest и результате provenance против согласованного тега; CLI также поддерживает `--source-ref refs/tags/v0.3.1-alpha.18 --source-digest a8d7bbd81b1099dec4ae38beac40c21d859a11f2`. Проверять каждый из четырёх подписываемых файлов (IPK, ZIP, TAR.GZ, manifest), а не только наличие bundle. На роутере GitHub CLI не требуется: при ручной установке переносится уже проверенный пакет. Фактические запуски CI/сборки связаны ссылками в TEST-REPORT.md; наличие YAML само по себе не считается успешной подписью. Для online bootstrap остаётся прежняя модель доверия HTTPS + закреплённый SHA-256.
+Проверьте той же командой подписи обоих архивов и манифеста, а также совпадение коммита в манифесте с тегом. При ручной установке перенесите проверенный IPK на роутер. Онлайн-установщик проверяет скачанный по HTTPS пакет по закреплённому SHA-256.
 
 Чтобы установщик main не ссылался на ещё отсутствующий IPK, сначала подготовить и проверить черновик из прошедшего CI тега, опубликовать файлы, затем выполнить обычное fast-forward обновление main с обязательными проверками. Опубликованный тег и его файлы не перезаписывать. Уточнения отчёта после выпуска оформлять отдельным коммитом; локальную копию релиза сохранять побайтовой копией опубликованных файлов.
