@@ -94,9 +94,7 @@
         try {
             var id=root.TTMTransfer.id(root.crypto);
             message('Запрашивается новый статус контроллера…',false);
-            await wire('start_ttm_do_'+id+'_status');
-            await waitOperation(id);
-            statusNotice=false; message('Статус обновлён.',false);
+            await submitOperation('start_ttm_do_'+id+'_status',id,'status');
         } catch(e) { message(e.message,true); }
         finally { pending=false; controls(true); refresh(); }
     };
@@ -409,12 +407,25 @@
         text('ttm-operation-list',(status.operations||[]).slice(0,8).map(operationLabel).join('\n')||'Операций пока нет');
     }
 
+    var merlinAccessMessage='Сессия Merlin завершена или доступ отклонён. Войдите в панель роутера снова.';
+    function merlinAccessDenied(status, url, body) {
+        if (status===401 || status===403) return true;
+        if (url) {
+            var target=new URL(url,location.href);
+            if (target.origin===location.origin && target.pathname==='/Main_Login.asp') return true;
+        }
+        // Merlin can return HTTP 200 with a standalone login redirect inside
+        // an HTML/head wrapper. Normal start_apply.htm only mentions that path
+        // inside a conditional check. Never parse or execute the returned HTML.
+        var wrapper=body.match(/^\s*<html>\s*<head>([\s\S]*?)<\/head>\s*<\/html>\s*$/i);
+        return /^\s*<script>\s*(?:window\.)?top\.location\.href\s*=\s*(["'])\/Main_Login\.asp\1\s*;?\s*<\/script>\s*$/i.test(wrapper?wrapper[1]:body);
+    }
     function refresh() {
         if (root.TTM_PREVIEW) { render(root.TTM_PREVIEW); return; }
         var request = new XMLHttpRequest(); request.open('GET','/user/trusttunnel/status.json?t='+Date.now(),true); request.timeout=5000;
         request.onload = function () { try { if (request.status !== 200) throw new Error('Unavailable'); observeServerTime(request.getResponseHeader('Date')); render(JSON.parse(request.responseText)); }
-            catch (_) { controls(false); message(request.status===401 || request.status===403 || /login|Main_Login/i.test(request.responseText)?
-                'Сессия Merlin завершена. Войдите в панель роутера снова.':'Не удалось прочитать статус. Нажмите «Обновить данные»; при повторной ошибке откройте диагностику.',true); } };
+            catch (_) { controls(false); message(merlinAccessDenied(request.status,request.responseURL,request.responseText)?
+                merlinAccessMessage:'Не удалось прочитать статус. Нажмите «Обновить данные»; при повторной ошибке откройте диагностику.',true); } };
         request.onerror = request.ontimeout = function () { controls(false); message('Нет актуального статуса роутера.',true); }; request.send();
     }
     async function wire(command) {
@@ -429,9 +440,9 @@
         try {
             var response=await root.fetch(form.getAttribute('action'),{method:'POST',
                 credentials:'same-origin',body:new URLSearchParams(new FormData(form)),signal:controller.signal});
-            var body=await response.text();
-            if (response.status===401 || response.status===403 || /Main_Login\.asp|login_authorization/i.test(body)) {
-                var denied=new Error('Сессия Merlin завершена или доступ отклонён. Войдите в панель роутера снова.'); denied.rejected=true; throw denied;
+            if (merlinAccessDenied(response.status,response.url,'') ||
+                (response.ok && merlinAccessDenied(response.status,response.url,await response.text()))) {
+                var denied=new Error(merlinAccessMessage); denied.rejected=true; throw denied;
             }
             if (!response.ok) throw new Error('Приём команды не подтверждён (HTTP '+response.status+'). Проверьте результат перед повтором.');
         } finally { root.clearTimeout(timer); }
@@ -441,27 +452,50 @@
         var deadline=monotonicNow()+timeout;
         while (monotonicNow()<deadline) {
             await delay(1000);
-            var controller=new AbortController(), timer=root.setTimeout(function () { controller.abort(); },5000);
+            var controller=new AbortController(), timer=root.setTimeout(function () { controller.abort(); },5000), denied=false;
             try { var response=await root.fetch('/user/trusttunnel/'+file+'.json?t='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
-                if (response.ok) { observeServerTime(response.headers.get('Date')); var value=await response.json(); if (file==='status') render(value); if (check(value)) return value; }
+                denied=merlinAccessDenied(response.status,response.url,'');
+                if (response.ok && !denied) {
+                    var body=await response.text();
+                    denied=merlinAccessDenied(response.status,response.url,body);
+                    if (!denied) { observeServerTime(response.headers.get('Date')); var value=JSON.parse(body); if (file==='status') render(value); if (check(value)) return value; }
+                }
             } catch (_) { /* A timeout never means successful completion. */ }
             finally { root.clearTimeout(timer); }
+            // A later denial while reading status says nothing about the
+            // command already sent. Keep its ID for reconciliation after login.
+            if (denied) throw new Error(merlinAccessMessage);
         }
         throw new Error('Подтверждение не получено. Результат неизвестен: обновите статус перед повторной операцией.');
     }
-    async function waitOperation(id) {
-        unresolvedOperation=id;
-        var status=await poll('status',function (s) { return (s.operations||[]).some(function (op) { return op.id===id && op.state!=='running'; }); },360000);
-        var op=status.operations.find(function (item) { return item.id===id; });
+    function completedOperation(status, expected) {
+        return (status.operations||[]).find(function (op) {
+            return op.id===expected.id && op.action===expected.action && (op.state==='succeeded' || op.state==='failed');
+        });
+    }
+    async function waitOperation(expected) {
+        var status=await poll('status',function (s) { return !!completedOperation(s,expected); },360000);
+        var op=completedOperation(status,expected);
         unresolvedOperation=null;
         if (op.state!=='succeeded') throw new Error(op.code==='revision_conflict'?'Настройки изменены в другой вкладке. Обновите данные перед сохранением.':startErrors[op.code]||'Операция завершилась ошибкой: '+op.code);
-        message(op.code==='confirmation_required'?'Настройки применены временно. Проверьте доступ и подтвердите применение.':'Операция выполнена.',false); return op;
+        if (expected.onSuccess) expected.onSuccess(op,status);
+        if (op.action==='status') { statusNotice=false; message('Статус обновлён.',false); }
+        else message(op.code==='confirmation_required'?'Настройки применены временно. Проверьте доступ и подтвердите применение.':'Операция выполнена.',false);
+    }
+    async function submitOperation(command,id,action,onSuccess) {
+        var expected={id:id,action:action,onSuccess:onSuccess};
+        unresolvedOperation=expected;
+        try { await wire(command); }
+        catch(e) {
+            if (e.rejected) { unresolvedOperation=null; throw e; }
+            throw new Error('Роутер не подтвердил приём команды. Нажмите «Проверить результат» перед повтором.');
+        }
+        await waitOperation(expected);
     }
     async function busy(task) {
         if (!latest||monotonicNow()-lastSeen>15000||pending||unresolvedOperation) throw new Error('Дождитесь актуального статуса и проверьте результат предыдущей операции.');
         pending=true; controls(false);
         try { return await task(); }
-        catch(e) { if (e.rejected) unresolvedOperation=null; throw e; }
         finally { pending=false; controls(true); refresh(); }
     }
     async function save(kind,data) {
@@ -478,10 +512,16 @@
                 await wire(root.TTMTransfer.event(id,i,parts[i]));
                 await poll('transfer',function (s) { return s.id===id && s.next===i+1; },20000);
             }
-            unresolvedOperation=id; await wire('start_ttm_commit_'+id); await waitOperation(id);
-            delete dirty[kind]; editRevision=(latest.operations.find(function (op) { return op.id===id; })||{}).revision||latest.revision; updateDirty();
-            if (kind==='endpoint') root.ttmClearConnection();
-            } catch(e) { try { await wire('start_ttm_abort_'+id); } catch (_) { /* Preserve the original error. */ } throw e; }
+            await submitOperation('start_ttm_commit_'+id,id,kind,function (op,status) {
+                delete dirty[kind]; editRevision=op.revision||status.revision; updateDirty();
+                if (kind==='endpoint') root.ttmClearConnection();
+            });
+            } catch(e) {
+                // After a lost commit reply, an abort could cancel a command
+                // that is still being applied. Check the original result first.
+                if (!unresolvedOperation) try { await wire('start_ttm_abort_'+id); } catch (_) { /* Preserve the original error. */ }
+                throw e;
+            }
         });
     }
     root.ttmSaveExclusions=async function () { try {
@@ -510,7 +550,7 @@
         if (['start','pause','restart','disable','diagnostics','check_updates','channel_stable','channel_nightly','confirm_client','rollback_client'].indexOf(action)<0) throw new Error('Неизвестное действие');
         if (root.TTM_PREVIEW) { message('Демонстрация: команда не отправлена на роутер.',false); return; }
         activeAction=action;
-        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); unresolvedOperation=id; await wire('start_ttm_do_'+id+'_'+action); await waitOperation(id); });
+        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); await submitOperation('start_ttm_do_'+id+'_'+action,id,action); });
     } catch(e) { message(e.message,true); } finally { activeAction=null; controls(true); } };
     root.ttmCheckOperation=async function () {
         if (!unresolvedOperation || pending) return;
@@ -524,7 +564,10 @@
         if (!update || ['available','older'].indexOf(update.state)<0 || !update.candidate) throw new Error('Сначала проверьте обновления.');
         if (!root.confirm((update.state==='older'?'Перейти с '+update.installed_version+' на более старую сборку ':'Установить ')+update.candidate.tag+'? Работающий VPN будет перезапущен. При ошибке запуска будет выполнен откат. Для работающего VPN подтвердите новую версию в течение 5 минут после проверки сайтов, иначе вернётся предыдущая.')) return;
         if (root.TTM_PREVIEW) { message('Демонстрация: обновление не устанавливается.',false); return; }
-        await busy(async function () { var id=root.TTMTransfer.id(root.crypto); unresolvedOperation=id; await wire('start_ttm_do_'+id+'_'+(update.state==='older'?'downgrade_client_':'update_client_')+update.id); await waitOperation(id); });
+        await busy(async function () {
+            var id=root.TTMTransfer.id(root.crypto), action=update.state==='older'?'downgrade_client':'update_client';
+            await submitOperation('start_ttm_do_'+id+'_'+action+'_'+update.id,id,action);
+        });
     } catch(e) { message(e.message,true); } };
     root.ttmTransaction=async function (action) { try {
         if (['confirm','rollback'].indexOf(action)<0||!latest.transaction) return;

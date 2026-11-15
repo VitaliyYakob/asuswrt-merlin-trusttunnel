@@ -31,6 +31,7 @@ browser-test: preview
 	node tools/test-browser-transport.js
 	node tools/test-browser-assets.js
 	node tools/test-browser-status.js
+	node tools/test-browser-merlin-replies.js
 	node tools/test-browser-controls.js
 	node tools/test-browser-ux.js
 	node tools/test-browser-ports.js

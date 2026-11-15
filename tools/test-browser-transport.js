@@ -14,7 +14,7 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
     const context=await browser.newContext({ignoreHTTPSErrors:true});
     const page=await context.newPage(), errors=[], commands=[];
     const state={...fixture,timestamp:Math.floor(Date.now()/1000),revision:'0',endpoint:{configured:false,exclusions:[]},operations:[]};
-    let transfer={state:'idle'}, keys, parts=[], plain=[], saved, stale=false;
+    let transfer={state:'idle'}, keys, parts=[], plain=[], saved, stale=false, loseCommitReply=true;
     page.on('pageerror',e=>errors.push(String(e)));
     await context.route('**/*',async route=>{
         const req=route.request(), url=new URL(req.url());
@@ -47,12 +47,13 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
                     else saved=request.data;
                     state.endpoint={configured:true,exclusions:saved.exclusions||[],settings:{protocol:saved.protocol,mtu:saved.mtu,anti_dpi:saved.anti_dpi}}; state.revision=state.revision==='0'?'abcdef0123456789':'fedcba9876543210'; state.operations=[{id:match[1],state:'succeeded',code:'saved',action:request.kind,revision:state.revision}]; }
                 transfer={state:'idle'};
+                if (loseCommitReply) { loseCommitReply=false; await route.abort('failed'); return; }
             } else if((match=command.match(/^start_ttm_do_([a-f0-9]{16})_start$/))) {
                 state.operations=[{id:match[1],state:'failed',code:'policy_missing',action:'start',revision:state.revision}];
             } else if(!command.startsWith('start_ttm_abort_')) throw new Error('Unexpected event');
             // Real Merlin redirects the parent from this response. The addon
             // must consume HTML as inert fetch data, not execute an iframe.
-            await route.fulfill({contentType:'text/html',body:'<html><body><script>parent.location.href="/unexpected-native-redirect";</script>queued</body></html>'}); return;
+            await route.fulfill({contentType:'text/html',body:'<html><body><script>function checkHttpd(xhr) { if (xhr.responseText.search("Main_Login.asp") !== -1) top.location.href="/"; } parent.location.href="/unexpected-native-redirect";</script>queued</body></html>'}); return;
         }
         await route.abort();
     });
@@ -63,7 +64,12 @@ endpoint.password='synthetic-browser-秘密-😀'; endpoint.username='synthetic-
         await page.locator('#ttm-file').setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(endpoint))});
         await page.waitForFunction(()=>document.getElementById('ttm-password').value.length>0);
         await page.locator('#ttm-save-endpoint').click();
+        await page.waitForFunction(()=>document.getElementById('ttm-message').textContent.includes('Роутер не подтвердил приём команды'),{},{timeout:60000});
+        const sent=commands.length;
+        assert.match(commands.at(-1),/^start_ttm_commit_[a-f0-9]{16}$/);
+        await page.locator('#ttm-check-operation').click();
         await page.waitForFunction(()=>document.getElementById('ttm-message').textContent==='Операция выполнена.',{},{timeout:60000});
+        assert.equal(commands.length,sent,'a lost commit reply must not send an abort or repeat the POST');
         assert.deepEqual(saved,endpoint); assert.equal(await page.locator('#ttm-password').inputValue(),'');
         assert.ok(commands.length>3); assert.deepEqual(errors,[]);
         await page.reload();
